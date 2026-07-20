@@ -1,23 +1,16 @@
-import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import BaseEntity
+
+if TYPE_CHECKING:
+    from app.models.workspace_member import WorkspaceMember
 
 
-class Workspace(Base):
-
+class Workspace(BaseEntity):
     __tablename__ = "workspaces"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
 
     name: Mapped[str] = mapped_column(
         String(150),
@@ -29,7 +22,7 @@ class Workspace(Base):
         nullable=True,
     )
 
-    members = relationship(
+    members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember",
         back_populates="workspace",
     )

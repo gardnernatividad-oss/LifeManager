@@ -1,14 +1,17 @@
-import uuid
 import enum
+import uuid
 
-from sqlalchemy import Enum
-from sqlalchemy import ForeignKey
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Enum, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import BaseEntity
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.workspace import Workspace
 
 
 class WorkspaceRole(enum.Enum):
@@ -18,35 +21,42 @@ class WorkspaceRole(enum.Enum):
     VIEWER = "VIEWER"
 
 
-class WorkspaceMember(Base):
-
+class WorkspaceMember(BaseEntity):
     __tablename__ = "workspace_members"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "workspace_id",
+            name="uq_workspace_members_user_id_workspace_id",
+        ),
+        Index("ix_workspace_members_user_id", "user_id"),
+        Index("ix_workspace_members_workspace_id", "workspace_id"),
     )
 
-    workspace_id = mapped_column(
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("workspaces.id"),
+        nullable=False,
     )
 
-    user_id = mapped_column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
+        nullable=False,
     )
 
-    role = mapped_column(
+    role: Mapped[WorkspaceRole] = mapped_column(
         Enum(WorkspaceRole),
         nullable=False,
         default=WorkspaceRole.MEMBER,
     )
 
-    workspace = relationship(
+    workspace: Mapped["Workspace"] = relationship(
         "Workspace",
         back_populates="members",
     )
 
-    user = relationship("User")
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="workspace_members",
+    )
