@@ -12,6 +12,7 @@ from app.services.workspace import (
     create_workspace,
     delete_workspace,
     get_workspace,
+    get_workspace_membership,
     list_user_workspaces,
     update_workspace,
 )
@@ -69,6 +70,39 @@ class WorkspaceServiceTests(unittest.TestCase):
         statement = self.db.scalar.call_args.args[0]
         self.assertIn(workspace_id, statement.compile().params.values())
         self.assertIs(result, expected)
+
+    def test_get_workspace_membership_returns_found_membership(self) -> None:
+        workspace_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        expected = WorkspaceMember(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            role=WorkspaceRole.MEMBER,
+        )
+        self.db.scalar.return_value = expected
+
+        result = get_workspace_membership(
+            self.db,
+            workspace_id=workspace_id,
+            user_id=user_id,
+        )
+
+        statement = self.db.scalar.call_args.args[0]
+        parameter_values = statement.compile().params.values()
+        self.assertIn(workspace_id, parameter_values)
+        self.assertIn(user_id, parameter_values)
+        self.assertIs(result, expected)
+
+    def test_get_workspace_membership_returns_none_when_not_found(self) -> None:
+        self.db.scalar.return_value = None
+
+        result = get_workspace_membership(
+            self.db,
+            workspace_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
+        )
+
+        self.assertIsNone(result)
 
     def test_list_user_workspaces_joins_memberships_and_returns_scalars(self) -> None:
         user_id = uuid.uuid4()

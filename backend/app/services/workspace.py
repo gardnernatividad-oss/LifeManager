@@ -38,6 +38,19 @@ def get_workspace(
     return db.scalar(statement)
 
 
+def get_workspace_membership(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> WorkspaceMember | None:
+    statement = select(WorkspaceMember).where(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == user_id,
+    )
+    return db.scalar(statement)
+
+
 def list_user_workspaces(
     db: Session,
     *,

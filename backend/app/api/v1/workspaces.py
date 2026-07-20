@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models.user import User
+from app.models.workspace_member import WorkspaceMember, WorkspaceRole
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 from app.services import workspace as workspace_service
 
@@ -23,6 +24,25 @@ def get_db() -> Generator[Session, None, None]:
 
 
 SessionDependency = Annotated[Session, Depends(get_db)]
+
+
+def get_membership_or_403(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> WorkspaceMember:
+    membership = workspace_service.get_workspace_membership(
+        db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+    )
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace access denied",
+        )
+    return membership
 
 
 @router.post(
@@ -70,6 +90,7 @@ def list_workspaces(
 def get_workspace(
     workspace_id: uuid.UUID,
     db: SessionDependency,
+    user_id: uuid.UUID,
 ) -> WorkspaceRead:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
@@ -77,6 +98,12 @@ def get_workspace(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace not found",
         )
+
+    get_membership_or_403(
+        db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+    )
 
     return WorkspaceRead.model_validate(workspace)
 
@@ -86,12 +113,24 @@ def update_workspace(
     workspace_id: uuid.UUID,
     workspace_in: WorkspaceUpdate,
     db: SessionDependency,
+    user_id: uuid.UUID,
 ) -> WorkspaceRead:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace not found",
+        )
+
+    membership = get_membership_or_403(
+        db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+    )
+    if membership.role not in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient workspace permissions",
         )
 
     try:
@@ -117,12 +156,24 @@ def update_workspace(
 def delete_workspace(
     workspace_id: uuid.UUID,
     db: SessionDependency,
+    user_id: uuid.UUID,
 ) -> Response:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace not found",
+        )
+
+    membership = get_membership_or_403(
+        db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+    )
+    if membership.role is not WorkspaceRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient workspace permissions",
         )
 
     try:

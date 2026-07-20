@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.workspaces import get_db
 from app.main import app
-from app.models import User, Workspace
+from app.models import User, Workspace, WorkspaceMember
+from app.models.workspace_member import WorkspaceRole
 
 
 class WorkspaceRouterTests(unittest.TestCase):
@@ -30,6 +31,19 @@ class WorkspaceRouterTests(unittest.TestCase):
             description=None,
             created_at=self.timestamp,
             updated_at=self.timestamp,
+        )
+
+    def make_membership(
+        self,
+        workspace: Workspace,
+        *,
+        user_id: uuid.UUID,
+        role: WorkspaceRole,
+    ) -> WorkspaceMember:
+        return WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user_id,
+            role=role,
         )
 
     def test_create_workspace_success(self) -> None:
@@ -78,23 +92,86 @@ class WorkspaceRouterTests(unittest.TestCase):
 
     def test_get_workspace_not_found(self) -> None:
         workspace_id = uuid.uuid4()
+        user_id = uuid.uuid4()
 
         with patch(
             "app.api.v1.workspaces.workspace_service.get_workspace",
             return_value=None,
         ):
-            response = self.client.get(f"/api/v1/workspaces/{workspace_id}")
+            response = self.client.get(
+                f"/api/v1/workspaces/{workspace_id}",
+                params={"user_id": str(user_id)},
+            )
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "Workspace not found"})
 
-    def test_update_workspace_success(self) -> None:
+    def test_member_can_view_workspace(self) -> None:
         workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+        membership = self.make_membership(
+            workspace,
+            user_id=user_id,
+            role=WorkspaceRole.MEMBER,
+        )
 
         with (
             patch(
                 "app.api.v1.workspaces.workspace_service.get_workspace",
                 return_value=workspace,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=membership,
+            ),
+        ):
+            response = self.client.get(
+                f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], str(workspace.id))
+
+    def test_non_member_cannot_view_workspace(self) -> None:
+        workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+
+        with (
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace",
+                return_value=workspace,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=None,
+            ),
+        ):
+            response = self.client.get(
+                f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {"detail": "Workspace access denied"})
+
+    def test_update_workspace_success(self) -> None:
+        workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+        membership = self.make_membership(
+            workspace,
+            user_id=user_id,
+            role=WorkspaceRole.ADMIN,
+        )
+
+        with (
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace",
+                return_value=workspace,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=membership,
             ),
             patch(
                 "app.api.v1.workspaces.workspace_service.update_workspace",
@@ -103,6 +180,7 @@ class WorkspaceRouterTests(unittest.TestCase):
         ):
             response = self.client.patch(
                 f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
                 json={"name": "Updated"},
             )
 
@@ -112,8 +190,14 @@ class WorkspaceRouterTests(unittest.TestCase):
         self.db.commit.assert_called_once_with()
         self.db.refresh.assert_called_once_with(workspace)
 
-    def test_delete_workspace_success(self) -> None:
+    def test_member_cannot_update_workspace(self) -> None:
         workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+        membership = self.make_membership(
+            workspace,
+            user_id=user_id,
+            role=WorkspaceRole.MEMBER,
+        )
 
         with (
             patch(
@@ -121,15 +205,93 @@ class WorkspaceRouterTests(unittest.TestCase):
                 return_value=workspace,
             ),
             patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=membership,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.update_workspace"
+            ) as update_mock,
+        ):
+            response = self.client.patch(
+                f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
+                json={"name": "Updated"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json(),
+            {"detail": "Insufficient workspace permissions"},
+        )
+        update_mock.assert_not_called()
+        self.db.commit.assert_not_called()
+
+    def test_delete_workspace_success(self) -> None:
+        workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+        membership = self.make_membership(
+            workspace,
+            user_id=user_id,
+            role=WorkspaceRole.OWNER,
+        )
+
+        with (
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace",
+                return_value=workspace,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=membership,
+            ),
+            patch(
                 "app.api.v1.workspaces.workspace_service.delete_workspace"
             ) as delete_mock,
         ):
-            response = self.client.delete(f"/api/v1/workspaces/{workspace.id}")
+            response = self.client.delete(
+                f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
+            )
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.content, b"")
         delete_mock.assert_called_once_with(self.db, workspace=workspace)
         self.db.commit.assert_called_once_with()
+
+    def test_admin_cannot_delete_workspace(self) -> None:
+        workspace = self.make_workspace()
+        user_id = uuid.uuid4()
+        membership = self.make_membership(
+            workspace,
+            user_id=user_id,
+            role=WorkspaceRole.ADMIN,
+        )
+
+        with (
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace",
+                return_value=workspace,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.get_workspace_membership",
+                return_value=membership,
+            ),
+            patch(
+                "app.api.v1.workspaces.workspace_service.delete_workspace"
+            ) as delete_mock,
+        ):
+            response = self.client.delete(
+                f"/api/v1/workspaces/{workspace.id}",
+                params={"user_id": str(user_id)},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json(),
+            {"detail": "Insufficient workspace permissions"},
+        )
+        delete_mock.assert_not_called()
+        self.db.commit.assert_not_called()
 
 
 if __name__ == "__main__":
