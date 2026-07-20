@@ -1,10 +1,33 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.v1.workspaces import SessionDependency
+from app.core.tokens import create_access_token
+from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.user import UserCreate, UserRead
-from app.services.user import register_user
+from app.services.user import authenticate_user, register_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(
+    credentials: LoginRequest,
+    db: SessionDependency,
+) -> TokenResponse:
+    user = authenticate_user(
+        db,
+        email=credentials.email,
+        password=credentials.password,
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = create_access_token(subject=str(user.id))
+    return TokenResponse(access_token=access_token)
 
 
 @router.post(
