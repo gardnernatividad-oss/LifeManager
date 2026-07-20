@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.v1.workspaces import SessionDependency
+from app.api.dependencies import SessionDependency
 from app.core.tokens import create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.user import UserCreate, UserRead

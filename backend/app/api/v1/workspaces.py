@@ -1,29 +1,14 @@
 import uuid
 
-from collections.abc import Generator
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
-from app.models.user import User
+from app.api.dependencies import CurrentUser, SessionDependency
 from app.models.workspace_member import WorkspaceMember, WorkspaceRole
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 from app.services import workspace as workspace_service
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
-
-
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-SessionDependency = Annotated[Session, Depends(get_db)]
 
 
 def get_membership_or_403(
@@ -53,19 +38,12 @@ def get_membership_or_403(
 def create_workspace(
     workspace_in: WorkspaceCreate,
     db: SessionDependency,
-    user_id: uuid.UUID,
+    current_user: CurrentUser,
 ) -> WorkspaceRead:
-    owner = db.get(User, user_id)
-    if owner is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
     try:
         workspace = workspace_service.create_workspace(
             db,
-            owner=owner,
+            owner=current_user,
             workspace_in=workspace_in,
         )
         db.commit()
@@ -80,9 +58,12 @@ def create_workspace(
 @router.get("", response_model=list[WorkspaceRead])
 def list_workspaces(
     db: SessionDependency,
-    user_id: uuid.UUID,
+    current_user: CurrentUser,
 ) -> list[WorkspaceRead]:
-    workspaces = workspace_service.list_user_workspaces(db, user_id=user_id)
+    workspaces = workspace_service.list_user_workspaces(
+        db,
+        user_id=current_user.id,
+    )
     return [WorkspaceRead.model_validate(workspace) for workspace in workspaces]
 
 
@@ -90,7 +71,7 @@ def list_workspaces(
 def get_workspace(
     workspace_id: uuid.UUID,
     db: SessionDependency,
-    user_id: uuid.UUID,
+    current_user: CurrentUser,
 ) -> WorkspaceRead:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
@@ -102,7 +83,7 @@ def get_workspace(
     get_membership_or_403(
         db,
         workspace_id=workspace_id,
-        user_id=user_id,
+        user_id=current_user.id,
     )
 
     return WorkspaceRead.model_validate(workspace)
@@ -113,7 +94,7 @@ def update_workspace(
     workspace_id: uuid.UUID,
     workspace_in: WorkspaceUpdate,
     db: SessionDependency,
-    user_id: uuid.UUID,
+    current_user: CurrentUser,
 ) -> WorkspaceRead:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
@@ -125,7 +106,7 @@ def update_workspace(
     membership = get_membership_or_403(
         db,
         workspace_id=workspace_id,
-        user_id=user_id,
+        user_id=current_user.id,
     )
     if membership.role not in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
         raise HTTPException(
@@ -156,7 +137,7 @@ def update_workspace(
 def delete_workspace(
     workspace_id: uuid.UUID,
     db: SessionDependency,
-    user_id: uuid.UUID,
+    current_user: CurrentUser,
 ) -> Response:
     workspace = workspace_service.get_workspace(db, workspace_id=workspace_id)
     if workspace is None:
@@ -168,7 +149,7 @@ def delete_workspace(
     membership = get_membership_or_403(
         db,
         workspace_id=workspace_id,
-        user_id=user_id,
+        user_id=current_user.id,
     )
     if membership.role is not WorkspaceRole.OWNER:
         raise HTTPException(

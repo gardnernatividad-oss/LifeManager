@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.api.v1.workspaces import get_db
+from app.api.dependencies import get_db
 from app.core.config import settings
 from app.core.tokens import decode_access_token
 from app.main import app
@@ -189,7 +189,7 @@ class AuthRouterTests(unittest.TestCase):
 
     def test_existing_routes_remain_registered(self) -> None:
         self.assertEqual(self.client.get("/health").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/workspaces").status_code, 422)
+        self.assertEqual(self.client.get("/api/v1/workspaces").status_code, 401)
         self.assertEqual(self.client.post("/auth/register", json={}).status_code, 422)
 
 
