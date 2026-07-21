@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from sqlalchemy.orm import Session
 
-from app.models import Category, Task, TaskStatus, User, WorkspaceMember
+from app.models import Category, Project, Task, TaskStatus, User, WorkspaceMember
 from app.models.workspace_member import WorkspaceRole
 from app.schemas import TaskCreate, TaskUpdate
 from app.services.task_service import (
@@ -14,6 +14,8 @@ from app.services.task_service import (
     TaskCategoryNotFoundError,
     TaskNotFoundError,
     TaskPermissionError,
+    TaskProjectInactiveError,
+    TaskProjectNotFoundError,
     create_task,
     delete_task,
     get_task,
@@ -55,6 +57,7 @@ class TaskServiceTests(unittest.TestCase):
             "workspace_id": self.workspace_id,
             "created_by_id": self.user.id,
             "category_id": None,
+            "project_id": None,
             "title": "Original",
             "description": "Details",
             "status": TaskStatus.TODO,
@@ -85,6 +88,7 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(task.workspace_id, self.workspace_id)
         self.assertEqual(task.created_by_id, self.user.id)
         self.assertIsNone(task.category_id)
+        self.assertIsNone(task.project_id)
         self.assertNotIn("workspace_id", task_in.model_dump())
         self.assertNotIn("created_by_id", task_in.model_dump())
         self.assertIsNone(task.completed_at)
@@ -426,6 +430,170 @@ class TaskServiceTests(unittest.TestCase):
 
         self.assertEqual(result.description, "Still editable")
         self.db.scalar.assert_called_once()
+
+    def test_create_with_project_and_with_category_and_project(self) -> None:
+        project = Project(
+            id=uuid.uuid4(),
+            workspace_id=self.workspace_id,
+            name="Home",
+            normalized_name="home",
+            is_active=True,
+        )
+        category = Category(
+            id=uuid.uuid4(),
+            workspace_id=self.workspace_id,
+            name="Personal",
+            normalized_name="personal",
+            is_active=True,
+        )
+        self.db.scalar.return_value = project
+        with self.membership_patch():
+            task = create_task(
+                self.db,
+                workspace_id=self.workspace_id,
+                current_user=self.user,
+                task_in=TaskCreate(title="Project task", project_id=project.id),
+            )
+        self.assertEqual(task.project_id, project.id)
+        self.assertIsNone(task.category_id)
+
+        self.db.reset_mock()
+        self.db.scalar.side_effect = [category, project]
+        with self.membership_patch():
+            task = create_task(
+                self.db,
+                workspace_id=self.workspace_id,
+                current_user=self.user,
+                task_in=TaskCreate(
+                    title="Both",
+                    category_id=category.id,
+                    project_id=project.id,
+                ),
+            )
+        self.assertEqual((task.category_id, task.project_id), (category.id, project.id))
+
+    def test_create_rejects_missing_or_inactive_project(self) -> None:
+        project_id = uuid.uuid4()
+        inactive = Project(
+            id=project_id,
+            workspace_id=self.workspace_id,
+            name="Inactive",
+            normalized_name="inactive",
+            is_active=False,
+        )
+        for result, error in (
+            (None, TaskProjectNotFoundError),
+            (inactive, TaskProjectInactiveError),
+        ):
+            self.db.reset_mock()
+            self.db.scalar.side_effect = None
+            self.db.scalar.return_value = result
+            with self.subTest(error=error.__name__), self.membership_patch(), self.assertRaises(error):
+                create_task(
+                    self.db,
+                    workspace_id=self.workspace_id,
+                    current_user=self.user,
+                    task_in=TaskCreate(title="Task", project_id=project_id),
+                )
+            self.db.add.assert_not_called()
+
+    def test_list_filters_by_inactive_project_and_combines_category(self) -> None:
+        category = Category(
+            id=uuid.uuid4(), workspace_id=self.workspace_id, name="C",
+            normalized_name="c", is_active=False,
+        )
+        project = Project(
+            id=uuid.uuid4(), workspace_id=self.workspace_id, name="P",
+            normalized_name="p", is_active=False,
+        )
+        tasks = [self.make_task(category_id=category.id, project_id=project.id)]
+        self.db.scalar.side_effect = [category, project, 1]
+        self.db.scalars.return_value.all.return_value = tasks
+        with self.membership_patch():
+            result, total = list_tasks(
+                self.db,
+                workspace_id=self.workspace_id,
+                current_user=self.user,
+                category_id=category.id,
+                project_id=project.id,
+            )
+        sql = str(self.db.scalars.call_args.args[0])
+        self.assertIn("tasks.category_id", sql)
+        self.assertIn("tasks.project_id", sql)
+        self.assertIn("ORDER BY tasks.position, tasks.created_at, tasks.id", sql)
+        self.assertEqual((result, total), (tasks, 1))
+
+    def test_list_rejects_missing_or_cross_workspace_project(self) -> None:
+        self.db.scalar.return_value = None
+        with self.membership_patch(), self.assertRaises(TaskProjectNotFoundError):
+            list_tasks(
+                self.db,
+                workspace_id=self.workspace_id,
+                current_user=self.user,
+                project_id=uuid.uuid4(),
+            )
+        self.db.scalars.assert_not_called()
+
+    def test_update_project_assignment_clear_and_independence(self) -> None:
+        category_id = uuid.uuid4()
+        existing_project_id = uuid.uuid4()
+        project = Project(
+            id=uuid.uuid4(), workspace_id=self.workspace_id, name="New",
+            normalized_name="new", is_active=True,
+        )
+        task = self.make_task(category_id=category_id, project_id=existing_project_id)
+        self.db.scalar.side_effect = [task, project]
+        with self.membership_patch():
+            update_task(
+                self.db,
+                workspace_id=self.workspace_id,
+                task_id=task.id,
+                current_user=self.user,
+                task_in=TaskUpdate(project_id=project.id),
+            )
+        self.assertEqual(task.project_id, project.id)
+        self.assertEqual(task.category_id, category_id)
+
+        self.db.reset_mock(); self.db.scalar.side_effect = None; self.db.scalar.return_value = task
+        with self.membership_patch():
+            update_task(
+                self.db, workspace_id=self.workspace_id, task_id=task.id,
+                current_user=self.user, task_in=TaskUpdate(project_id=None),
+            )
+        self.assertIsNone(task.project_id)
+        self.assertEqual(task.category_id, category_id)
+
+        task.project_id = existing_project_id
+        self.db.reset_mock(); self.db.scalar.return_value = task
+        with self.membership_patch():
+            update_task(
+                self.db, workspace_id=self.workspace_id, task_id=task.id,
+                current_user=self.user, task_in=TaskUpdate(description="Allowed"),
+            )
+        self.assertEqual(task.project_id, existing_project_id)
+        self.assertEqual(task.description, "Allowed")
+
+    def test_update_rejects_inactive_or_cross_workspace_project(self) -> None:
+        task = self.make_task()
+        inactive = Project(
+            id=uuid.uuid4(), workspace_id=self.workspace_id, name="Inactive",
+            normalized_name="inactive", is_active=False,
+        )
+        for project_result, expected_error in (
+            (inactive, TaskProjectInactiveError),
+            (None, TaskProjectNotFoundError),
+        ):
+            self.db.reset_mock()
+            self.db.scalar.side_effect = [task, project_result]
+            with self.subTest(error=expected_error.__name__), self.membership_patch(), self.assertRaises(expected_error):
+                update_task(
+                    self.db,
+                    workspace_id=self.workspace_id,
+                    task_id=task.id,
+                    current_user=self.user,
+                    task_in=TaskUpdate(project_id=inactive.id),
+                )
+            self.db.flush.assert_not_called()
 
     def test_creator_may_delete(self) -> None:
         task = self.make_task()

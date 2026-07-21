@@ -62,6 +62,17 @@ class TaskCreateSchemaTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             TaskCreate(title="Invalid", category_id="not-a-uuid")
 
+    def test_optional_project_id_accepts_uuid_and_null(self) -> None:
+        project_id = uuid.uuid4()
+        self.assertIsNone(TaskCreate(title="No project").project_id)
+        self.assertEqual(
+            TaskCreate(title="Project", project_id=project_id).project_id,
+            project_id,
+        )
+        self.assertIsNone(TaskCreate(title="No project", project_id=None).project_id)
+        with self.assertRaises(ValidationError):
+            TaskCreate(title="Invalid", project_id="not-a-uuid")
+
 
 class TaskUpdateSchemaTests(unittest.TestCase):
     def test_empty_and_partial_payloads_are_accepted(self) -> None:
@@ -108,6 +119,18 @@ class TaskUpdateSchemaTests(unittest.TestCase):
             {"category_id": None},
         )
 
+    def test_project_update_distinguishes_omission_uuid_and_null(self) -> None:
+        project_id = uuid.uuid4()
+        self.assertNotIn("project_id", TaskUpdate().model_dump(exclude_unset=True))
+        self.assertEqual(
+            TaskUpdate(project_id=project_id).model_dump(exclude_unset=True),
+            {"project_id": project_id},
+        )
+        self.assertEqual(
+            TaskUpdate(project_id=None).model_dump(exclude_unset=True),
+            {"project_id": None},
+        )
+
 
 class TaskReadSchemaTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -117,6 +140,7 @@ class TaskReadSchemaTests(unittest.TestCase):
             workspace_id=uuid.uuid4(),
             created_by_id=uuid.uuid4(),
             category_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
             title="Plan week",
             description=None,
             status=TaskStatus.IN_PROGRESS,
@@ -139,6 +163,7 @@ class TaskReadSchemaTests(unittest.TestCase):
                 "workspace_id",
                 "created_by_id",
                 "category_id",
+                "project_id",
                 "title",
                 "description",
                 "status",
@@ -154,6 +179,7 @@ class TaskReadSchemaTests(unittest.TestCase):
         self.assertNotIn("workspace", schema.model_dump())
         self.assertNotIn("created_by", schema.model_dump())
         self.assertEqual(schema.category_id, self.task.category_id)
+        self.assertEqual(schema.project_id, self.task.project_id)
 
     def test_json_serializes_enums_as_stable_values(self) -> None:
         serialized = TaskRead.model_validate(self.task).model_dump_json()

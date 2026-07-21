@@ -16,7 +16,11 @@ router = APIRouter(
 def _raise_http_error(error: Exception) -> None:
     if isinstance(
         error,
-        (task_service.TaskNotFoundError, task_service.TaskCategoryNotFoundError),
+        (
+            task_service.TaskNotFoundError,
+            task_service.TaskCategoryNotFoundError,
+            task_service.TaskProjectNotFoundError,
+        ),
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -26,6 +30,11 @@ def _raise_http_error(error: Exception) -> None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Category is inactive",
+        ) from error
+    if isinstance(error, task_service.TaskProjectInactiveError):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Project is inactive",
         ) from error
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -54,6 +63,8 @@ def create_task(
         task_service.TaskPermissionError,
         task_service.TaskCategoryNotFoundError,
         task_service.TaskCategoryInactiveError,
+        task_service.TaskProjectNotFoundError,
+        task_service.TaskProjectInactiveError,
     ) as error:
         db.rollback()
         _raise_http_error(error)
@@ -69,6 +80,7 @@ def list_tasks(
     db: SessionDependency,
     current_user: CurrentUser,
     category_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> TaskListResponse:
     try:
         items, total = task_service.list_tasks(
@@ -76,12 +88,15 @@ def list_tasks(
             workspace_id=workspace_id,
             current_user=current_user,
             category_id=category_id,
+            project_id=project_id,
         )
     except (
         task_service.TaskNotFoundError,
         task_service.TaskPermissionError,
         task_service.TaskCategoryNotFoundError,
         task_service.TaskCategoryInactiveError,
+        task_service.TaskProjectNotFoundError,
+        task_service.TaskProjectInactiveError,
     ) as error:
         _raise_http_error(error)
     return TaskListResponse(items=items, total=total)
@@ -106,6 +121,8 @@ def get_task(
         task_service.TaskPermissionError,
         task_service.TaskCategoryNotFoundError,
         task_service.TaskCategoryInactiveError,
+        task_service.TaskProjectNotFoundError,
+        task_service.TaskProjectInactiveError,
     ) as error:
         _raise_http_error(error)
     return TaskRead.model_validate(task)
@@ -134,6 +151,8 @@ def update_task(
         task_service.TaskPermissionError,
         task_service.TaskCategoryNotFoundError,
         task_service.TaskCategoryInactiveError,
+        task_service.TaskProjectNotFoundError,
+        task_service.TaskProjectInactiveError,
     ) as error:
         db.rollback()
         _raise_http_error(error)
@@ -167,6 +186,8 @@ def delete_task(
         task_service.TaskPermissionError,
         task_service.TaskCategoryNotFoundError,
         task_service.TaskCategoryInactiveError,
+        task_service.TaskProjectNotFoundError,
+        task_service.TaskProjectInactiveError,
     ) as error:
         db.rollback()
         _raise_http_error(error)

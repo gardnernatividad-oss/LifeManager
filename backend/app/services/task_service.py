@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
+from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
 from app.models.workspace_member import WorkspaceMember, WorkspaceRole
@@ -24,6 +25,14 @@ class TaskCategoryNotFoundError(LookupError):
 
 
 class TaskCategoryInactiveError(ValueError):
+    pass
+
+
+class TaskProjectNotFoundError(LookupError):
+    pass
+
+
+class TaskProjectInactiveError(ValueError):
     pass
 
 
@@ -78,6 +87,25 @@ def _resolve_category(
     return category
 
 
+def _resolve_project(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    require_active: bool,
+) -> Project:
+    statement = select(Project).where(
+        Project.id == project_id,
+        Project.workspace_id == workspace_id,
+    )
+    project = db.scalar(statement)
+    if project is None:
+        raise TaskProjectNotFoundError("Project not found")
+    if require_active and not project.is_active:
+        raise TaskProjectInactiveError("Project is inactive")
+    return project
+
+
 def create_task(
     db: Session,
     *,
@@ -92,6 +120,7 @@ def create_task(
     )
     task_data = task_in.model_dump()
     category_id = task_data.pop("category_id")
+    project_id = task_data.pop("project_id")
     if category_id is not None:
         _resolve_category(
             db,
@@ -99,10 +128,18 @@ def create_task(
             category_id=category_id,
             require_active=True,
         )
+    if project_id is not None:
+        _resolve_project(
+            db,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            require_active=True,
+        )
     task = Task(
         workspace_id=workspace_id,
         created_by_id=current_user.id,
         category_id=category_id,
+        project_id=project_id,
         **task_data,
     )
     db.add(task)
@@ -116,6 +153,7 @@ def list_tasks(
     workspace_id: uuid.UUID,
     current_user: User,
     category_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> tuple[list[Task], int]:
     _require_membership(
         db,
@@ -134,6 +172,14 @@ def list_tasks(
             require_active=False,
         )
         filters.append(Task.category_id == category_id)
+    if project_id is not None:
+        _resolve_project(
+            db,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            require_active=False,
+        )
+        filters.append(Task.project_id == project_id)
     statement = (
         select(Task)
         .where(*filters)
@@ -194,6 +240,16 @@ def update_task(
                 require_active=True,
             )
         task.category_id = category_id
+    if "project_id" in changes:
+        project_id = changes.pop("project_id")
+        if project_id is not None:
+            _resolve_project(
+                db,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                require_active=True,
+            )
+        task.project_id = project_id
     for field, value in changes.items():
         setattr(task, field, value)
 

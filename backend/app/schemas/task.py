@@ -24,6 +24,7 @@ class TaskCreate(BaseModel):
     due_at: datetime | None = None
     position: int = Field(default=0, ge=0)
     category_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -37,6 +38,7 @@ class TaskUpdate(BaseModel):
     position: int | None = Field(default=None, ge=0)
     is_archived: bool | None = None
     category_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -53,6 +55,7 @@ class TaskRead(BaseModel):
     workspace_id: uuid.UUID
     created_by_id: uuid.UUID
     category_id: uuid.UUID | None
+    project_id: uuid.UUID | None
     title: str
     description: str | None
     status: TaskStatus

@@ -15,6 +15,8 @@ from app.services.task_service import (
     TaskCategoryNotFoundError,
     TaskNotFoundError,
     TaskPermissionError,
+    TaskProjectInactiveError,
+    TaskProjectNotFoundError,
 )
 
 
@@ -46,12 +48,14 @@ class TaskRouterTests(unittest.TestCase):
         *,
         title: str = "Task",
         category_id: uuid.UUID | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> Task:
         return Task(
             id=self.task_id,
             workspace_id=self.workspace_id,
             created_by_id=self.user.id,
             category_id=category_id,
+            project_id=project_id,
             title=title,
             description=None,
             status=TaskStatus.TODO,
@@ -82,6 +86,7 @@ class TaskRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["id"], str(task.id))
         self.assertIsNone(response.json()["category_id"])
+        self.assertIsNone(response.json()["project_id"])
         call = service_mock.call_args
         self.assertEqual(call.kwargs["workspace_id"], self.workspace_id)
         self.assertIs(call.kwargs["current_user"], self.user)
@@ -108,6 +113,27 @@ class TaskRouterTests(unittest.TestCase):
             service_mock.call_args.kwargs["task_in"].category_id,
             category_id,
         )
+
+    def test_create_with_project_and_category_serializes_both(self) -> None:
+        category_id = uuid.uuid4()
+        project_id = uuid.uuid4()
+        task = self.make_task(category_id=category_id, project_id=project_id)
+        with patch(
+            "app.api.v1.tasks.task_service.create_task",
+            return_value=task,
+        ) as service_mock:
+            response = self.client.post(
+                self.collection_url,
+                json={
+                    "title": "Task",
+                    "category_id": str(category_id),
+                    "project_id": str(project_id),
+                },
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["project_id"], str(project_id))
+        self.assertEqual(response.json()["category_id"], str(category_id))
+        self.assertEqual(service_mock.call_args.kwargs["task_in"].project_id, project_id)
 
     def test_create_rejects_protected_fields_and_maps_permission_error(self) -> None:
         invalid = self.client.post(
@@ -141,6 +167,7 @@ class TaskRouterTests(unittest.TestCase):
             workspace_id=self.workspace_id,
             current_user=self.user,
             category_id=None,
+            project_id=None,
         )
         self.assert_read_session()
 
@@ -162,6 +189,28 @@ class TaskRouterTests(unittest.TestCase):
             workspace_id=self.workspace_id,
             current_user=self.user,
             category_id=category_id,
+            project_id=None,
+        )
+
+    def test_list_filters_by_project_and_combines_category(self) -> None:
+        category_id = uuid.uuid4()
+        project_id = uuid.uuid4()
+        task = self.make_task(category_id=category_id, project_id=project_id)
+        with patch(
+            "app.api.v1.tasks.task_service.list_tasks",
+            return_value=([task], 1),
+        ) as service_mock:
+            response = self.client.get(
+                f"{self.collection_url}?category_id={category_id}&project_id={project_id}"
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"][0]["project_id"], str(project_id))
+        service_mock.assert_called_once_with(
+            self.db,
+            workspace_id=self.workspace_id,
+            current_user=self.user,
+            category_id=category_id,
+            project_id=project_id,
         )
 
     def test_list_permission_error_maps_to_403(self) -> None:
@@ -248,6 +297,27 @@ class TaskRouterTests(unittest.TestCase):
                 {"category_id": response_category_id},
             )
 
+    def test_update_assigns_and_clears_project_id(self) -> None:
+        project_id = uuid.uuid4()
+        for payload, response_project_id in (
+            ({"project_id": str(project_id)}, project_id),
+            ({"project_id": None}, None),
+        ):
+            self.db.reset_mock()
+            task = self.make_task(project_id=response_project_id)
+            with self.subTest(payload=payload), patch(
+                "app.api.v1.tasks.task_service.update_task",
+                return_value=task,
+            ) as service_mock:
+                response = self.client.patch(self.detail_url, json=payload)
+            self.assertEqual(response.status_code, 200)
+            expected = str(response_project_id) if response_project_id else None
+            self.assertEqual(response.json()["project_id"], expected)
+            self.assertEqual(
+                service_mock.call_args.kwargs["task_in"].model_dump(exclude_unset=True),
+                {"project_id": response_project_id},
+            )
+
     def test_category_assignment_errors_map_to_404_and_409(self) -> None:
         category_id = uuid.uuid4()
         for error, expected_status, detail in (
@@ -262,6 +332,25 @@ class TaskRouterTests(unittest.TestCase):
                 response = self.client.post(
                     self.collection_url,
                     json={"title": "Task", "category_id": str(category_id)},
+                )
+            self.assertEqual(response.status_code, expected_status)
+            self.assertEqual(response.json(), {"detail": detail})
+            self.db.rollback.assert_called_once_with()
+
+    def test_project_assignment_errors_map_to_404_and_409(self) -> None:
+        project_id = uuid.uuid4()
+        for error, expected_status, detail in (
+            (TaskProjectNotFoundError("Project not found"), 404, "Project not found"),
+            (TaskProjectInactiveError("Project is inactive"), 409, "Project is inactive"),
+        ):
+            self.db.reset_mock()
+            with self.subTest(status=expected_status), patch(
+                "app.api.v1.tasks.task_service.create_task",
+                side_effect=error,
+            ):
+                response = self.client.post(
+                    self.collection_url,
+                    json={"title": "Task", "project_id": str(project_id)},
                 )
             self.assertEqual(response.status_code, expected_status)
             self.assertEqual(response.json(), {"detail": detail})
@@ -327,6 +416,12 @@ class TaskRouterTests(unittest.TestCase):
         self.assertEqual(
             self.client.get(
                 f"{self.collection_url}?category_id=not-a-uuid"
+            ).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get(
+                f"{self.collection_url}?project_id=not-a-uuid"
             ).status_code,
             422,
         )

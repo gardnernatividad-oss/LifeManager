@@ -12,6 +12,7 @@ from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
     from app.models.category import Category
+    from app.models.project import Project
     from app.models.user import User
     from app.models.workspace import Workspace
 
@@ -44,6 +45,11 @@ class Task(BaseEntity):
             "workspace_id",
             "category_id",
         ),
+        Index(
+            "ix_tasks_workspace_id_project_id",
+            "workspace_id",
+            "project_id",
+        ),
     )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
@@ -63,6 +69,12 @@ class Task(BaseEntity):
     category_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
         nullable=True,
     )
 
@@ -135,5 +147,10 @@ class Task(BaseEntity):
 
     category: Mapped["Category | None"] = relationship(
         "Category",
+        back_populates="tasks",
+    )
+
+    project: Mapped["Project | None"] = relationship(
+        "Project",
         back_populates="tasks",
     )
