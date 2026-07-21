@@ -480,41 +480,31 @@ La pertenencia al workspace y la autoría del recurso son conceptos diferentes.
 
 ---
 
-## 15. Entidades previstas para tareas
+## 15. Modelo objetivo de planificación y seguimiento de la Versión 1
 
-El primer módulo funcional utilizará inicialmente estas entidades:
-
-### Category
-
-Permitirá clasificar tareas dentro de un workspace.
-
-### TaskOccurrence
-
-Representará una ejecución concreta de una tarea en una fecha específica.
-
-### TaskResponse
-
-Registrará el resultado o respuesta del usuario ante una tarea.
-
-### TaskTemplate
-
-Definirá una tarea reutilizable o recurrente.
-
-Relación conceptual inicial:
+El modelo objetivo aprobado se documenta en:
 
 ```text
-Workspace
-   │
-   ├── Category
-   │
-   └── TaskTemplate
-            │
-            └── TaskOccurrence
-                     │
-                     └── TaskResponse
+docs/database/V1-Target-Data-Model.md
 ```
 
-El diseño definitivo se realizará antes de crear estas tablas.
+Sus entidades de dominio serán:
+
+- `Category`;
+- `Project`;
+- `TaskSeries`;
+- `Task`;
+- `DailyChecklistSubmission`;
+- `TrackedItem`;
+- `TrackedItemProgressUpdate`.
+
+No existirán entidades separadas `TaskOccurrence`, `TaskResponse` ni `TaskTemplate` en el modelo objetivo.
+
+Toda Tarea será una ocurrencia individual. Una Tarea manual tendrá `task_series_id` nulo y una Tarea recurrente referenciará una `TaskSeries`.
+
+Toda `TaskSeries` será finita y tendrá `start_date` y `end_date` obligatorias. No se generarán ocurrencias fuera de ese rango inclusivo.
+
+Las Actividades con horas pertenecen al Calendario de la Versión 2 y quedan fuera de este modelo.
 
 ---
 
