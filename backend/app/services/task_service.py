@@ -1,13 +1,15 @@
 import uuid
 
+from datetime import datetime, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.project import Project
-from app.models.task import Task
+from app.models.task import Task, TaskOutcome
 from app.models.user import User
-from app.models.workspace_member import WorkspaceMember, WorkspaceRole
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.workspace import get_workspace_membership
 
@@ -34,6 +36,18 @@ class TaskProjectNotFoundError(LookupError):
 
 class TaskProjectInactiveError(ValueError):
     pass
+
+
+class TaskResolvedConflictError(ValueError):
+    pass
+
+
+class TaskOutcomeConflictError(ValueError):
+    pass
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _require_membership(
@@ -140,6 +154,8 @@ def create_task(
         created_by_id=current_user.id,
         category_id=category_id,
         project_id=project_id,
+        outcome=None,
+        resolved_at=None,
         **task_data,
     )
     db.add(task)
@@ -160,10 +176,7 @@ def list_tasks(
         workspace_id=workspace_id,
         user_id=current_user.id,
     )
-    filters: list[object] = [
-        Task.workspace_id == workspace_id,
-        Task.is_archived.is_(False),
-    ]
+    filters: list[object] = [Task.workspace_id == workspace_id]
     if category_id is not None:
         _resolve_category(
             db,
@@ -183,7 +196,7 @@ def list_tasks(
     statement = (
         select(Task)
         .where(*filters)
-        .order_by(Task.position, Task.created_at, Task.id)
+        .order_by(Task.scheduled_at, Task.created_at, Task.id)
     )
     count_statement = select(func.count()).select_from(Task).where(*filters)
 
@@ -250,6 +263,13 @@ def update_task(
                 require_active=True,
             )
         task.project_id = project_id
+    if "scheduled_at" in changes:
+        scheduled_at = changes.pop("scheduled_at")
+        if task.outcome is not None and scheduled_at != task.scheduled_at:
+            raise TaskResolvedConflictError(
+                "Cannot reschedule a resolved task"
+            )
+        task.scheduled_at = scheduled_at
     for field, value in changes.items():
         setattr(task, field, value)
 
@@ -257,14 +277,15 @@ def update_task(
     return task
 
 
-def delete_task(
+def _apply_outcome(
     db: Session,
     *,
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     current_user: User,
-) -> None:
-    membership = _require_membership(
+    outcome: TaskOutcome,
+) -> Task:
+    _require_membership(
         db,
         workspace_id=workspace_id,
         user_id=current_user.id,
@@ -274,8 +295,59 @@ def delete_task(
         workspace_id=workspace_id,
         task_id=task_id,
     )
-    if task.created_by_id != current_user.id and membership.role is not WorkspaceRole.OWNER:
-        raise TaskPermissionError("Insufficient task permissions")
-
-    db.delete(task)
+    if task.outcome is outcome:
+        return task
+    if task.outcome is not None:
+        raise TaskOutcomeConflictError("Task already has a different outcome")
+    task.outcome = outcome
+    task.resolved_at = _utc_now()
     db.flush()
+    return task
+
+
+def complete_task(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    current_user: User,
+) -> Task:
+    return _apply_outcome(
+        db,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+        outcome=TaskOutcome.COMPLETED,
+    )
+
+
+def mark_task_not_completed(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    current_user: User,
+) -> Task:
+    return _apply_outcome(
+        db,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+        outcome=TaskOutcome.NOT_COMPLETED,
+    )
+
+
+def cancel_task(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    current_user: User,
+) -> Task:
+    return _apply_outcome(
+        db,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+        outcome=TaskOutcome.CANCELLED,
+    )

@@ -1,15 +1,29 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Response, status
+from collections.abc import Callable
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, SessionDependency
+from app.models.task import Task
+from app.models.user import User
 from app.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
 from app.services import task_service
 
 
-router = APIRouter(
-    prefix="/workspaces/{workspace_id}/tasks",
-    tags=["Tasks"],
+router = APIRouter(prefix="/workspaces/{workspace_id}/tasks", tags=["Tasks"])
+
+_DOMAIN_ERRORS = (
+    task_service.TaskNotFoundError,
+    task_service.TaskPermissionError,
+    task_service.TaskCategoryNotFoundError,
+    task_service.TaskCategoryInactiveError,
+    task_service.TaskProjectNotFoundError,
+    task_service.TaskProjectInactiveError,
+    task_service.TaskResolvedConflictError,
+    task_service.TaskOutcomeConflictError,
 )
 
 
@@ -22,24 +36,36 @@ def _raise_http_error(error: Exception) -> None:
             task_service.TaskProjectNotFoundError,
         ),
     ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error),
-        ) from error
-    if isinstance(error, task_service.TaskCategoryInactiveError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Category is inactive",
-        ) from error
-    if isinstance(error, task_service.TaskProjectInactiveError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Project is inactive",
-        ) from error
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=str(error),
-    ) from error
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    if isinstance(
+        error,
+        (
+            task_service.TaskCategoryInactiveError,
+            task_service.TaskProjectInactiveError,
+            task_service.TaskResolvedConflictError,
+            task_service.TaskOutcomeConflictError,
+        ),
+    ):
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    raise HTTPException(status_code=403, detail=str(error)) from error
+
+
+def _commit_task_write(
+    db: Session,
+    operation: Callable[..., Task],
+    **kwargs: object,
+) -> TaskRead:
+    try:
+        task = operation(db, **kwargs)
+        db.commit()
+        db.refresh(task)
+    except _DOMAIN_ERRORS as error:
+        db.rollback()
+        _raise_http_error(error)
+    except Exception:
+        db.rollback()
+        raise
+    return TaskRead.from_task(task)
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
@@ -49,29 +75,13 @@ def create_task(
     db: SessionDependency,
     current_user: CurrentUser,
 ) -> TaskRead:
-    try:
-        task = task_service.create_task(
-            db,
-            workspace_id=workspace_id,
-            current_user=current_user,
-            task_in=task_in,
-        )
-        db.commit()
-        db.refresh(task)
-    except (
-        task_service.TaskNotFoundError,
-        task_service.TaskPermissionError,
-        task_service.TaskCategoryNotFoundError,
-        task_service.TaskCategoryInactiveError,
-        task_service.TaskProjectNotFoundError,
-        task_service.TaskProjectInactiveError,
-    ) as error:
-        db.rollback()
-        _raise_http_error(error)
-    except Exception:
-        db.rollback()
-        raise
-    return TaskRead.model_validate(task)
+    return _commit_task_write(
+        db,
+        task_service.create_task,
+        workspace_id=workspace_id,
+        current_user=current_user,
+        task_in=task_in,
+    )
 
 
 @router.get("", response_model=TaskListResponse)
@@ -90,16 +100,13 @@ def list_tasks(
             category_id=category_id,
             project_id=project_id,
         )
-    except (
-        task_service.TaskNotFoundError,
-        task_service.TaskPermissionError,
-        task_service.TaskCategoryNotFoundError,
-        task_service.TaskCategoryInactiveError,
-        task_service.TaskProjectNotFoundError,
-        task_service.TaskProjectInactiveError,
-    ) as error:
+    except _DOMAIN_ERRORS as error:
         _raise_http_error(error)
-    return TaskListResponse(items=items, total=total)
+    boundary = datetime.now(timezone.utc)
+    return TaskListResponse(
+        items=[TaskRead.from_task(item, now=boundary) for item in items],
+        total=total,
+    )
 
 
 @router.get("/{task_id}", response_model=TaskRead)
@@ -116,16 +123,9 @@ def get_task(
             task_id=task_id,
             current_user=current_user,
         )
-    except (
-        task_service.TaskNotFoundError,
-        task_service.TaskPermissionError,
-        task_service.TaskCategoryNotFoundError,
-        task_service.TaskCategoryInactiveError,
-        task_service.TaskProjectNotFoundError,
-        task_service.TaskProjectInactiveError,
-    ) as error:
+    except _DOMAIN_ERRORS as error:
         _raise_http_error(error)
-    return TaskRead.model_validate(task)
+    return TaskRead.from_task(task)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -136,62 +136,76 @@ def update_task(
     db: SessionDependency,
     current_user: CurrentUser,
 ) -> TaskRead:
-    try:
-        task = task_service.update_task(
-            db,
-            workspace_id=workspace_id,
-            task_id=task_id,
-            current_user=current_user,
-            task_in=task_in,
-        )
-        db.commit()
-        db.refresh(task)
-    except (
-        task_service.TaskNotFoundError,
-        task_service.TaskPermissionError,
-        task_service.TaskCategoryNotFoundError,
-        task_service.TaskCategoryInactiveError,
-        task_service.TaskProjectNotFoundError,
-        task_service.TaskProjectInactiveError,
-    ) as error:
-        db.rollback()
-        _raise_http_error(error)
-    except Exception:
-        db.rollback()
-        raise
-    return TaskRead.model_validate(task)
+    return _commit_task_write(
+        db,
+        task_service.update_task,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+        task_in=task_in,
+    )
 
 
-@router.delete(
-    "/{task_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-)
-def delete_task(
+def _transition(
+    db: Session,
+    operation: Callable[..., Task],
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    current_user: User,
+) -> TaskRead:
+    return _commit_task_write(
+        db,
+        operation,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{task_id}/complete", response_model=TaskRead)
+def complete_task(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
     db: SessionDependency,
     current_user: CurrentUser,
-) -> Response:
-    try:
-        task_service.delete_task(
-            db,
-            workspace_id=workspace_id,
-            task_id=task_id,
-            current_user=current_user,
-        )
-        db.commit()
-    except (
-        task_service.TaskNotFoundError,
-        task_service.TaskPermissionError,
-        task_service.TaskCategoryNotFoundError,
-        task_service.TaskCategoryInactiveError,
-        task_service.TaskProjectNotFoundError,
-        task_service.TaskProjectInactiveError,
-    ) as error:
-        db.rollback()
-        _raise_http_error(error)
-    except Exception:
-        db.rollback()
-        raise
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> TaskRead:
+    return _transition(
+        db,
+        task_service.complete_task,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{task_id}/not-completed", response_model=TaskRead)
+def mark_task_not_completed(
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    db: SessionDependency,
+    current_user: CurrentUser,
+) -> TaskRead:
+    return _transition(
+        db,
+        task_service.mark_task_not_completed,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+    )
+
+
+@router.post("/{task_id}/cancel", response_model=TaskRead)
+def cancel_task(
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    db: SessionDependency,
+    current_user: CurrentUser,
+) -> TaskRead:
+    return _transition(
+        db,
+        task_service.cancel_task,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        current_user=current_user,
+    )
