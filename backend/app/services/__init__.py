@@ -1,3 +1,12 @@
+from app.services.task_service import (
+    TaskNotFoundError,
+    TaskPermissionError,
+    create_task,
+    delete_task,
+    get_task,
+    list_tasks,
+    update_task,
+)
 from app.services.workspace import (
     create_workspace,
     delete_workspace,
@@ -7,9 +16,16 @@ from app.services.workspace import (
 )
 
 __all__ = [
+    "TaskNotFoundError",
+    "TaskPermissionError",
+    "create_task",
     "create_workspace",
+    "delete_task",
     "delete_workspace",
     "get_workspace",
+    "get_task",
+    "list_tasks",
     "list_user_workspaces",
     "update_workspace",
+    "update_task",
 ]
