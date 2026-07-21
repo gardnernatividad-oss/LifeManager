@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.category import Category
 from app.models.task import Task
 from app.models.user import User
 from app.models.workspace_member import WorkspaceMember, WorkspaceRole
@@ -15,6 +16,14 @@ class TaskNotFoundError(LookupError):
 
 
 class TaskPermissionError(PermissionError):
+    pass
+
+
+class TaskCategoryNotFoundError(LookupError):
+    pass
+
+
+class TaskCategoryInactiveError(ValueError):
     pass
 
 
@@ -50,6 +59,25 @@ def _get_scoped_task(
     return task
 
 
+def _resolve_category(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    category_id: uuid.UUID,
+    require_active: bool,
+) -> Category:
+    statement = select(Category).where(
+        Category.id == category_id,
+        Category.workspace_id == workspace_id,
+    )
+    category = db.scalar(statement)
+    if category is None:
+        raise TaskCategoryNotFoundError("Category not found")
+    if require_active and not category.is_active:
+        raise TaskCategoryInactiveError("Category is inactive")
+    return category
+
+
 def create_task(
     db: Session,
     *,
@@ -62,10 +90,20 @@ def create_task(
         workspace_id=workspace_id,
         user_id=current_user.id,
     )
+    task_data = task_in.model_dump()
+    category_id = task_data.pop("category_id")
+    if category_id is not None:
+        _resolve_category(
+            db,
+            workspace_id=workspace_id,
+            category_id=category_id,
+            require_active=True,
+        )
     task = Task(
         workspace_id=workspace_id,
         created_by_id=current_user.id,
-        **task_in.model_dump(),
+        category_id=category_id,
+        **task_data,
     )
     db.add(task)
     db.flush()
@@ -77,16 +115,25 @@ def list_tasks(
     *,
     workspace_id: uuid.UUID,
     current_user: User,
+    category_id: uuid.UUID | None = None,
 ) -> tuple[list[Task], int]:
     _require_membership(
         db,
         workspace_id=workspace_id,
         user_id=current_user.id,
     )
-    filters = (
+    filters: list[object] = [
         Task.workspace_id == workspace_id,
         Task.is_archived.is_(False),
-    )
+    ]
+    if category_id is not None:
+        _resolve_category(
+            db,
+            workspace_id=workspace_id,
+            category_id=category_id,
+            require_active=False,
+        )
+        filters.append(Task.category_id == category_id)
     statement = (
         select(Task)
         .where(*filters)
@@ -136,7 +183,18 @@ def update_task(
         workspace_id=workspace_id,
         task_id=task_id,
     )
-    for field, value in task_in.model_dump(exclude_unset=True).items():
+    changes = task_in.model_dump(exclude_unset=True)
+    if "category_id" in changes:
+        category_id = changes.pop("category_id")
+        if category_id is not None:
+            _resolve_category(
+                db,
+                workspace_id=workspace_id,
+                category_id=category_id,
+                require_active=True,
+            )
+        task.category_id = category_id
+    for field, value in changes.items():
         setattr(task, field, value)
 
     db.flush()

@@ -3,7 +3,7 @@ import uuid
 
 from sqlalchemy import inspect
 
-from app.models import Task, TaskPriority, TaskStatus, User, Workspace
+from app.models import Category, Task, TaskPriority, TaskStatus, User, Workspace
 from app.models.base import Base
 
 
@@ -78,7 +78,7 @@ class TaskModelTests(unittest.TestCase):
 
         self.assertEqual(
             foreign_key_targets,
-            {"workspaces.id", "users.id"},
+            {"categories.id", "workspaces.id", "users.id"},
         )
         self.assertIn(("workspace_id",), indexed_column_sets)
         self.assertIn(("created_by_id",), indexed_column_sets)
@@ -87,6 +87,7 @@ class TaskModelTests(unittest.TestCase):
             ("workspace_id", "status", "position"),
             indexed_column_sets,
         )
+        self.assertIn(("workspace_id", "category_id"), indexed_column_sets)
 
     def test_foreign_key_delete_behavior_is_explicit(self) -> None:
         foreign_keys = {
@@ -96,6 +97,18 @@ class TaskModelTests(unittest.TestCase):
 
         self.assertEqual(foreign_keys["workspace_id"].ondelete, "CASCADE")
         self.assertEqual(foreign_keys["created_by_id"].ondelete, "RESTRICT")
+        self.assertEqual(foreign_keys["category_id"].ondelete, "SET NULL")
+
+    def test_optional_category_relationship_is_bidirectional(self) -> None:
+        self.assertTrue(Task.__table__.columns["category_id"].nullable)
+        self.assertEqual(
+            inspect(Task).relationships["category"].back_populates,
+            "tasks",
+        )
+        self.assertEqual(
+            inspect(Category).relationships["tasks"].back_populates,
+            "category",
+        )
 
     def test_task_is_registered_in_metadata(self) -> None:
         self.assertIs(Base.metadata.tables["tasks"], Task.__table__)

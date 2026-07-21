@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
+    from app.models.category import Category
     from app.models.user import User
     from app.models.workspace import Workspace
 
@@ -38,6 +39,11 @@ class Task(BaseEntity):
             "status",
             "position",
         ),
+        Index(
+            "ix_tasks_workspace_id_category_id",
+            "workspace_id",
+            "category_id",
+        ),
     )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
@@ -52,6 +58,12 @@ class Task(BaseEntity):
         ForeignKey("users.id", ondelete="RESTRICT"),
         index=True,
         nullable=False,
+    )
+
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     title: Mapped[str] = mapped_column(
@@ -119,4 +131,9 @@ class Task(BaseEntity):
     created_by: Mapped["User"] = relationship(
         "User",
         back_populates="created_tasks",
+    )
+
+    category: Mapped["Category | None"] = relationship(
+        "Category",
+        back_populates="tasks",
     )

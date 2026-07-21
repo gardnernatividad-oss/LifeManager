@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_db
 from app.main import app
 from app.models import Task, TaskPriority, TaskStatus, User
-from app.services.task_service import TaskNotFoundError, TaskPermissionError
+from app.services.task_service import (
+    TaskCategoryInactiveError,
+    TaskCategoryNotFoundError,
+    TaskNotFoundError,
+    TaskPermissionError,
+)
 
 
 class TaskRouterTests(unittest.TestCase):
@@ -36,11 +41,17 @@ class TaskRouterTests(unittest.TestCase):
     def detail_url(self) -> str:
         return f"{self.collection_url}/{self.task_id}"
 
-    def make_task(self, *, title: str = "Task") -> Task:
+    def make_task(
+        self,
+        *,
+        title: str = "Task",
+        category_id: uuid.UUID | None = None,
+    ) -> Task:
         return Task(
             id=self.task_id,
             workspace_id=self.workspace_id,
             created_by_id=self.user.id,
+            category_id=category_id,
             title=title,
             description=None,
             status=TaskStatus.TODO,
@@ -70,6 +81,7 @@ class TaskRouterTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["id"], str(task.id))
+        self.assertIsNone(response.json()["category_id"])
         call = service_mock.call_args
         self.assertEqual(call.kwargs["workspace_id"], self.workspace_id)
         self.assertIs(call.kwargs["current_user"], self.user)
@@ -77,6 +89,25 @@ class TaskRouterTests(unittest.TestCase):
         self.assertNotIn("created_by_id", call.kwargs["task_in"].model_dump())
         self.db.commit.assert_called_once_with()
         self.db.refresh.assert_called_once_with(task)
+
+    def test_create_with_category_passes_id_and_serializes_it(self) -> None:
+        category_id = uuid.uuid4()
+        task = self.make_task(category_id=category_id)
+        with patch(
+            "app.api.v1.tasks.task_service.create_task",
+            return_value=task,
+        ) as service_mock:
+            response = self.client.post(
+                self.collection_url,
+                json={"title": "Task", "category_id": str(category_id)},
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["category_id"], str(category_id))
+        self.assertEqual(
+            service_mock.call_args.kwargs["task_in"].category_id,
+            category_id,
+        )
 
     def test_create_rejects_protected_fields_and_maps_permission_error(self) -> None:
         invalid = self.client.post(
@@ -109,8 +140,29 @@ class TaskRouterTests(unittest.TestCase):
             self.db,
             workspace_id=self.workspace_id,
             current_user=self.user,
+            category_id=None,
         )
         self.assert_read_session()
+
+    def test_list_filters_by_category_id(self) -> None:
+        category_id = uuid.uuid4()
+        task = self.make_task(category_id=category_id)
+        with patch(
+            "app.api.v1.tasks.task_service.list_tasks",
+            return_value=([task], 1),
+        ) as service_mock:
+            response = self.client.get(
+                f"{self.collection_url}?category_id={category_id}"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"][0]["category_id"], str(category_id))
+        service_mock.assert_called_once_with(
+            self.db,
+            workspace_id=self.workspace_id,
+            current_user=self.user,
+            category_id=category_id,
+        )
 
     def test_list_permission_error_maps_to_403(self) -> None:
         with patch(
@@ -168,6 +220,53 @@ class TaskRouterTests(unittest.TestCase):
         self.db.commit.assert_called_once_with()
         self.db.refresh.assert_called_once_with(task)
 
+    def test_update_assigns_and_clears_category_id(self) -> None:
+        category_id = uuid.uuid4()
+        for payload, response_category_id in (
+            ({"category_id": str(category_id)}, category_id),
+            ({"category_id": None}, None),
+        ):
+            self.db.reset_mock()
+            task = self.make_task(category_id=response_category_id)
+            with self.subTest(payload=payload), patch(
+                "app.api.v1.tasks.task_service.update_task",
+                return_value=task,
+            ) as service_mock:
+                response = self.client.patch(self.detail_url, json=payload)
+
+            self.assertEqual(response.status_code, 200)
+            expected = (
+                str(response_category_id)
+                if response_category_id is not None
+                else None
+            )
+            self.assertEqual(response.json()["category_id"], expected)
+            self.assertEqual(
+                service_mock.call_args.kwargs["task_in"].model_dump(
+                    exclude_unset=True
+                ),
+                {"category_id": response_category_id},
+            )
+
+    def test_category_assignment_errors_map_to_404_and_409(self) -> None:
+        category_id = uuid.uuid4()
+        for error, expected_status, detail in (
+            (TaskCategoryNotFoundError("Category not found"), 404, "Category not found"),
+            (TaskCategoryInactiveError("Category is inactive"), 409, "Category is inactive"),
+        ):
+            self.db.reset_mock()
+            with self.subTest(status=expected_status), patch(
+                "app.api.v1.tasks.task_service.create_task",
+                side_effect=error,
+            ):
+                response = self.client.post(
+                    self.collection_url,
+                    json={"title": "Task", "category_id": str(category_id)},
+                )
+            self.assertEqual(response.status_code, expected_status)
+            self.assertEqual(response.json(), {"detail": detail})
+            self.db.rollback.assert_called_once_with()
+
     def test_update_maps_not_found_and_permission_errors(self) -> None:
         for error, expected_status in (
             (TaskNotFoundError("Task not found"), 404),
@@ -223,6 +322,12 @@ class TaskRouterTests(unittest.TestCase):
         )
         self.assertEqual(
             self.client.get(f"{self.collection_url}/not-a-uuid").status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get(
+                f"{self.collection_url}?category_id=not-a-uuid"
+            ).status_code,
             422,
         )
         self.assertEqual(

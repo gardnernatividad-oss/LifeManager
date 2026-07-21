@@ -10,6 +10,8 @@ from app.services.category_service import (
     update_category,
 )
 from app.services.task_service import (
+    TaskCategoryInactiveError,
+    TaskCategoryNotFoundError,
     TaskNotFoundError,
     TaskPermissionError,
     create_task,
@@ -30,6 +32,8 @@ __all__ = [
     "CategoryNameConflictError",
     "CategoryNotFoundError",
     "CategoryPermissionError",
+    "TaskCategoryInactiveError",
+    "TaskCategoryNotFoundError",
     "TaskNotFoundError",
     "TaskPermissionError",
     "activate_category",

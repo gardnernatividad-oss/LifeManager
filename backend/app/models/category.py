@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
+    from app.models.task import Task
     from app.models.workspace import Workspace
 
 
@@ -71,4 +72,9 @@ class Category(BaseEntity):
     workspace: Mapped["Workspace"] = relationship(
         "Workspace",
         back_populates="categories",
+    )
+
+    tasks: Mapped[list["Task"]] = relationship(
+        "Task",
+        back_populates="category",
     )

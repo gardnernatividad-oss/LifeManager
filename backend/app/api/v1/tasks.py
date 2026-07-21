@@ -14,10 +14,18 @@ router = APIRouter(
 
 
 def _raise_http_error(error: Exception) -> None:
-    if isinstance(error, task_service.TaskNotFoundError):
+    if isinstance(
+        error,
+        (task_service.TaskNotFoundError, task_service.TaskCategoryNotFoundError),
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
+            detail=str(error),
+        ) from error
+    if isinstance(error, task_service.TaskCategoryInactiveError):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Category is inactive",
         ) from error
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -41,7 +49,12 @@ def create_task(
         )
         db.commit()
         db.refresh(task)
-    except (task_service.TaskNotFoundError, task_service.TaskPermissionError) as error:
+    except (
+        task_service.TaskNotFoundError,
+        task_service.TaskPermissionError,
+        task_service.TaskCategoryNotFoundError,
+        task_service.TaskCategoryInactiveError,
+    ) as error:
         db.rollback()
         _raise_http_error(error)
     except Exception:
@@ -55,14 +68,21 @@ def list_tasks(
     workspace_id: uuid.UUID,
     db: SessionDependency,
     current_user: CurrentUser,
+    category_id: uuid.UUID | None = None,
 ) -> TaskListResponse:
     try:
         items, total = task_service.list_tasks(
             db,
             workspace_id=workspace_id,
             current_user=current_user,
+            category_id=category_id,
         )
-    except (task_service.TaskNotFoundError, task_service.TaskPermissionError) as error:
+    except (
+        task_service.TaskNotFoundError,
+        task_service.TaskPermissionError,
+        task_service.TaskCategoryNotFoundError,
+        task_service.TaskCategoryInactiveError,
+    ) as error:
         _raise_http_error(error)
     return TaskListResponse(items=items, total=total)
 
@@ -81,7 +101,12 @@ def get_task(
             task_id=task_id,
             current_user=current_user,
         )
-    except (task_service.TaskNotFoundError, task_service.TaskPermissionError) as error:
+    except (
+        task_service.TaskNotFoundError,
+        task_service.TaskPermissionError,
+        task_service.TaskCategoryNotFoundError,
+        task_service.TaskCategoryInactiveError,
+    ) as error:
         _raise_http_error(error)
     return TaskRead.model_validate(task)
 
@@ -104,7 +129,12 @@ def update_task(
         )
         db.commit()
         db.refresh(task)
-    except (task_service.TaskNotFoundError, task_service.TaskPermissionError) as error:
+    except (
+        task_service.TaskNotFoundError,
+        task_service.TaskPermissionError,
+        task_service.TaskCategoryNotFoundError,
+        task_service.TaskCategoryInactiveError,
+    ) as error:
         db.rollback()
         _raise_http_error(error)
     except Exception:
@@ -132,7 +162,12 @@ def delete_task(
             current_user=current_user,
         )
         db.commit()
-    except (task_service.TaskNotFoundError, task_service.TaskPermissionError) as error:
+    except (
+        task_service.TaskNotFoundError,
+        task_service.TaskPermissionError,
+        task_service.TaskCategoryNotFoundError,
+        task_service.TaskCategoryInactiveError,
+    ) as error:
         db.rollback()
         _raise_http_error(error)
     except Exception:

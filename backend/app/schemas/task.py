@@ -23,6 +23,7 @@ class TaskCreate(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     due_at: datetime | None = None
     position: int = Field(default=0, ge=0)
+    category_id: uuid.UUID | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -35,6 +36,7 @@ class TaskUpdate(BaseModel):
     due_at: datetime | None = None
     position: int | None = Field(default=None, ge=0)
     is_archived: bool | None = None
+    category_id: uuid.UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -50,6 +52,7 @@ class TaskRead(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
     created_by_id: uuid.UUID
+    category_id: uuid.UUID | None
     title: str
     description: str | None
     status: TaskStatus
