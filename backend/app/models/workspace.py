@@ -7,6 +7,7 @@ from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
     from app.models.category import Category
+    from app.models.project import Project
     from app.models.task import Task
     from app.models.workspace_member import WorkspaceMember
 
@@ -36,5 +37,10 @@ class Workspace(BaseEntity):
 
     categories: Mapped[list["Category"]] = relationship(
         "Category",
+        back_populates="workspace",
+    )
+
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
         back_populates="workspace",
     )
