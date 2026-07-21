@@ -1,3 +1,14 @@
+from app.services.category_service import (
+    CategoryNameConflictError,
+    CategoryNotFoundError,
+    CategoryPermissionError,
+    activate_category,
+    create_category,
+    deactivate_category,
+    get_category,
+    list_categories,
+    update_category,
+)
 from app.services.task_service import (
     TaskNotFoundError,
     TaskPermissionError,
@@ -16,16 +27,25 @@ from app.services.workspace import (
 )
 
 __all__ = [
+    "CategoryNameConflictError",
+    "CategoryNotFoundError",
+    "CategoryPermissionError",
     "TaskNotFoundError",
     "TaskPermissionError",
+    "activate_category",
+    "create_category",
     "create_task",
     "create_workspace",
+    "deactivate_category",
     "delete_task",
     "delete_workspace",
-    "get_workspace",
+    "get_category",
     "get_task",
+    "get_workspace",
+    "list_categories",
     "list_tasks",
     "list_user_workspaces",
-    "update_workspace",
+    "update_category",
     "update_task",
+    "update_workspace",
 ]
