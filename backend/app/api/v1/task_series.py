@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, SessionDependency
 from app.models.task_series import TaskSeries
-from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, TaskSeriesMaterializeRequest, TaskSeriesMaterializeResponse, TaskSeriesRead, TaskSeriesUpdate
-from app.services import task_materialization_service, task_series_service
+from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, TaskSeriesMaterializeRequest, TaskSeriesMaterializeResponse, TaskSeriesRead, TaskSeriesSynchronizeResponse, TaskSeriesUpdate
+from app.services import task_materialization_service, task_series_service, task_series_sync_service
 
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/task-series", tags=["Task Series"])
@@ -26,6 +26,11 @@ _ERRORS = (
 _MATERIALIZATION_ERRORS = _ERRORS + (
     task_materialization_service.TaskMaterializationValidationError,
     task_materialization_service.TaskMaterializationConflictError,
+)
+
+_SYNC_ERRORS = _MATERIALIZATION_ERRORS + (
+    task_series_sync_service.TaskSeriesSyncInactiveError,
+    task_series_sync_service.TaskSeriesSyncConflictError,
 )
 
 
@@ -60,6 +65,28 @@ def _materialize(db: Session, operation: Callable[..., list], **kwargs: object) 
     return TaskSeriesMaterializeResponse(
         generated_count=len(tasks),
         generated_task_ids=[task.id for task in tasks],
+    )
+
+
+def _synchronize(db: Session, **kwargs: object) -> TaskSeriesSynchronizeResponse:
+    try:
+        result = task_series_sync_service.synchronize_task_series(db, **kwargs)
+        created_ids = [task.id for task in result.created_tasks]
+        updated_ids = [task.id for task in result.updated_tasks]
+        db.commit()
+        for task in result.created_tasks + result.updated_tasks:
+            db.refresh(task)
+    except _SYNC_ERRORS as error:
+        db.rollback(); _raise(error)
+    except Exception:
+        db.rollback(); raise
+    return TaskSeriesSynchronizeResponse(
+        created_count=len(created_ids),
+        updated_count=len(updated_ids),
+        deleted_count=len(result.deleted_task_ids),
+        created_task_ids=created_ids,
+        updated_task_ids=updated_ids,
+        deleted_task_ids=result.deleted_task_ids,
     )
 
 
@@ -106,3 +133,8 @@ def deactivate_task_series(workspace_id: uuid.UUID, series_id: uuid.UUID, db: Se
 @router.post("/{series_id}/materialize", response_model=TaskSeriesMaterializeResponse)
 def materialize_one_task_series(workspace_id: uuid.UUID, series_id: uuid.UUID, window: TaskSeriesMaterializeRequest, db: SessionDependency, current_user: CurrentUser) -> TaskSeriesMaterializeResponse:
     return _materialize(db, task_materialization_service.materialize_task_series, workspace_id=workspace_id, series_id=series_id, current_user=current_user, window_start=window.window_start, window_end=window.window_end)
+
+
+@router.post("/{series_id}/synchronize", response_model=TaskSeriesSynchronizeResponse)
+def synchronize_task_series(workspace_id: uuid.UUID, series_id: uuid.UUID, window: TaskSeriesMaterializeRequest, db: SessionDependency, current_user: CurrentUser) -> TaskSeriesSynchronizeResponse:
+    return _synchronize(db, workspace_id=workspace_id, series_id=series_id, current_user=current_user, window_start=window.window_start, window_end=window.window_end)

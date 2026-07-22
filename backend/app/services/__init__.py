@@ -43,6 +43,12 @@ from app.services.task_materialization_service import (
     materialize_task_series,
     materialize_workspace_task_series,
 )
+from app.services.task_series_sync_service import (
+    TaskSeriesSyncConflictError,
+    TaskSeriesSyncInactiveError,
+    TaskSeriesSyncResult,
+    synchronize_task_series,
+)
 from app.services.project_service import (
     ProjectNameConflictError,
     ProjectNotFoundError,
@@ -82,6 +88,9 @@ __all__ = [
     "TaskSeriesRecurrenceValidationError",
     "TaskMaterializationConflictError",
     "TaskMaterializationValidationError",
+    "TaskSeriesSyncConflictError",
+    "TaskSeriesSyncInactiveError",
+    "TaskSeriesSyncResult",
     "activate_category",
     "activate_project",
     "activate_task_series",
@@ -113,5 +122,6 @@ __all__ = [
     "update_project",
     "update_task",
     "update_task_series",
+    "synchronize_task_series",
     "update_workspace",
 ]

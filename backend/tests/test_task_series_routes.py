@@ -11,6 +11,7 @@ from app.api.dependencies import get_current_user, get_db
 from app.main import app
 from app.models import Task, TaskSeries, TaskSeriesFrequency, User
 from app.services.task_materialization_service import TaskMaterializationConflictError
+from app.services.task_series_sync_service import TaskSeriesSyncConflictError, TaskSeriesSyncResult
 from app.services.task_series_service import TaskSeriesNotFoundError, TaskSeriesPermissionError, TaskSeriesRecurrenceValidationError
 
 
@@ -81,6 +82,24 @@ class TaskSeriesRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409); self.db.rollback.assert_called_once()
         invalid = self.client.post(f"{self.collection}/materialize", json={"window_start": self.now.isoformat(), "window_end": self.now.replace(year=2025).isoformat()})
         self.assertEqual(invalid.status_code, 422)
+
+    def test_synchronize_returns_counts_ids_and_commits(self) -> None:
+        created = Task(id=uuid.uuid4(), workspace_id=self.workspace_id, created_by_id=self.user.id, task_series_id=self.series_id, category_id=None, project_id=None, title="Created", description=None, scheduled_at=self.now, outcome=None, resolved_at=None, created_at=self.now, updated_at=self.now)
+        updated = Task(id=uuid.uuid4(), workspace_id=self.workspace_id, created_by_id=self.user.id, task_series_id=self.series_id, category_id=None, project_id=None, title="Updated", description=None, scheduled_at=self.now, outcome=None, resolved_at=None, created_at=self.now, updated_at=self.now)
+        deleted_id = uuid.uuid4()
+        result = TaskSeriesSyncResult(created_tasks=[created], updated_tasks=[updated], deleted_task_ids=[deleted_id])
+        body = {"window_start": self.now.isoformat(), "window_end": self.now.isoformat()}
+        with patch("app.api.v1.task_series.task_series_sync_service.synchronize_task_series", return_value=result) as service:
+            response = self.client.post(f"{self.detail}/synchronize", json=body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"created_count":1,"updated_count":1,"deleted_count":1,"created_task_ids":[str(created.id)],"updated_task_ids":[str(updated.id)],"deleted_task_ids":[str(deleted_id)]})
+        service.assert_called_once(); self.db.commit.assert_called_once(); self.assertEqual(self.db.refresh.call_count, 2)
+
+    def test_synchronize_conflict_rolls_back(self) -> None:
+        body = {"window_start": self.now.isoformat(), "window_end": self.now.isoformat()}
+        with patch("app.api.v1.task_series.task_series_sync_service.synchronize_task_series", side_effect=TaskSeriesSyncConflictError("conflict")):
+            response = self.client.post(f"{self.detail}/synchronize", json=body)
+        self.assertEqual(response.status_code, 409); self.db.rollback.assert_called_once(); self.db.commit.assert_not_called()
 
 
 if __name__=="__main__":unittest.main()

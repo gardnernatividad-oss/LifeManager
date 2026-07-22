@@ -171,3 +171,14 @@ class TaskSeriesMaterializeResponse(BaseModel):
 
     generated_count: int = Field(ge=0)
     generated_task_ids: list[uuid.UUID]
+
+
+class TaskSeriesSynchronizeResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    created_count: int = Field(ge=0)
+    updated_count: int = Field(ge=0)
+    deleted_count: int = Field(ge=0)
+    created_task_ids: list[uuid.UUID]
+    updated_task_ids: list[uuid.UUID]
+    deleted_task_ids: list[uuid.UUID]
