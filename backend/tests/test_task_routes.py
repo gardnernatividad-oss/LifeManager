@@ -73,9 +73,61 @@ class TaskRouteTests(unittest.TestCase):
         with patch("app.api.v1.tasks.task_service.list_tasks", return_value=([task], 1)) as service:
             response = self.client.get(f"{self.collection}?category_id={category_id}&project_id={project_id}")
         self.assertEqual(response.status_code, 200); self.assertEqual(response.json()["total"], 1)
+        self.assertEqual(
+            {key: response.json()[key] for key in ("page", "page_size", "total_pages")},
+            {"page": 1, "page_size": 20, "total_pages": 1},
+        )
         self.assertEqual(response.json()["items"][0]["status"], "completed")
-        service.assert_called_once_with(self.db, workspace_id=self.workspace_id, current_user=self.user, category_id=category_id, project_id=project_id)
+        service.assert_called_once_with(
+            self.db, workspace_id=self.workspace_id, current_user=self.user,
+            category_id=category_id, project_id=project_id, page=1, page_size=20,
+            order_by="scheduled_at", order_direction="asc", status=None, outcome=None,
+            scheduled_from=None, scheduled_to=None, search=None,
+        )
         self.db.commit.assert_not_called(); self.db.flush.assert_not_called()
+
+    def test_list_passes_production_query_parameters_and_metadata(self) -> None:
+        scheduled_from = self.now - timedelta(days=5)
+        scheduled_to = self.now + timedelta(days=5)
+        with patch("app.api.v1.tasks.task_service.list_tasks", return_value=([], 21)) as service:
+            response = self.client.get(
+                self.collection,
+                params={
+                    "page": 2, "page_size": 10, "order_by": "title",
+                    "order_direction": "desc", "status": "completed",
+                    "outcome": "completed", "scheduled_from": scheduled_from.isoformat(),
+                    "scheduled_to": scheduled_to.isoformat(), "search": "plan",
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"items": [], "total": 21, "page": 2, "page_size": 10, "total_pages": 3})
+        kwargs = service.call_args.kwargs
+        self.assertEqual(kwargs["status"], TaskOutcome.COMPLETED.value)
+        self.assertIs(kwargs["outcome"], TaskOutcome.COMPLETED)
+        self.assertEqual(kwargs["scheduled_from"], scheduled_from)
+        self.assertEqual(kwargs["scheduled_to"], scheduled_to)
+        self.assertEqual((kwargs["page"], kwargs["page_size"], kwargs["order_by"], kwargs["order_direction"], kwargs["search"]), (2, 10, "title", "desc", "plan"))
+
+    def test_list_rejects_invalid_pagination_and_ordering(self) -> None:
+        invalid_queries = (
+            "page=0", "page_size=0", "page_size=101",
+            "order_by=outcome", "order_direction=sideways",
+            "status=unknown", "outcome=pending",
+        )
+        for query in invalid_queries:
+            with self.subTest(query=query), patch("app.api.v1.tasks.task_service.list_tasks") as service:
+                response = self.client.get(f"{self.collection}?{query}")
+            self.assertEqual(response.status_code, 422); service.assert_not_called()
+
+    def test_list_allows_empty_page_beyond_last_page(self) -> None:
+        with patch("app.api.v1.tasks.task_service.list_tasks", return_value=([], 15)):
+            response = self.client.get(f"{self.collection}?page=3&page_size=10")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"], [])
+        self.assertEqual(
+            {key: response.json()[key] for key in ("total", "page", "page_size", "total_pages")},
+            {"total": 15, "page": 3, "page_size": 10, "total_pages": 2},
+        )
 
     def test_get_and_update_final_contract(self) -> None:
         task = self.task()

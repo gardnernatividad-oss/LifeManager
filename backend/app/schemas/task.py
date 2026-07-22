@@ -106,3 +106,6 @@ class TaskListResponse(BaseModel):
 
     items: list[TaskRead]
     total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)
+    total_pages: int = Field(ge=0)

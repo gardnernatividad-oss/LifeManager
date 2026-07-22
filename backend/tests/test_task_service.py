@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from sqlalchemy.orm import Session
 
-from app.models import Category, Project, Task, TaskOutcome, User, WorkspaceMember
+from app.models import Category, Project, Task, TaskOutcome, TaskStatus, User, WorkspaceMember
 from app.models.workspace_member import WorkspaceRole
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.task_resolution_service import TaskAlreadyResolved
@@ -74,9 +74,61 @@ class TaskServiceTests(unittest.TestCase):
             result, total = list_tasks(self.db, workspace_id=self.workspace_id, current_user=self.user, category_id=category.id, project_id=project.id)
         sql = str(self.db.scalars.call_args.args[0])
         self.assertNotIn("is_archived", sql)
-        self.assertIn("ORDER BY tasks.scheduled_at, tasks.created_at, tasks.id", sql)
+        self.assertIn("ORDER BY tasks.scheduled_at ASC, tasks.created_at ASC, tasks.id ASC", sql)
+        self.assertIn("LIMIT", sql); self.assertIn("OFFSET", sql)
         self.assertEqual((result, total), (tasks, 1))
         self.db.flush.assert_not_called(); self.db.commit.assert_not_called()
+
+    def test_list_composes_pagination_ordering_and_database_filters(self) -> None:
+        self.db.scalar.return_value = 0
+        self.db.scalars.return_value.all.return_value = []
+        scheduled_from = self.now - timedelta(days=2)
+        scheduled_to = self.now + timedelta(days=2)
+        with self.member():
+            result = list_tasks(
+                self.db,
+                workspace_id=self.workspace_id,
+                current_user=self.user,
+                page=3,
+                page_size=10,
+                order_by="title",
+                order_direction="desc",
+                status=TaskStatus.COMPLETED,
+                outcome=TaskOutcome.COMPLETED,
+                scheduled_from=scheduled_from,
+                scheduled_to=scheduled_to,
+                search="  Plan_100%  ",
+            )
+        statement = self.db.scalars.call_args.args[0]
+        sql = str(statement)
+        params = tuple(statement.compile().params.values())
+        self.assertEqual(result, ([], 0))
+        self.assertIn("tasks.workspace_id", sql)
+        self.assertGreaterEqual(sql.count("tasks.outcome"), 2)
+        self.assertIn("tasks.scheduled_at >=", sql); self.assertIn("tasks.scheduled_at <=", sql)
+        self.assertIn("lower(tasks.title) LIKE lower", sql)
+        self.assertIn("ORDER BY tasks.title DESC, tasks.id DESC", sql)
+        self.assertIn(20, params); self.assertIn(10, params)
+        self.assertIn("%Plan\\_100\\%%", params)
+        self.db.add.assert_not_called(); self.db.flush.assert_not_called()
+        self.db.delete.assert_not_called(); self.db.commit.assert_not_called(); self.db.rollback.assert_not_called()
+
+    def test_list_pending_and_scheduled_filters_are_derived_in_sql(self) -> None:
+        for task_status, comparator in (
+            (TaskStatus.PENDING, "tasks.scheduled_at <="),
+            (TaskStatus.SCHEDULED, "tasks.scheduled_at >"),
+        ):
+            self.db.reset_mock(); self.db.scalar.return_value = 0
+            self.db.scalars.return_value.all.return_value = []
+            with self.subTest(status=task_status), self.member():
+                list_tasks(self.db, workspace_id=self.workspace_id, current_user=self.user, status=task_status)
+            sql = str(self.db.scalars.call_args.args[0])
+            self.assertIn("tasks.outcome IS NULL", sql); self.assertIn(comparator, sql)
+
+    def test_list_requires_membership_before_querying_tasks(self) -> None:
+        with self.member(None), self.assertRaises(TaskPermissionError):
+            list_tasks(self.db, workspace_id=self.workspace_id, current_user=self.user)
+        self.db.scalars.assert_not_called(); self.db.flush.assert_not_called(); self.db.commit.assert_not_called()
 
     def test_get_is_workspace_scoped_and_resolved_tasks_are_readable(self) -> None:
         task = self.task(outcome=TaskOutcome.COMPLETED, resolved_at=self.now)

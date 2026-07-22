@@ -1,11 +1,14 @@
 import uuid
 
+from datetime import datetime, timezone
+from typing import Literal
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.project import Project
-from app.models.task import Task
+from app.models.task import Task, TaskOutcome, TaskStatus
 from app.models.user import User
 from app.models.workspace_member import WorkspaceMember
 from app.schemas.task import TaskCreate, TaskUpdate
@@ -157,6 +160,15 @@ def list_tasks(
     current_user: User,
     category_id: uuid.UUID | None = None,
     project_id: uuid.UUID | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    order_by: Literal["scheduled_at", "created_at", "updated_at", "title"] = "scheduled_at",
+    order_direction: Literal["asc", "desc"] = "asc",
+    status: TaskStatus | None = None,
+    outcome: TaskOutcome | None = None,
+    scheduled_from: datetime | None = None,
+    scheduled_to: datetime | None = None,
+    search: str | None = None,
 ) -> tuple[list[Task], int]:
     _require_membership(
         db,
@@ -180,10 +192,36 @@ def list_tasks(
             require_active=False,
         )
         filters.append(Task.project_id == project_id)
+    if status is not None:
+        status_boundary = datetime.now(timezone.utc)
+        if status is TaskStatus.SCHEDULED:
+            filters.extend((Task.outcome.is_(None), Task.scheduled_at > status_boundary))
+        elif status is TaskStatus.PENDING:
+            filters.extend((Task.outcome.is_(None), Task.scheduled_at <= status_boundary))
+        else:
+            filters.append(Task.outcome == TaskOutcome(status.value))
+    if outcome is not None:
+        filters.append(Task.outcome == outcome)
+    if scheduled_from is not None:
+        filters.append(Task.scheduled_at >= scheduled_from)
+    if scheduled_to is not None:
+        filters.append(Task.scheduled_at <= scheduled_to)
+    if search is not None and search.strip():
+        escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        filters.append(Task.title.ilike(f"%{escaped}%", escape="\\"))
+
+    order_column = getattr(Task, order_by)
+    direction = getattr(order_column, order_direction)
+    ordering = [direction()]
+    if order_by == "scheduled_at":
+        ordering.append(getattr(Task.created_at, order_direction)())
+    ordering.append(getattr(Task.id, order_direction)())
     statement = (
         select(Task)
         .where(*filters)
-        .order_by(Task.scheduled_at, Task.created_at, Task.id)
+        .order_by(*ordering)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
     count_statement = select(func.count()).select_from(Task).where(*filters)
 
