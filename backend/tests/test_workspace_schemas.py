@@ -38,6 +38,7 @@ class WorkspaceSchemaTests(unittest.TestCase):
             id=workspace_id,
             name="Personal",
             description=None,
+            timezone="America/Lima",
             created_at=timestamp,
             updated_at=timestamp,
         )
@@ -47,6 +48,7 @@ class WorkspaceSchemaTests(unittest.TestCase):
         self.assertEqual(schema.id, workspace_id)
         self.assertEqual(schema.name, "Personal")
         self.assertIsNone(schema.description)
+        self.assertEqual(schema.timezone, "America/Lima")
         self.assertEqual(schema.created_at, timestamp)
         self.assertEqual(schema.updated_at, timestamp)
 

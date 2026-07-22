@@ -31,6 +31,7 @@ class WorkspaceRouterTests(unittest.TestCase):
             id=uuid.uuid4(),
             name=name,
             description=None,
+            timezone="America/Lima",
             created_at=self.timestamp,
             updated_at=self.timestamp,
         )

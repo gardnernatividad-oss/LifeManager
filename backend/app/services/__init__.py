@@ -87,6 +87,11 @@ from app.services.project_service import (
     list_projects,
     update_project,
 )
+from app.services.reminder_service import (
+    ReminderPermissionError,
+    ReminderTimezoneError,
+    evaluate_reminders,
+)
 from app.services.workspace import (
     create_workspace,
     delete_workspace,
@@ -110,6 +115,8 @@ __all__ = [
     "ProjectNameConflictError",
     "ProjectNotFoundError",
     "ProjectPermissionError",
+    "ReminderPermissionError",
+    "ReminderTimezoneError",
     "TaskCategoryInactiveError",
     "TaskCategoryNotFoundError",
     "TaskNotFoundError",
@@ -147,6 +154,7 @@ __all__ = [
     "get_daily_form_definition",
     "get_daily_form_submission",
     "get_project",
+    "evaluate_reminders",
     "get_task",
     "get_task_series",
     "get_workspace",

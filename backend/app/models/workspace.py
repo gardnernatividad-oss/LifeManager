@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import CheckConstraint, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseEntity
@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
 class Workspace(BaseEntity):
     __tablename__ = "workspaces"
+    __table_args__ = (
+        CheckConstraint("length(btrim(timezone)) > 0", name="ck_workspaces_timezone_not_blank"),
+    )
 
     name: Mapped[str] = mapped_column(
         String(150),
@@ -30,6 +33,10 @@ class Workspace(BaseEntity):
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember",
         back_populates="workspace",
+    )
+
+    timezone: Mapped[str] = mapped_column(
+        String(100), default="America/Lima", server_default=text("'America/Lima'"), nullable=False,
     )
 
     tasks: Mapped[list["Task"]] = relationship(
