@@ -9,11 +9,10 @@ from sqlalchemy.orm import Session
 from app.models import Category, Project, Task, TaskOutcome, User, WorkspaceMember
 from app.models.workspace_member import WorkspaceRole
 from app.schemas.task import TaskCreate, TaskUpdate
+from app.services.task_resolution_service import TaskAlreadyResolved
 from app.services.task_service import (
-    TaskCategoryInactiveError, TaskNotFoundError, TaskOutcomeConflictError,
-    TaskPermissionError, TaskProjectInactiveError, TaskResolvedConflictError,
-    cancel_task, complete_task, create_task, get_task, list_tasks,
-    mark_task_not_completed, update_task,
+    TaskCategoryInactiveError, TaskNotFoundError, TaskPermissionError,
+    TaskProjectInactiveError, create_task, get_task, list_tasks, update_task,
 )
 
 
@@ -101,37 +100,19 @@ class TaskServiceTests(unittest.TestCase):
         self.assertIsNotNone(task.category_id); self.assertIsNotNone(task.project_id)
         self.assertIsNone(task.outcome); self.assertIsNone(task.resolved_at)
 
-    def test_resolved_schedule_change_conflicts_but_same_value_is_idempotent(self) -> None:
+    def test_resolved_task_is_immutable_even_for_equivalent_values(self) -> None:
         task = self.task(outcome=TaskOutcome.COMPLETED, resolved_at=self.now)
         self.db.scalar.return_value = task
-        with self.member(), self.assertRaises(TaskResolvedConflictError):
-            update_task(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user, task_in=TaskUpdate(scheduled_at=self.now + timedelta(days=3)))
-        self.db.flush.assert_not_called()
-        with self.member():
-            update_task(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user, task_in=TaskUpdate(scheduled_at=task.scheduled_at))
-        self.db.flush.assert_called_once()
-
-    def test_terminal_transitions_success_idempotency_and_conflict(self) -> None:
-        operations = (
-            (complete_task, TaskOutcome.COMPLETED),
-            (mark_task_not_completed, TaskOutcome.NOT_COMPLETED),
-            (cancel_task, TaskOutcome.CANCELLED),
-        )
-        for operation, outcome in operations:
-            self.db.reset_mock(); task = self.task(); self.db.scalar.return_value = task
-            with self.subTest(outcome=outcome), self.member(), patch("app.services.task_service._utc_now", return_value=self.now):
-                result = operation(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user)
-            self.assertIs(result.outcome, outcome); self.assertEqual(result.resolved_at, self.now)
-            original = task.resolved_at
-            self.db.reset_mock(); self.db.scalar.return_value = task
-            with self.member():
-                operation(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user)
-            self.assertEqual(task.resolved_at, original); self.db.flush.assert_not_called()
-            other = TaskOutcome.CANCELLED if outcome is not TaskOutcome.CANCELLED else TaskOutcome.COMPLETED
-            task.outcome = other
-            with self.member(), self.assertRaises(TaskOutcomeConflictError):
-                operation(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user)
-            self.db.commit.assert_not_called(); self.db.rollback.assert_not_called()
+        for task_in in (
+            TaskUpdate(title="Changed"),
+            TaskUpdate(description="Changed"),
+            TaskUpdate(scheduled_at=task.scheduled_at),
+            TaskUpdate(category_id=uuid.uuid4()),
+            TaskUpdate(project_id=uuid.uuid4()),
+        ):
+            with self.subTest(changes=task_in.model_dump(exclude_unset=True)), self.member(), self.assertRaises(TaskAlreadyResolved):
+                update_task(self.db, workspace_id=self.workspace_id, task_id=task.id, current_user=self.user, task_in=task_in)
+        self.db.flush.assert_not_called(); self.db.commit.assert_not_called(); self.db.rollback.assert_not_called()
 
 
 if __name__ == "__main__":

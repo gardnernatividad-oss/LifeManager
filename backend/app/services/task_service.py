@@ -1,17 +1,16 @@
 import uuid
 
-from datetime import datetime, timezone
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.project import Project
-from app.models.task import Task, TaskOutcome
+from app.models.task import Task
 from app.models.user import User
 from app.models.workspace_member import WorkspaceMember
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.workspace import get_workspace_membership
+from app.services.task_resolution_service import TaskAlreadyResolved
 
 
 class TaskNotFoundError(LookupError):
@@ -36,18 +35,6 @@ class TaskProjectNotFoundError(LookupError):
 
 class TaskProjectInactiveError(ValueError):
     pass
-
-
-class TaskResolvedConflictError(ValueError):
-    pass
-
-
-class TaskOutcomeConflictError(ValueError):
-    pass
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 def _require_membership(
@@ -243,6 +230,8 @@ def update_task(
         task_id=task_id,
     )
     changes = task_in.model_dump(exclude_unset=True)
+    if task.outcome is not None and changes:
+        raise TaskAlreadyResolved("Task is already resolved")
     if "category_id" in changes:
         category_id = changes.pop("category_id")
         if category_id is not None:
@@ -265,89 +254,9 @@ def update_task(
         task.project_id = project_id
     if "scheduled_at" in changes:
         scheduled_at = changes.pop("scheduled_at")
-        if task.outcome is not None and scheduled_at != task.scheduled_at:
-            raise TaskResolvedConflictError(
-                "Cannot reschedule a resolved task"
-            )
         task.scheduled_at = scheduled_at
     for field, value in changes.items():
         setattr(task, field, value)
 
     db.flush()
     return task
-
-
-def _apply_outcome(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    task_id: uuid.UUID,
-    current_user: User,
-    outcome: TaskOutcome,
-) -> Task:
-    _require_membership(
-        db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-    task = _get_scoped_task(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-    )
-    if task.outcome is outcome:
-        return task
-    if task.outcome is not None:
-        raise TaskOutcomeConflictError("Task already has a different outcome")
-    task.outcome = outcome
-    task.resolved_at = _utc_now()
-    db.flush()
-    return task
-
-
-def complete_task(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    task_id: uuid.UUID,
-    current_user: User,
-) -> Task:
-    return _apply_outcome(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-        current_user=current_user,
-        outcome=TaskOutcome.COMPLETED,
-    )
-
-
-def mark_task_not_completed(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    task_id: uuid.UUID,
-    current_user: User,
-) -> Task:
-    return _apply_outcome(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-        current_user=current_user,
-        outcome=TaskOutcome.NOT_COMPLETED,
-    )
-
-
-def cancel_task(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    task_id: uuid.UUID,
-    current_user: User,
-) -> Task:
-    return _apply_outcome(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-        current_user=current_user,
-        outcome=TaskOutcome.CANCELLED,
-    )

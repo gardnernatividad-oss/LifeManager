@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_db
 from app.main import app
 from app.models import Task, TaskOutcome, User
+from app.services.task_resolution_service import (
+    TaskAlreadyResolved, TaskNotFound, TaskPermission,
+)
 from app.services.task_service import (
-    TaskNotFoundError, TaskOutcomeConflictError, TaskPermissionError,
-    TaskResolvedConflictError,
+    TaskNotFoundError, TaskPermissionError,
 )
 
 
@@ -88,12 +90,12 @@ class TaskRouteTests(unittest.TestCase):
     def test_terminal_endpoints_commit_refresh_and_return_status(self) -> None:
         cases = (
             ("complete", "complete_task", TaskOutcome.COMPLETED, "completed"),
-            ("not-completed", "mark_task_not_completed", TaskOutcome.NOT_COMPLETED, "not_completed"),
+            ("not-complete", "mark_task_not_completed", TaskOutcome.NOT_COMPLETED, "not_completed"),
             ("cancel", "cancel_task", TaskOutcome.CANCELLED, "cancelled"),
         )
         for path, operation, outcome, expected in cases:
             self.db.reset_mock(); task = self.task(outcome=outcome, resolved_at=self.now)
-            with self.subTest(path=path), patch(f"app.api.v1.tasks.task_service.{operation}", return_value=task) as service:
+            with self.subTest(path=path), patch(f"app.api.v1.tasks.task_resolution_service.{operation}", return_value=task) as service:
                 response = self.client.post(f"{self.detail}/{path}")
             self.assertEqual(response.status_code, 200); self.assertEqual(response.json()["status"], expected)
             service.assert_called_once_with(self.db, workspace_id=self.workspace_id, task_id=self.task_id, current_user=self.user)
@@ -103,12 +105,26 @@ class TaskRouteTests(unittest.TestCase):
         for error, expected in (
             (TaskNotFoundError("Task not found"), 404),
             (TaskPermissionError("Workspace access denied"), 403),
-            (TaskOutcomeConflictError("Task already has a different outcome"), 409),
-            (TaskResolvedConflictError("Cannot reschedule a resolved task"), 409),
+            (TaskAlreadyResolved("Task is already resolved"), 409),
         ):
             self.db.reset_mock()
             with self.subTest(expected=expected), patch("app.api.v1.tasks.task_service.update_task", side_effect=error):
                 response = self.client.patch(self.detail, json={"title": "New"})
+            self.assertEqual(response.status_code, expected)
+            self.db.rollback.assert_called_once(); self.db.commit.assert_not_called()
+
+    def test_resolution_errors_map_and_rollback(self) -> None:
+        for error, expected in (
+            (TaskNotFound("Task not found"), 404),
+            (TaskPermission("Workspace access denied"), 403),
+            (TaskAlreadyResolved("Task is already resolved"), 409),
+        ):
+            self.db.reset_mock()
+            with self.subTest(expected=expected), patch(
+                "app.api.v1.tasks.task_resolution_service.complete_task",
+                side_effect=error,
+            ):
+                response = self.client.post(f"{self.detail}/complete")
             self.assertEqual(response.status_code, expected)
             self.db.rollback.assert_called_once(); self.db.commit.assert_not_called()
 

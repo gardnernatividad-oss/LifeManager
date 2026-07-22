@@ -10,7 +10,7 @@ from app.api.dependencies import CurrentUser, SessionDependency
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
-from app.services import task_service
+from app.services import task_resolution_service, task_service
 
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/tasks", tags=["Tasks"])
@@ -22,8 +22,9 @@ _DOMAIN_ERRORS = (
     task_service.TaskCategoryInactiveError,
     task_service.TaskProjectNotFoundError,
     task_service.TaskProjectInactiveError,
-    task_service.TaskResolvedConflictError,
-    task_service.TaskOutcomeConflictError,
+    task_resolution_service.TaskNotFound,
+    task_resolution_service.TaskPermission,
+    task_resolution_service.TaskAlreadyResolved,
 )
 
 
@@ -34,6 +35,7 @@ def _raise_http_error(error: Exception) -> None:
             task_service.TaskNotFoundError,
             task_service.TaskCategoryNotFoundError,
             task_service.TaskProjectNotFoundError,
+            task_resolution_service.TaskNotFound,
         ),
     ):
         raise HTTPException(status_code=404, detail=str(error)) from error
@@ -42,11 +44,12 @@ def _raise_http_error(error: Exception) -> None:
         (
             task_service.TaskCategoryInactiveError,
             task_service.TaskProjectInactiveError,
-            task_service.TaskResolvedConflictError,
-            task_service.TaskOutcomeConflictError,
+            task_resolution_service.TaskAlreadyResolved,
         ),
     ):
         raise HTTPException(status_code=409, detail=str(error)) from error
+    if isinstance(error, task_resolution_service.TaskPermission):
+        raise HTTPException(status_code=403, detail=str(error)) from error
     raise HTTPException(status_code=403, detail=str(error)) from error
 
 
@@ -172,14 +175,14 @@ def complete_task(
 ) -> TaskRead:
     return _transition(
         db,
-        task_service.complete_task,
+        task_resolution_service.complete_task,
         workspace_id=workspace_id,
         task_id=task_id,
         current_user=current_user,
     )
 
 
-@router.post("/{task_id}/not-completed", response_model=TaskRead)
+@router.post("/{task_id}/not-complete", response_model=TaskRead)
 def mark_task_not_completed(
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
@@ -188,7 +191,7 @@ def mark_task_not_completed(
 ) -> TaskRead:
     return _transition(
         db,
-        task_service.mark_task_not_completed,
+        task_resolution_service.mark_task_not_completed,
         workspace_id=workspace_id,
         task_id=task_id,
         current_user=current_user,
@@ -204,7 +207,7 @@ def cancel_task(
 ) -> TaskRead:
     return _transition(
         db,
-        task_service.cancel_task,
+        task_resolution_service.cancel_task,
         workspace_id=workspace_id,
         task_id=task_id,
         current_user=current_user,
