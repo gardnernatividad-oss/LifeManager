@@ -13,6 +13,10 @@ from app.services.dashboard_service import (
     DashboardPermissionError,
     get_dashboard_summary,
 )
+from app.services.dashboard_statistics_service import (
+    DashboardStatisticsPermissionError,
+    get_dashboard_statistics,
+)
 from app.services.task_service import (
     TaskCategoryInactiveError,
     TaskCategoryNotFoundError,
@@ -80,6 +84,7 @@ __all__ = [
     "CategoryNotFoundError",
     "CategoryPermissionError",
     "DashboardPermissionError",
+    "DashboardStatisticsPermissionError",
     "ProjectNameConflictError",
     "ProjectNotFoundError",
     "ProjectPermissionError",
@@ -116,6 +121,7 @@ __all__ = [
     "delete_workspace",
     "get_category",
     "get_dashboard_summary",
+    "get_dashboard_statistics",
     "get_project",
     "get_task",
     "get_task_series",
