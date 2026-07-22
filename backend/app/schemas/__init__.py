@@ -1,5 +1,6 @@
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
+from app.schemas.dashboard import DashboardSummary
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
 from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, TaskSeriesMaterializeRequest, TaskSeriesMaterializeResponse, TaskSeriesRead, TaskSeriesSynchronizeResponse, TaskSeriesUpdate
@@ -11,6 +12,7 @@ __all__ = [
     "CategoryCreate",
     "CategoryRead",
     "CategoryUpdate",
+    "DashboardSummary",
     "ProjectCreate",
     "ProjectRead",
     "ProjectUpdate",

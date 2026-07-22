@@ -9,6 +9,10 @@ from app.services.category_service import (
     list_categories,
     update_category,
 )
+from app.services.dashboard_service import (
+    DashboardPermissionError,
+    get_dashboard_summary,
+)
 from app.services.task_service import (
     TaskCategoryInactiveError,
     TaskCategoryNotFoundError,
@@ -75,6 +79,7 @@ __all__ = [
     "CategoryNameConflictError",
     "CategoryNotFoundError",
     "CategoryPermissionError",
+    "DashboardPermissionError",
     "ProjectNameConflictError",
     "ProjectNotFoundError",
     "ProjectPermissionError",
@@ -110,6 +115,7 @@ __all__ = [
     "deactivate_task_series",
     "delete_workspace",
     "get_category",
+    "get_dashboard_summary",
     "get_project",
     "get_task",
     "get_task_series",
