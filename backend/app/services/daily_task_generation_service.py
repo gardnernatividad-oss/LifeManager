@@ -39,6 +39,20 @@ def generate_daily_tasks(
     ) is None:
         raise TaskSeriesPermissionError("Workspace access denied")
 
+    return generate_daily_tasks_authorized(
+        db,
+        workspace_id=workspace_id,
+        generation_date=generation_date,
+    )
+
+
+def generate_daily_tasks_authorized(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    generation_date: date,
+) -> DailyTaskGenerationResponse:
+
     series_items = db.scalars(
         select(TaskSeries)
         .where(

@@ -31,7 +31,8 @@ from app.services.daily_form_submission_service import (
     get_daily_form_submission,
     replace_daily_form_submission,
 )
-from app.services.daily_task_generation_service import generate_daily_tasks
+from app.services.daily_task_generation_service import generate_daily_tasks, generate_daily_tasks_authorized
+from app.services.daily_workflow_service import initialize_daily_workflow
 from app.services.task_service import (
     TaskCategoryInactiveError,
     TaskCategoryNotFoundError,
@@ -166,4 +167,6 @@ __all__ = [
     "replace_daily_form_definition",
     "replace_daily_form_submission",
     "generate_daily_tasks",
+    "generate_daily_tasks_authorized",
+    "initialize_daily_workflow",
 ]
