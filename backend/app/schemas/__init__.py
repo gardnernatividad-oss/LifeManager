@@ -13,6 +13,7 @@ from app.schemas.daily_form_submission import (
     DailyFormSubmissionRead,
     DailyFormSubmissionReplace,
 )
+from app.schemas.daily_task_generation import DailyTaskGenerationResponse
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
 from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, TaskSeriesMaterializeRequest, TaskSeriesMaterializeResponse, TaskSeriesRead, TaskSeriesSynchronizeResponse, TaskSeriesUpdate
@@ -34,6 +35,7 @@ __all__ = [
     "DailyFormAnswerSubmit",
     "DailyFormSubmissionRead",
     "DailyFormSubmissionReplace",
+    "DailyTaskGenerationResponse",
     "ProjectCreate",
     "ProjectRead",
     "ProjectUpdate",
