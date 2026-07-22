@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
+    from app.models.daily_form import DailyFormSubmission
     from app.models.task import Task
     from app.models.task_series import TaskSeries
     from app.models.workspace_member import WorkspaceMember
@@ -86,4 +87,8 @@ class User(BaseEntity):
     created_task_series: Mapped[list["TaskSeries"]] = relationship(
         "TaskSeries",
         back_populates="created_by",
+    )
+
+    daily_form_submissions: Mapped[list["DailyFormSubmission"]] = relationship(
+        "DailyFormSubmission", back_populates="user",
     )

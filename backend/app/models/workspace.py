@@ -7,7 +7,7 @@ from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
     from app.models.category import Category
-    from app.models.daily_form import DailyFormDefinition
+    from app.models.daily_form import DailyFormDefinition, DailyFormSubmission
     from app.models.project import Project
     from app.models.task import Task
     from app.models.task_series import TaskSeries
@@ -56,4 +56,8 @@ class Workspace(BaseEntity):
         "DailyFormDefinition",
         back_populates="workspace",
         uselist=False,
+    )
+
+    daily_form_submissions: Mapped[list["DailyFormSubmission"]] = relationship(
+        "DailyFormSubmission", back_populates="workspace",
     )
