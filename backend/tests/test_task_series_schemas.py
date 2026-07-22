@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import ValidationError
 
 from app.models import TaskSeriesFrequency
-from app.schemas.task_series import TaskSeriesCreate, TaskSeriesUpdate
+from app.schemas.task_series import TaskSeriesCreate, TaskSeriesMaterializeRequest, TaskSeriesUpdate
 
 
 class TaskSeriesSchemaTests(unittest.TestCase):
@@ -39,6 +39,17 @@ class TaskSeriesSchemaTests(unittest.TestCase):
         self.assertEqual(TaskSeriesUpdate(description=None, ends_at=None, weekdays=None).model_dump(exclude_unset=True), {"description": None, "ends_at": None, "weekdays": None})
         for field in ("title", "timezone", "frequency", "interval", "starts_at"):
             with self.subTest(field=field), self.assertRaises(ValidationError): TaskSeriesUpdate.model_validate({field: None})
+
+    def test_materialization_window_validation(self) -> None:
+        request = TaskSeriesMaterializeRequest(window_start=self.start, window_end=self.start)
+        self.assertEqual(request.window_start, self.start)
+        for payload in (
+            {"window_start": datetime(2026, 1, 1), "window_end": self.start},
+            {"window_start": self.start, "window_end": datetime(2026, 1, 2)},
+            {"window_start": self.start, "window_end": self.start - timedelta(seconds=1)},
+        ):
+            with self.subTest(payload=payload), self.assertRaises(ValidationError):
+                TaskSeriesMaterializeRequest.model_validate(payload)
 
 
 if __name__ == "__main__": unittest.main()

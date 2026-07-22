@@ -37,6 +37,12 @@ from app.services.task_series_service import (
     list_task_series,
     update_task_series,
 )
+from app.services.task_materialization_service import (
+    TaskMaterializationConflictError,
+    TaskMaterializationValidationError,
+    materialize_task_series,
+    materialize_workspace_task_series,
+)
 from app.services.project_service import (
     ProjectNameConflictError,
     ProjectNotFoundError,
@@ -74,6 +80,8 @@ __all__ = [
     "TaskSeriesNotFoundError",
     "TaskSeriesPermissionError",
     "TaskSeriesRecurrenceValidationError",
+    "TaskMaterializationConflictError",
+    "TaskMaterializationValidationError",
     "activate_category",
     "activate_project",
     "activate_task_series",
@@ -98,6 +106,8 @@ __all__ = [
     "list_tasks",
     "list_task_series",
     "mark_task_not_completed",
+    "materialize_task_series",
+    "materialize_workspace_task_series",
     "list_user_workspaces",
     "update_category",
     "update_project",

@@ -13,7 +13,7 @@ class TaskModelTests(unittest.TestCase):
             set(columns.keys()),
             {
                 "id", "workspace_id", "created_by_id", "category_id",
-                "project_id", "title", "description", "scheduled_at",
+                "project_id", "task_series_id", "title", "description", "scheduled_at",
                 "outcome", "resolved_at", "created_at", "updated_at",
             },
         )
@@ -38,6 +38,7 @@ class TaskModelTests(unittest.TestCase):
         self.assertEqual((foreign_keys["created_by_id"].target_fullname, foreign_keys["created_by_id"].ondelete), ("users.id", "RESTRICT"))
         self.assertEqual((foreign_keys["category_id"].target_fullname, foreign_keys["category_id"].ondelete), ("categories.id", "SET NULL"))
         self.assertEqual((foreign_keys["project_id"].target_fullname, foreign_keys["project_id"].ondelete), ("projects.id", "SET NULL"))
+        self.assertEqual((foreign_keys["task_series_id"].target_fullname, foreign_keys["task_series_id"].ondelete), ("task_series.id", "SET NULL"))
         self.assertEqual(inspect(Task).relationships.category.back_populates, "tasks")
         self.assertEqual(inspect(Category).relationships.tasks.back_populates, "category")
         self.assertEqual(inspect(Task).relationships.project.back_populates, "tasks")

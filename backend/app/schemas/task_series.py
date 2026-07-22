@@ -148,3 +148,26 @@ class TaskSeriesListResponse(BaseModel):
 
     items: list[TaskSeriesRead]
     total: int = Field(ge=0)
+
+
+class TaskSeriesMaterializeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    window_start: datetime
+    window_end: datetime
+
+    _window_start = field_validator("window_start")(aware_utc)
+    _window_end = field_validator("window_end")(aware_utc)
+
+    @model_validator(mode="after")
+    def validate_window(self) -> "TaskSeriesMaterializeRequest":
+        if self.window_end < self.window_start:
+            raise ValueError("window_end must be equal to or later than window_start")
+        return self
+
+
+class TaskSeriesMaterializeResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    generated_count: int = Field(ge=0)
+    generated_task_ids: list[uuid.UUID]

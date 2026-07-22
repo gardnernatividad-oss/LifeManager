@@ -60,7 +60,7 @@ class TaskSchemaTests(unittest.TestCase):
                 self.assertIs(read.status, expected)
                 self.assertEqual(
                     set(read.model_dump()),
-                    {"id", "workspace_id", "created_by_id", "category_id", "project_id", "title", "description", "scheduled_at", "status", "resolved_at", "created_at", "updated_at"},
+                    {"id", "workspace_id", "created_by_id", "category_id", "project_id", "task_series_id", "title", "description", "scheduled_at", "status", "resolved_at", "created_at", "updated_at"},
                 )
 
 

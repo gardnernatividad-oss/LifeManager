@@ -18,8 +18,9 @@ class TaskSeriesModelTests(unittest.TestCase):
         indexes = {i.name: tuple(c.name for c in i.columns) for i in TaskSeries.__table__.indexes}
         self.assertEqual(indexes["ix_task_series_workspace_id_is_active_title"], ("workspace_id", "is_active", "title"))
         self.assertEqual(indexes["ix_task_series_is_active_starts_at"], ("is_active", "starts_at"))
-        self.assertNotIn("task_series_id", Task.__table__.columns)
-        self.assertNotIn("tasks", inspect(TaskSeries).relationships)
+        self.assertTrue(Task.__table__.columns.task_series_id.nullable)
+        self.assertEqual(inspect(TaskSeries).relationships.tasks.back_populates, "task_series")
+        self.assertEqual(inspect(Task).relationships.task_series.back_populates, "tasks")
 
     def test_foreign_keys_and_bidirectional_relationships(self) -> None:
         fks = {fk.parent.name: fk for fk in TaskSeries.__table__.foreign_keys}

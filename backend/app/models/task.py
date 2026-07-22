@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +13,7 @@ from app.models.base import BaseEntity
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.project import Project
+    from app.models.task_series import TaskSeries
     from app.models.user import User
     from app.models.workspace import Workspace
 
@@ -47,6 +48,11 @@ class Task(BaseEntity):
         ),
         Index("ix_tasks_workspace_id_category_id", "workspace_id", "category_id"),
         Index("ix_tasks_workspace_id_project_id", "workspace_id", "project_id"),
+        UniqueConstraint(
+            "task_series_id",
+            "scheduled_at",
+            name="uq_tasks_task_series_id_scheduled_at",
+        ),
     )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
@@ -71,6 +77,11 @@ class Task(BaseEntity):
         ForeignKey("projects.id", ondelete="SET NULL"),
         nullable=True,
     )
+    task_series_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("task_series.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -91,3 +102,4 @@ class Task(BaseEntity):
     created_by: Mapped["User"] = relationship("User", back_populates="created_tasks")
     category: Mapped["Category | None"] = relationship("Category", back_populates="tasks")
     project: Mapped["Project | None"] = relationship("Project", back_populates="tasks")
+    task_series: Mapped["TaskSeries | None"] = relationship("TaskSeries", back_populates="tasks")

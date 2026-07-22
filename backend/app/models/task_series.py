@@ -13,6 +13,7 @@ from app.models.base import BaseEntity
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.project import Project
+    from app.models.task import Task
     from app.models.user import User
     from app.models.workspace import Workspace
 
@@ -61,3 +62,4 @@ class TaskSeries(BaseEntity):
     created_by: Mapped["User"] = relationship("User", back_populates="created_task_series")
     category: Mapped["Category | None"] = relationship("Category", back_populates="task_series")
     project: Mapped["Project | None"] = relationship("Project", back_populates="task_series")
+    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="task_series")

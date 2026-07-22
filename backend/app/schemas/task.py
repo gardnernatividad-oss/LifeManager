@@ -72,6 +72,7 @@ class TaskRead(BaseModel):
     created_by_id: uuid.UUID
     category_id: uuid.UUID | None
     project_id: uuid.UUID | None
+    task_series_id: uuid.UUID | None
     title: str
     description: str | None
     scheduled_at: datetime
@@ -89,6 +90,7 @@ class TaskRead(BaseModel):
             created_by_id=task.created_by_id,
             category_id=task.category_id,
             project_id=task.project_id,
+            task_series_id=task.task_series_id,
             title=task.title,
             description=task.description,
             scheduled_at=task.scheduled_at,

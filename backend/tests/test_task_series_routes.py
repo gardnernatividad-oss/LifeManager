@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_db
 from app.main import app
-from app.models import TaskSeries, TaskSeriesFrequency, User
+from app.models import Task, TaskSeries, TaskSeriesFrequency, User
+from app.services.task_materialization_service import TaskMaterializationConflictError
 from app.services.task_series_service import TaskSeriesNotFoundError, TaskSeriesPermissionError, TaskSeriesRecurrenceValidationError
 
 
@@ -51,6 +52,35 @@ class TaskSeriesRouteTests(unittest.TestCase):
         self.assertEqual(self.client.delete(self.detail).status_code,405)
         paths=app.openapi()["paths"];self.assertNotIn("delete",paths["/api/v1/workspaces/{workspace_id}/task-series/{series_id}"])
         self.assertFalse(any("generate" in path or "occurrence" in path for path in paths))
+
+    def test_workspace_and_single_materialization_endpoints(self) -> None:
+        task_id = uuid.uuid4()
+        task = Task(
+            id=task_id, workspace_id=self.workspace_id, created_by_id=self.user.id,
+            task_series_id=self.series_id, category_id=None, project_id=None,
+            title="Generated", description=None, scheduled_at=self.now,
+            outcome=None, resolved_at=None, created_at=self.now, updated_at=self.now,
+        )
+        body = {"window_start": self.now.isoformat(), "window_end": self.now.isoformat()}
+        for url, function in (
+            (f"{self.collection}/materialize", "materialize_workspace_task_series"),
+            (f"{self.detail}/materialize", "materialize_task_series"),
+        ):
+            self.db.reset_mock()
+            with self.subTest(url=url), patch(f"app.api.v1.task_series.task_materialization_service.{function}", return_value=[task]) as service:
+                response = self.client.post(url, json=body)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"generated_count": 1, "generated_task_ids": [str(task_id)]})
+            self.db.commit.assert_called_once(); self.db.refresh.assert_called_once_with(task)
+            self.assertEqual(service.call_args.kwargs["window_start"], self.now)
+
+    def test_materialization_conflict_rolls_back_and_invalid_window_is_422(self) -> None:
+        body = {"window_start": self.now.isoformat(), "window_end": self.now.isoformat()}
+        with patch("app.api.v1.task_series.task_materialization_service.materialize_workspace_task_series", side_effect=TaskMaterializationConflictError("concurrent generation")):
+            response = self.client.post(f"{self.collection}/materialize", json=body)
+        self.assertEqual(response.status_code, 409); self.db.rollback.assert_called_once()
+        invalid = self.client.post(f"{self.collection}/materialize", json={"window_start": self.now.isoformat(), "window_end": self.now.replace(year=2025).isoformat()})
+        self.assertEqual(invalid.status_code, 422)
 
 
 if __name__=="__main__":unittest.main()
