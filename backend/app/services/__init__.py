@@ -17,6 +17,12 @@ from app.services.dashboard_statistics_service import (
     DashboardStatisticsPermissionError,
     get_dashboard_statistics,
 )
+from app.services.daily_form_service import (
+    DailyFormNotFoundError,
+    DailyFormPermissionError,
+    get_daily_form_definition,
+    replace_daily_form_definition,
+)
 from app.services.task_service import (
     TaskCategoryInactiveError,
     TaskCategoryNotFoundError,
@@ -85,6 +91,8 @@ __all__ = [
     "CategoryPermissionError",
     "DashboardPermissionError",
     "DashboardStatisticsPermissionError",
+    "DailyFormNotFoundError",
+    "DailyFormPermissionError",
     "ProjectNameConflictError",
     "ProjectNotFoundError",
     "ProjectPermissionError",
@@ -122,6 +130,7 @@ __all__ = [
     "get_category",
     "get_dashboard_summary",
     "get_dashboard_statistics",
+    "get_daily_form_definition",
     "get_project",
     "get_task",
     "get_task_series",
@@ -140,4 +149,5 @@ __all__ = [
     "update_task_series",
     "synchronize_task_series",
     "update_workspace",
+    "replace_daily_form_definition",
 ]
