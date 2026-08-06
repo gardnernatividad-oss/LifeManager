@@ -20,6 +20,7 @@ from app.schemas.reminder import ReminderEvaluationResponse, ReminderItem, Remin
 from app.schemas.task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate
 from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, TaskSeriesMaterializeRequest, TaskSeriesMaterializeResponse, TaskSeriesRead, TaskSeriesSynchronizeResponse, TaskSeriesUpdate
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user_settings import UserSettingsRead, UserSettingsReplace, WeekStartsOn
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 
 __all__ = [
@@ -61,6 +62,9 @@ __all__ = [
     "UserCreate",
     "UserRead",
     "UserUpdate",
+    "UserSettingsRead",
+    "UserSettingsReplace",
+    "WeekStartsOn",
     "WorkspaceCreate",
     "WorkspaceRead",
     "WorkspaceUpdate",

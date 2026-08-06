@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.daily_form import DailyFormSubmission
     from app.models.task import Task
     from app.models.task_series import TaskSeries
+    from app.models.user_settings import UserSettings
     from app.models.workspace_member import WorkspaceMember
 
 
@@ -91,4 +92,9 @@ class User(BaseEntity):
 
     daily_form_submissions: Mapped[list["DailyFormSubmission"]] = relationship(
         "DailyFormSubmission", back_populates="user",
+    )
+
+    settings: Mapped["UserSettings | None"] = relationship(
+        "UserSettings", back_populates="user", uselist=False,
+        cascade="all, delete-orphan", single_parent=True,
     )

@@ -4,5 +4,6 @@ from app.models.project import Project
 from app.models.task import Task, TaskOutcome, TaskStatus
 from app.models.task_series import TaskSeries, TaskSeriesFrequency
 from app.models.user import User
+from app.models.user_settings import UserSettings, WeekStartsOn
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember

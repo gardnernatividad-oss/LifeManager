@@ -99,6 +99,11 @@ from app.services.workspace import (
     list_user_workspaces,
     update_workspace,
 )
+from app.services.user_settings_service import (
+    UserSettingsValidationError,
+    get_or_create_user_settings,
+    replace_user_settings,
+)
 
 __all__ = [
     "CategoryNameConflictError",
@@ -177,4 +182,7 @@ __all__ = [
     "generate_daily_tasks",
     "generate_daily_tasks_authorized",
     "initialize_daily_workflow",
+    "UserSettingsValidationError",
+    "get_or_create_user_settings",
+    "replace_user_settings",
 ]
