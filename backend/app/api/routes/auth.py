@@ -1,12 +1,17 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.dependencies import SessionDependency
+from app.api.dependencies import CurrentUser, SessionDependency
 from app.core.tokens import create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.user import UserCreate, UserRead
 from app.services.user import authenticate_user, register_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.get("/me", response_model=UserRead)
+def get_authenticated_user(current_user: CurrentUser) -> UserRead:
+    return UserRead.model_validate(current_user)
 
 
 @router.post("/login", response_model=TokenResponse)

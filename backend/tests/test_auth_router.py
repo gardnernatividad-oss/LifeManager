@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_current_user, get_db
 from app.core.config import settings
 from app.core.tokens import decode_access_token
 from app.main import app
@@ -89,6 +89,95 @@ class AuthRouterTests(unittest.TestCase):
         self.db.commit.assert_not_called()
         self.db.refresh.assert_not_called()
         self.db.rollback.assert_not_called()
+
+    def test_versioned_login_preserves_existing_login_behavior(self) -> None:
+        user = self.make_user()
+
+        with patch(
+            "app.api.routes.auth.authenticate_user",
+            return_value=user,
+        ):
+            response = self.client.post(
+                "/api/v1/auth/login",
+                json={
+                    "email": "ada@example.com",
+                    "password": "plain-secret",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["token_type"], "bearer")
+        self.assertEqual(
+            decode_access_token(response.json()["access_token"]),
+            str(user.id),
+        )
+        self.db.add.assert_not_called()
+        self.db.flush.assert_not_called()
+        self.db.commit.assert_not_called()
+        self.db.refresh.assert_not_called()
+        self.db.rollback.assert_not_called()
+
+    def test_authenticated_user_returns_user_read_without_writes(self) -> None:
+        user = self.make_user()
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        response = self.client.get("/api/v1/auth/me")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "id": str(user.id),
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "is_active": user.is_active,
+                "is_verified": user.is_verified,
+                "created_at": user.created_at.isoformat().replace("+00:00", "Z"),
+                "updated_at": user.updated_at.isoformat().replace("+00:00", "Z"),
+            },
+        )
+        self.db.add.assert_not_called()
+        self.db.delete.assert_not_called()
+        self.db.flush.assert_not_called()
+        self.db.commit.assert_not_called()
+        self.db.refresh.assert_not_called()
+        self.db.rollback.assert_not_called()
+
+    def test_authenticated_user_requires_bearer_token(self) -> None:
+        response = self.client.get("/api/v1/auth/me")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["WWW-Authenticate"], "Bearer")
+
+    def test_authenticated_user_rejects_invalid_token(self) -> None:
+        response = self.client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": "Bearer malformed-token"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"detail": "Could not validate credentials"})
+        self.assertEqual(response.headers["WWW-Authenticate"], "Bearer")
+
+    def test_authenticated_user_rejects_expired_token(self) -> None:
+        from datetime import timedelta
+
+        from app.core.tokens import create_access_token
+
+        token = create_access_token(
+            subject=str(uuid.uuid4()),
+            expires_delta=timedelta(seconds=-1),
+        )
+
+        response = self.client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"detail": "Could not validate credentials"})
+        self.assertEqual(response.headers["WWW-Authenticate"], "Bearer")
 
     def test_invalid_credentials_return_unauthorized(self) -> None:
         with patch(
