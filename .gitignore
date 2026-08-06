@@ -7,10 +7,12 @@ venv/
 # Node
 node_modules/
 .next/
+dist/
 
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # VS Code
 .vscode/
