@@ -104,6 +104,13 @@ from app.services.user_settings_service import (
     get_or_create_user_settings,
     replace_user_settings,
 )
+from app.services.workspace_settings_service import (
+    WorkspaceSettingsNotFoundError,
+    WorkspaceSettingsPermissionError,
+    WorkspaceSettingsValidationError,
+    get_or_create_workspace_settings,
+    replace_workspace_settings,
+)
 
 __all__ = [
     "CategoryNameConflictError",
@@ -185,4 +192,9 @@ __all__ = [
     "UserSettingsValidationError",
     "get_or_create_user_settings",
     "replace_user_settings",
+    "WorkspaceSettingsNotFoundError",
+    "WorkspaceSettingsPermissionError",
+    "WorkspaceSettingsValidationError",
+    "get_or_create_workspace_settings",
+    "replace_workspace_settings",
 ]

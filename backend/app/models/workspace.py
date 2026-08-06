@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.task import Task
     from app.models.task_series import TaskSeries
     from app.models.workspace_member import WorkspaceMember
+    from app.models.workspace_settings import WorkspaceSettings
 
 
 class Workspace(BaseEntity):
@@ -67,4 +68,9 @@ class Workspace(BaseEntity):
 
     daily_form_submissions: Mapped[list["DailyFormSubmission"]] = relationship(
         "DailyFormSubmission", back_populates="workspace",
+    )
+
+    settings: Mapped["WorkspaceSettings | None"] = relationship(
+        "WorkspaceSettings", back_populates="workspace", uselist=False,
+        cascade="all, delete-orphan", single_parent=True,
     )

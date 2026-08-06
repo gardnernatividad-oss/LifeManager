@@ -7,3 +7,4 @@ from app.models.user import User
 from app.models.user_settings import UserSettings, WeekStartsOn
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
+from app.models.workspace_settings import WorkspaceSettings

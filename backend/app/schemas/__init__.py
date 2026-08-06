@@ -22,6 +22,7 @@ from app.schemas.task_series import TaskSeriesCreate, TaskSeriesListResponse, Ta
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.user_settings import UserSettingsRead, UserSettingsReplace, WeekStartsOn
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
+from app.schemas.workspace_settings import WorkspaceSettingsRead, WorkspaceSettingsReplace
 
 __all__ = [
     "LoginRequest",
@@ -68,4 +69,6 @@ __all__ = [
     "WorkspaceCreate",
     "WorkspaceRead",
     "WorkspaceUpdate",
+    "WorkspaceSettingsRead",
+    "WorkspaceSettingsReplace",
 ]
