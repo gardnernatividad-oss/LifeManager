@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
 
 import { getDailyFormDefinition, getDailyFormSubmission, putDailyFormSubmission } from "../../api/dailyFormApi";
-import { evaluateDailyWorkflow, getWorkspaceSettings } from "../../api/dailyWorkflowApi";
+import { evaluateDailyWorkflow } from "../../api/dailyWorkflowApi";
 import { queryKeys } from "../../api/queryKeys";
+import { getWorkspaceSettings } from "../../api/workspaceSettingsApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useWorkspaces } from "../../hooks/useWorkspaces";
 import type { DailyFormDefinition, DailyFormSubmission, DailyFormSubmissionPayload } from "../../types/dailyForm";

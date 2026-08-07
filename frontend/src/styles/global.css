@@ -1068,6 +1068,23 @@ p {
 .historical-submission dd { margin: 0.2rem 0 0; }
 .workflow-empty { padding: 1.5rem; border: 1px dashed var(--color-border); border-radius: 0.75rem; text-align: center; }
 .workflow-skeleton { min-height: 14rem; border-radius: 0.75rem; background: linear-gradient(90deg, var(--color-background), var(--color-surface), var(--color-background)); background-size: 200% 100%; animation: task-shimmer 1.2s infinite; }
+.settings-page { display: grid; gap: 1.25rem; }
+.settings-header h1 { margin: 0.15rem 0; }
+.settings-panel { max-width: 58rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.settings-panel > h2 { margin-top: 0; }
+.settings-form { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.settings-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+.settings-form input, .settings-form select { min-height: 2.7rem; padding: 0.65rem 0.75rem; border: 1px solid var(--color-border); border-radius: 0.5rem; color: var(--color-text); background: var(--color-surface); }
+.settings-form small, .settings-helper { color: var(--color-muted); }
+.settings-toggles { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; margin: 0; padding: 1rem; border: 1px solid var(--color-border); border-radius: 0.6rem; }
+div.settings-toggles { border: 0; padding: 0; }
+.settings-toggles legend { padding: 0 0.35rem; font-weight: 700; }
+.settings-toggles label { display: flex; align-items: center; gap: 0.45rem; min-height: 2.6rem; }
+.settings-toggles input { min-height: auto; }
+.settings-readonly-fieldset { display: grid; gap: 1rem; margin: 0; padding: 0; border: 0; }
+.settings-readonly-fieldset:disabled { opacity: 0.72; }
+.settings-empty { padding: 1.25rem; border: 1px dashed var(--color-border); border-radius: 0.6rem; text-align: center; }
+.settings-skeleton { min-height: 8rem; border-radius: 0.6rem; background: linear-gradient(90deg, var(--color-background), var(--color-surface), var(--color-background)); background-size: 200% 100%; animation: task-shimmer 1.2s infinite; }
 
 @media (max-width: 64rem) { .task-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .task-card { flex-direction: column; } .task-actions { justify-content: flex-start; } }
 @media (max-width: 64rem) { .series-card { grid-template-columns: 1fr; } .series-actions { justify-content: flex-start; max-width: none; } }
@@ -1166,6 +1183,8 @@ p {
   .workflow-summary-grid { grid-template-columns: 1fr; }
   .workflow-date-controls button, .workflow-date-controls label { flex: 1 1 7rem; }
   .workflow-date-controls input { width: 100%; }
+  .settings-field-grid { grid-template-columns: 1fr; }
+  .settings-form .primary-button { width: 100%; }
 
   .project-list {
     grid-template-columns: 1fr;

@@ -22,15 +22,3 @@ export interface DailyWorkflow {
   task_generation: DailyTaskGeneration;
   evaluated_at: string;
 }
-
-export interface WorkspaceSettings {
-  id: string;
-  workspace_id: string;
-  timezone: string;
-  daily_form_enabled: boolean;
-  daily_form_reminder_time: string;
-  daily_task_generation_enabled: boolean;
-  week_starts_on: string;
-  created_at: string;
-  updated_at: string;
-}
