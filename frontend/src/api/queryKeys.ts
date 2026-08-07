@@ -11,5 +11,9 @@ export const queryKeys = {
   tasks: (workspaceId: string, filters: object) => ["tasks", workspaceId, filters] as const,
   tasksForWorkspace: (workspaceId: string) => ["tasks", workspaceId] as const,
   taskSeries: (workspaceId: string, active: boolean | null) => ["task-series", workspaceId, active] as const,
-  taskSeriesForWorkspace: (workspaceId: string) => ["task-series", workspaceId] as const
+  taskSeriesForWorkspace: (workspaceId: string) => ["task-series", workspaceId] as const,
+  workspaceSettings: (workspaceId: string) => ["workspace-settings", workspaceId] as const,
+  dailyWorkflow: (workspaceId: string, date: string) => ["daily-workflow", workspaceId, date] as const,
+  dailyFormDefinition: (workspaceId: string) => ["daily-form", "definition", workspaceId] as const,
+  dailyFormSubmission: (workspaceId: string, date: string) => ["daily-form", "submission", workspaceId, date] as const
 };
