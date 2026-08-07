@@ -3,6 +3,8 @@ export const queryKeys = {
   userSettings: ["user-settings"] as const,
   dashboardSummary: (workspaceId: string) => ["dashboard", "summary", workspaceId] as const,
   dashboardStatistics: (workspaceId: string) => ["dashboard", "statistics", workspaceId] as const,
+  reportTaskCounts: (workspaceId: string, scheduledFrom: string, scheduledTo: string) =>
+    ["reports", "task-counts", workspaceId, scheduledFrom, scheduledTo] as const,
   categories: (workspaceId: string, active: boolean | null) =>
     ["categories", workspaceId, active] as const,
   categoriesForWorkspace: (workspaceId: string) => ["categories", workspaceId] as const,

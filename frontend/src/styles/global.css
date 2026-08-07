@@ -1085,6 +1085,29 @@ div.settings-toggles { border: 0; padding: 0; }
 .settings-readonly-fieldset:disabled { opacity: 0.72; }
 .settings-empty { padding: 1.25rem; border: 1px dashed var(--color-border); border-radius: 0.6rem; text-align: center; }
 .settings-skeleton { min-height: 8rem; border-radius: 0.6rem; background: linear-gradient(90deg, var(--color-background), var(--color-surface), var(--color-background)); background-size: 200% 100%; animation: task-shimmer 1.2s infinite; }
+.reports-page { display: grid; gap: 1.25rem; }
+.reports-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.reports-header h1 { margin: 0.15rem 0; }
+.report-section { padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.report-section h2 { margin: 0 0 0.35rem; }
+.report-section > p, .report-section-heading p { margin-top: 0; color: var(--color-muted); }
+.report-completion { display: grid; grid-template-columns: minmax(12rem, 0.7fr) minmax(18rem, 1.3fr); gap: 1.25rem; margin-top: 1rem; }
+.report-metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+.report-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.report-section-heading > strong { white-space: nowrap; color: var(--color-primary); }
+.report-period-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+.report-period-controls label { display: grid; gap: 0.35rem; color: var(--color-muted); font-size: 0.85rem; font-weight: 700; }
+.report-period-controls input, .report-period-controls select { min-height: 2.7rem; padding: 0.65rem 0.75rem; border: 1px solid var(--color-border); border-radius: 0.5rem; color: var(--color-text); background: var(--color-surface); }
+.report-period-results { display: grid; gap: 1rem; }
+.report-links { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; }
+.report-links a { color: var(--color-primary); font-weight: 700; }
+.report-error { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: 1rem; border: 1px solid #f3b7b1; border-radius: 0.6rem; color: #8f1d14; background: #fff1f0; }
+.report-error p { margin: 0; }
+.report-empty { padding: 1.5rem; border: 1px dashed var(--color-border); border-radius: 0.65rem; text-align: center; }
+.report-empty h2, .report-empty h3 { margin-top: 0; }
+.report-empty .secondary-button { display: inline-block; text-decoration: none; }
+.report-skeleton { min-height: 8rem; margin-top: 1rem; border-radius: 0.65rem; background: linear-gradient(90deg, var(--color-background), var(--color-surface), var(--color-background)); background-size: 200% 100%; animation: task-shimmer 1.2s infinite; }
+.report-period-help { margin-top: 1rem !important; }
 
 @media (max-width: 64rem) { .task-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .task-card { flex-direction: column; } .task-actions { justify-content: flex-start; } }
 @media (max-width: 64rem) { .series-card { grid-template-columns: 1fr; } .series-actions { justify-content: flex-start; max-width: none; } }
@@ -1185,6 +1208,10 @@ div.settings-toggles { border: 0; padding: 0; }
   .workflow-date-controls input { width: 100%; }
   .settings-field-grid { grid-template-columns: 1fr; }
   .settings-form .primary-button { width: 100%; }
+  .reports-header, .report-section-heading { align-items: stretch; flex-direction: column; }
+  .report-completion { grid-template-columns: 1fr; }
+  .report-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-section-heading > strong { white-space: normal; }
 
   .project-list {
     grid-template-columns: 1fr;
@@ -1211,7 +1238,8 @@ div.settings-toggles { border: 0; padding: 0; }
 
   .dashboard-metrics,
   .statistics-grid,
-  .quick-links {
+  .quick-links,
+  .report-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

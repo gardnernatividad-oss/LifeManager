@@ -1,0 +1,46 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useMemo, useState, type PropsWithChildren } from "react";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import * as dashboardApi from "../../api/dashboardApi";
+import * as reportApi from "../../api/reportApi";
+import { useAuth } from "../../hooks/useAuth";
+import { AuthContext, type AuthState } from "../../store/auth-context";
+import { testUser } from "../../test/testUser";
+import type { WorkspaceSummary } from "../../types/auth";
+import type { DashboardStatistics, DashboardSummary } from "../../types/dashboard";
+import type { ReportTaskCounts } from "../../types/report";
+import { ReportsPage } from "./ReportsPage";
+
+vi.mock("../../api/dashboardApi", () => ({ getDashboardSummary: vi.fn(), getDashboardStatistics: vi.fn() }));
+vi.mock("../../api/reportApi", () => ({ getReportTaskCounts: vi.fn() }));
+
+const workspace: WorkspaceSummary = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Personal", description: null, timezone: "America/Lima", created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" };
+const otherWorkspace: WorkspaceSummary = { ...workspace, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Trabajo", timezone: "Europe/Madrid" };
+const summary: DashboardSummary = { pending_tasks: 4, scheduled_tasks: 6, completed_tasks: 8, not_completed_tasks: 2, cancelled_tasks: 1, total_tasks: 21, tasks_due_today: 3, tasks_due_next_7_days: 5, overdue_tasks: 2 };
+const statistics: DashboardStatistics = { completion_rate: 72.73, completed_tasks: 8, not_completed_tasks: 2, cancelled_tasks: 1, resolved_tasks: 11, pending_tasks: 4, scheduled_tasks: 6 };
+const counts: ReportTaskCounts = { total: 10, completed: 5, notCompleted: 2, cancelled: 1, unresolved: 2 };
+
+function Auth({ children, initial = workspace }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) { const [selected, setWorkspace] = useState(initial); const value = useMemo<AuthState>(() => ({ accessToken: "token", user: testUser, workspace: selected, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace, clearSession: vi.fn() }), [selected]); return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>; }
+function Switcher() { const { setWorkspace } = useAuth(); return <button onClick={() => setWorkspace(otherWorkspace)}>Cambiar espacio</button>; }
+function renderPage(initial: WorkspaceSummary | null = workspace, switcher = false) { const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }); render(<QueryClientProvider client={client}><Auth initial={initial}><MemoryRouter>{switcher && <Switcher />}<ReportsPage /></MemoryRouter></Auth></QueryClientProvider>); return client; }
+
+describe("ReportsPage", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue(summary); vi.mocked(dashboardApi.getDashboardStatistics).mockResolvedValue(statistics); vi.mocked(reportApi.getReportTaskCounts).mockResolvedValue(counts); });
+
+  it("loads the selected Workspace and renders real summary and statistics", async () => { renderPage(); expect(await screen.findByText("72.73%")).toBeInTheDocument(); expect(screen.getByRole("progressbar", { name: "Tasa de cumplimiento" })).toHaveAttribute("aria-valuenow", "72.73"); const current = screen.getByRole("heading", { name: "Estado actual" }).closest("section")!; expect(within(current).getByText("21")).toBeInTheDocument(); expect(dashboardApi.getDashboardSummary).toHaveBeenCalledWith(workspace.id); });
+  it("does not make report calls without a selected Workspace", () => { renderPage(null); expect(screen.getByText("Selecciona un espacio de trabajo")).toBeInTheDocument(); expect(dashboardApi.getDashboardSummary).not.toHaveBeenCalled(); expect(reportApi.getReportTaskCounts).not.toHaveBeenCalled(); });
+  it("isolates all report queries when the Workspace changes", async () => { const user = userEvent.setup(); renderPage(workspace, true); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(workspace.id, expect.any(String), expect.any(String))); await user.click(screen.getByRole("button", { name: "Cambiar espacio" })); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(otherWorkspace.id, expect.any(String), expect.any(String))); expect(dashboardApi.getDashboardStatistics).toHaveBeenCalledWith(otherWorkspace.id); });
+  it("uses stable loading states instead of rendering zeros", () => { vi.mocked(dashboardApi.getDashboardSummary).mockReturnValue(new Promise(() => undefined)); vi.mocked(dashboardApi.getDashboardStatistics).mockReturnValue(new Promise(() => undefined)); vi.mocked(reportApi.getReportTaskCounts).mockReturnValue(new Promise(() => undefined)); renderPage(); expect(screen.getByRole("status", { name: "Cargando resumen de cumplimiento" })).toBeInTheDocument(); expect(screen.getByRole("status", { name: "Cargando estado actual" })).toBeInTheDocument(); expect(screen.queryByText("0")).not.toBeInTheDocument(); });
+  it("keeps successful sections visible after a partial API failure", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockRejectedValue(new Error("offline")); renderPage(); expect(await screen.findByText("No pudimos cargar el estado actual de las tareas.")).toBeInTheDocument(); expect(screen.getByText("72.73%")).toBeInTheDocument(); expect(await screen.findByText("Tareas programadas", { selector: "span" })).toBeInTheDocument(); });
+  it("offers section retries after a full report failure", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(summary); vi.mocked(dashboardApi.getDashboardStatistics).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(statistics); vi.mocked(reportApi.getReportTaskCounts).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(counts); const user = userEvent.setup(); renderPage(); expect((await screen.findAllByRole("button", { name: "Reintentar" }))).toHaveLength(3); for (const button of screen.getAllByRole("button", { name: "Reintentar" })) await user.click(button); expect(await screen.findByText("72.73%")).toBeInTheDocument(); expect(await screen.findByText("21")).toBeInTheDocument(); });
+  it("shows useful empty states for an empty Workspace and period", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue({ ...summary, total_tasks: 0 }); vi.mocked(reportApi.getReportTaskCounts).mockResolvedValue({ total: 0, completed: 0, notCompleted: 0, cancelled: 0, unresolved: 0 }); renderPage(); expect(await screen.findByText("Este espacio todavía no tiene tareas")).toBeInTheDocument(); expect(await screen.findByText("No hay tareas programadas en este período")).toBeInTheDocument(); });
+  it("labels period metrics by scheduled date rather than resolution date", async () => { renderPage(); expect(screen.getByText(/se filtran por la fecha programada/)).toBeInTheDocument(); await screen.findByRole("link", { name: "Ver todas las tareas programadas" }); expect(screen.getByText("Tareas programadas", { selector: "span" })).toBeInTheDocument(); expect(screen.queryByText(/completadas durante/i)).not.toBeInTheDocument(); });
+  it("explains that unresolved means Tasks without a terminal outcome", async () => { renderPage(); await screen.findByRole("link", { name: "Ver todas las tareas programadas" }); expect(screen.getByText("Sin resultado terminal")).toBeInTheDocument(); expect(screen.getByText(/reúne las tareas pendientes y programadas/)).toBeInTheDocument(); });
+  it("supports custom periods and sends timezone-aware scheduled boundaries", async () => { const user = userEvent.setup(); renderPage(); await user.selectOptions(screen.getByLabelText("Período"), "custom"); expect(screen.getByText("Selecciona un rango válido para consultar las tareas programadas.")).toBeInTheDocument(); await user.type(screen.getByLabelText("Desde"), "2026-08-01"); await user.type(screen.getByLabelText("Hasta"), "2026-08-03"); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(workspace.id, "2026-08-01T05:00:00.000Z", "2026-08-04T04:59:59.999Z")); });
+  it("provides valid Tasks deep links for the selected period", async () => { renderPage(); const link = await screen.findByRole("link", { name: "Ver no realizadas" }); expect(link.getAttribute("href")).toContain("/tasks?"); expect(link.getAttribute("href")).toContain("outcome=not_completed"); expect(link.getAttribute("href")).toContain("scheduled_from="); expect(link.getAttribute("href")).toContain("scheduled_to="); });
+  it("manually refreshes only the current report queries", async () => { const user = userEvent.setup(); renderPage(); await screen.findByText("72.73%"); await user.click(screen.getByRole("button", { name: "Actualizar reportes" })); await waitFor(() => expect(dashboardApi.getDashboardSummary).toHaveBeenCalledTimes(2)); expect(dashboardApi.getDashboardStatistics).toHaveBeenCalledTimes(2); expect(reportApi.getReportTaskCounts).toHaveBeenCalledTimes(2); });
+});
