@@ -5,13 +5,13 @@ import { useAuth } from "../../hooks/useAuth";
 
 const navigation = [
   ["Dashboard", "/dashboard", "⌂"],
-  ["Tasks", "/tasks", "✓"],
-  ["Recurring Tasks", "/tasks/recurring", "↻"],
-  ["Projects", "/projects", "▣"],
-  ["Daily Workflow", "/daily-workflow", "☀"],
-  ["Categories", "/settings/categories", "◇"],
-  ["Settings", "/settings", "⚙"],
-  ["Reports", "/reports", "▥"]
+  ["Tareas", "/tasks", "✓"],
+  ["Tareas recurrentes", "/tasks/recurring", "↻"],
+  ["Proyectos", "/projects", "▣"],
+  ["Seguimiento diario", "/daily-workflow", "☀"],
+  ["Categorías", "/settings/categories", "◇"],
+  ["Configuración", "/settings", "⚙"],
+  ["Reportes", "/reports", "▥"]
 ] as const;
 
 interface SidebarProps {

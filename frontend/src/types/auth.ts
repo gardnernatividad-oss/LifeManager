@@ -12,6 +12,10 @@ export interface AuthenticatedUser {
 export interface WorkspaceSummary {
   id: string;
   name: string;
+  description: string | null;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LoginCredentials {
