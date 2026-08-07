@@ -977,6 +977,45 @@ p {
   }
 }
 
+.tasks-page { display: grid; gap: 1.25rem; }
+.tasks-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.tasks-header h1 { margin: 0.15rem 0; }
+.task-toolbar { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.task-search { display: grid; gap: 0.35rem; }
+.task-search > div { display: flex; gap: 0.5rem; }
+.task-search input { flex: 1; min-width: 0; }
+.task-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+.task-filter-grid label { display: grid; gap: 0.35rem; color: var(--color-muted); font-size: 0.85rem; font-weight: 650; }
+.task-toolbar input, .task-toolbar select, .task-dialog input, .task-dialog select, .task-dialog textarea, .task-pagination select { min-height: 2.6rem; padding: 0.6rem 0.7rem; border: 1px solid var(--color-border); border-radius: 0.5rem; color: var(--color-text); background: var(--color-surface); }
+.task-dialog { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; padding: 1.5rem; border-radius: 0.75rem; background: var(--color-surface); box-shadow: 0 1.5rem 4rem rgb(23 33 30 / 28%); }
+.task-dialog form, .task-dialog .form-field { display: grid; gap: 0.65rem; }
+.task-dialog form { gap: 1rem; }
+.task-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.task-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.task-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.task-card__main { min-width: 0; flex: 1; }
+.task-card__heading { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; }
+.task-card__heading h2 { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.task-status, .task-recurring { padding: 0.25rem 0.5rem; border-radius: 999px; background: var(--color-background); font-size: 0.78rem; font-weight: 700; }
+.task-status--pending { color: #9a6700; background: #fff8c5; }
+.task-status--completed { color: #176b46; background: #dafbe1; }
+.task-status--not_completed, .task-status--cancelled { color: #8f1d14; background: #fff1f0; }
+.task-recurring { color: var(--color-primary); }
+.task-metadata { display: flex; flex-wrap: wrap; gap: 0.8rem 1.5rem; margin: 0.75rem 0 0; }
+.task-metadata div { display: grid; gap: 0.15rem; }
+.task-metadata dt { color: var(--color-muted); font-size: 0.75rem; }
+.task-metadata dd { margin: 0; font-size: 0.9rem; }
+.task-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.45rem; }
+.task-immutable { color: var(--color-muted); font-size: 0.85rem; }
+.task-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.task-pagination > div { display: flex; gap: 0.5rem; }
+.tasks-empty { padding: 2rem; border: 1px dashed var(--color-border); border-radius: 0.75rem; text-align: center; }
+.task-list-skeleton { min-height: 13rem; border-radius: 0.75rem; background: linear-gradient(90deg, var(--color-background), var(--color-surface), var(--color-background)); background-size: 200% 100%; animation: task-shimmer 1.2s infinite; }
+@keyframes task-shimmer { to { background-position: -200% 0; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 64rem) { .task-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .task-card { flex-direction: column; } .task-actions { justify-content: flex-start; } }
+
 @media (max-width: 48rem) {
   .app-layout__main {
     margin-left: 0;
@@ -1056,6 +1095,12 @@ p {
   .projects-create {
     width: 100%;
   }
+
+  .tasks-header, .task-pagination { align-items: stretch; flex-direction: column; }
+  .tasks-header .primary-button { width: 100%; }
+  .task-filter-grid, .task-form-grid { grid-template-columns: 1fr; }
+  .task-actions { width: 100%; }
+  .task-actions button { flex: 1 1 8rem; }
 
   .project-list {
     grid-template-columns: 1fr;
