@@ -478,6 +478,183 @@ p {
   gap: 1rem;
 }
 
+.categories-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.categories-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.categories-header h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+}
+
+.categories-header > div > p:last-child {
+  color: var(--color-muted);
+}
+
+.categories-create {
+  min-width: 10rem;
+  padding: 0.65rem 1rem;
+}
+
+.category-filters {
+  padding: 0.3rem;
+  display: inline-flex;
+  justify-self: start;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  background: var(--color-surface);
+}
+
+.filter-button {
+  min-height: 2.4rem;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 0.45rem;
+  color: var(--color-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.filter-button--active {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-weight: 750;
+}
+
+.filter-button:focus-visible,
+.category-actions button:focus-visible {
+  outline: 3px solid rgb(36 92 79 / 25%);
+  outline-offset: 2px;
+}
+
+.category-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.category-card {
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.7rem;
+  background: var(--color-surface);
+}
+
+.category-card > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.category-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.status-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  color: #665d50;
+  background: #eeeae3;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-badge--active {
+  color: #1d664c;
+  background: #e1f1ea;
+}
+
+.category-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.category-list-skeleton {
+  min-height: 14rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(90deg, #e8ece9 25%, #f4f6f4 50%, #e8ece9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.categories-empty {
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.categories-empty h1,
+.categories-empty h2 {
+  margin-bottom: 0.6rem;
+}
+
+.categories-empty p {
+  color: var(--color-muted);
+}
+
+.success-notice {
+  padding: 0.75rem 1rem;
+  border: 1px solid #a9d4c2;
+  border-radius: 0.55rem;
+  color: #1d664c;
+  background: #eff9f4;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  padding: 1rem;
+  display: grid;
+  place-items: center;
+  background: rgb(23 33 30 / 55%);
+}
+
+.category-dialog {
+  width: min(100%, 30rem);
+  padding: clamp(1.25rem, 5vw, 2rem);
+  border-radius: 0.85rem;
+  background: var(--color-surface);
+  box-shadow: 0 1.5rem 4rem rgb(23 33 30 / 25%);
+}
+
+.category-dialog h2 {
+  margin-bottom: 1.5rem;
+}
+
+.category-dialog form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.dialog-actions .primary-button {
+  padding: 0.6rem 1rem;
+}
+
 .skeleton-block {
   overflow: hidden;
   border-radius: 0.65rem;
@@ -713,6 +890,21 @@ p {
     gap: 1rem;
   }
 
+  .categories-header,
+  .category-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .categories-create {
+    width: 100%;
+  }
+
+  .category-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard-refresh {
     width: 100%;
     justify-items: stretch;
@@ -758,5 +950,20 @@ p {
   .dashboard-error {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .category-filters,
+  .category-actions,
+  .dialog-actions {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .category-filters {
+    display: grid;
+  }
+
+  .dialog-actions {
+    display: grid;
   }
 }

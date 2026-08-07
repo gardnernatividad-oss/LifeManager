@@ -4,11 +4,13 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuth } from "../hooks/useAuth";
+import { useWorkspaces } from "../hooks/useWorkspaces";
 import type { AuthState } from "../store/auth-context";
 import { testUser } from "../test/testUser";
 import { AuthenticatedLayout } from "./AuthenticatedLayout";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
+vi.mock("../hooks/useWorkspaces", () => ({ useWorkspaces: vi.fn() }));
 
 function setMobileViewport(matches: boolean) {
   window.matchMedia = vi.fn().mockImplementation(() => ({
@@ -56,6 +58,11 @@ describe("AuthenticatedLayout", () => {
   beforeEach(() => {
     setMobileViewport(false);
     vi.mocked(useAuth).mockReturnValue(authenticatedState());
+    vi.mocked(useWorkspaces).mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false
+    } as unknown as ReturnType<typeof useWorkspaces>);
   });
 
   it("renders the application shell and protected route outlet", () => {
@@ -64,14 +71,14 @@ describe("AuthenticatedLayout", () => {
     expect(screen.getByRole("navigation", { name: "Secciones de LifeManager" })).toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Dashboard content" })).toBeInTheDocument();
-    expect(screen.getByText("Personal")).toBeInTheDocument();
+    expect(screen.getByText("Sin espacio")).toBeInTheDocument();
   });
 
   it("highlights only the active navigation item", () => {
     renderLayout("/tasks/recurring");
 
-    expect(screen.getByRole("link", { name: "Recurring Tasks" })).toHaveClass("sidebar__link--active");
-    expect(screen.getByRole("link", { name: "Tasks" })).not.toHaveClass("sidebar__link--active");
+    expect(screen.getByRole("link", { name: "Tareas recurrentes" })).toHaveClass("sidebar__link--active");
+    expect(screen.getByRole("link", { name: "Tareas" })).not.toHaveClass("sidebar__link--active");
   });
 
   it("renders the current user's full name and email", () => {
