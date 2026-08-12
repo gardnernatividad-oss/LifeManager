@@ -139,8 +139,8 @@ class ApiDependencyTests(unittest.TestCase):
                 email="ada@example.com",
                 password="plain-secret",
             )
-            self.assertEqual(client.post("/auth/register", json={}).status_code, 422)
-            self.assertEqual(client.get("/api/v1/workspaces").status_code, 401)
+            self.assertEqual(client.post("/auth/register", json={}).status_code, 404)
+            self.assertEqual(client.get("/api/v1/workspaces").status_code, 404)
         finally:
             client.close()
             app.dependency_overrides.clear()

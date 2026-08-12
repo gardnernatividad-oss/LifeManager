@@ -272,16 +272,8 @@ Las tres últimas son decisiones técnicas conservadoras de integridad ante sile
 - Actor IDs: `created_by_id` en recursos operativos y `resolved_by_id` en Task; no `updated_by` general sin auditoría histórica.
 - Zona horaria: solo `User.timezone` en V1. Una futura zona operativa de Workspace podrá añadirse en V2 sin cambiar las fechas de negocio ya persistidas.
 
-## 15. Compatibilidad de alto nivel
+## 15. Transición de esquema
 
-Una etapa posterior deberá auditar y migrar, sin scripts todavía:
+Todo contenido anterior al refactor aprobado es dato descartable de desarrollo/prueba. No se realizan backfills ni compatibilidad de registros legados. Stage 4 implementa el objetivo mediante revisiones nuevas: un reset controlado del esquema de aplicación y la creación directa del dominio V1.
 
-- Category heredada con descripción/activación hacia el maestro inmutable;
-- Project heredado sin Pasos hacia Project/ProjectStep;
-- Task heredada con título, hora, asociaciones y resultados antiguos hacia MasterTask + Task fechada;
-- motor de series recurrentes heredado hacia ocurrencias independientes;
-- Daily Form/Workflow hacia Revisión y metadatos operativos;
-- settings actuales hacia Perfil + zona horaria;
-- selección/múltiples Workspaces hacia experiencia Personal sin eliminar la base técnica futura.
-
-Ninguna migración anterior de Alembic se editará. El audit detallado, mapeo de datos, backfills, fase compatible y rollback pertenecen a la siguiente etapa.
+Ninguna migración histórica de Alembic se edita o elimina. La cadena completa debe producir este modelo tanto desde una base vacía como al avanzar desde el head legado. El reset destructivo exige una base local de desarrollo/prueba identificada explícitamente y nunca afecta infraestructura PostgreSQL ajena a LifeManager.

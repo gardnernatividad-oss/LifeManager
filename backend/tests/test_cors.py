@@ -30,8 +30,6 @@ class CorsTests(unittest.TestCase):
             hashed_password="hashed-secret",
             first_name="Ada",
             last_name="Lovelace",
-            username=uuid.uuid4().hex,
-            full_name="Ada Lovelace",
             is_active=True,
             is_verified=False,
             created_at=timestamp,

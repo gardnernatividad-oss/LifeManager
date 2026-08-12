@@ -67,14 +67,14 @@ empty database
 
 The new revision(s) must use explicit object names and dependency-aware drop order. They may delete LifeManager application data and obsolete schema objects, but must not drop the PostgreSQL database, unrelated schemas/extensions, roles, or infrastructure outside the application-owned objects.
 
-### 3.3 Migration packaging
+### 3.3 Migration packaging selected in Stage 4
 
-Before Stage 4 implementation, choose packaging based on reviewability:
+Stage 4 uses two revisions for reviewability:
 
-- Prefer one **domain reset** revision for obsolete tables/columns/enums and retained-table reshaping, followed by one **target domain creation** revision if a single revision would be difficult to review or round-trip.
-- A single revision is acceptable only if upgrade/downgrade behavior stays understandable and testable.
-- Authentication tables may be structurally retained and reshaped; their rows remain disposable.
-- Every historical revision remains present and byte-for-byte unchanged.
+1. `c2d3e4f5a6b7` resets explicitly named legacy application tables/types and recreates the User/Workspace/membership/tracking-metadata foundation.
+2. `d3e4f5a6b7c8` creates the approved target business-domain tables and has a meaningful domain-only downgrade.
+
+The destructive reset requires `LIFEMANAGER_ALLOW_DESTRUCTIVE_SCHEMA_RESET=1`, a local PostgreSQL server address, and a database named `lifemanager` or prefixed `lifemanager_stage4_`. Its downgrade deliberately refuses to imply that discarded legacy rows can be reconstructed. Every historical revision remains present and unchanged.
 
 ## 4. Current-to-target schema disposition
 

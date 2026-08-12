@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, String, text
@@ -7,70 +10,48 @@ from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
     from app.models.category import Category
-    from app.models.daily_form import DailyFormDefinition, DailyFormSubmission
+    from app.models.master_task import MasterTask
+    from app.models.pending_item import PendingItem
     from app.models.project import Project
     from app.models.task import Task
-    from app.models.task_series import TaskSeries
     from app.models.workspace_member import WorkspaceMember
-    from app.models.workspace_settings import WorkspaceSettings
+    from app.models.workspace_tracking_metadata import WorkspaceTrackingMetadata
+
+
+class WorkspaceKind(str, enum.Enum):
+    PERSONAL = "PERSONAL"
+    COLLABORATIVE = "COLLABORATIVE"
 
 
 class Workspace(BaseEntity):
     __tablename__ = "workspaces"
     __table_args__ = (
-        CheckConstraint("length(btrim(timezone)) > 0", name="ck_workspaces_timezone_not_blank"),
+        CheckConstraint("length(btrim(name)) > 0", name="ck_workspaces_name_not_blank"),
+        CheckConstraint(
+            "kind IN ('PERSONAL', 'COLLABORATIVE')", name="ck_workspaces_kind_valid"
+        ),
     )
 
-    name: Mapped[str] = mapped_column(
-        String(150),
-        nullable=False,
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    kind: Mapped[WorkspaceKind] = mapped_column(
+        String(20), default=WorkspaceKind.PERSONAL, server_default=text("'PERSONAL'"), nullable=False
     )
 
-    description: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
-    )
-
-    members: Mapped[list["WorkspaceMember"]] = relationship(
-        "WorkspaceMember",
-        back_populates="workspace",
-    )
-
-    timezone: Mapped[str] = mapped_column(
-        String(100), default="America/Lima", server_default=text("'America/Lima'"), nullable=False,
-    )
-
-    tasks: Mapped[list["Task"]] = relationship(
-        "Task",
-        back_populates="workspace",
-    )
-
-    categories: Mapped[list["Category"]] = relationship(
-        "Category",
-        back_populates="workspace",
-    )
-
-    projects: Mapped[list["Project"]] = relationship(
-        "Project",
-        back_populates="workspace",
-    )
-
-    task_series: Mapped[list["TaskSeries"]] = relationship(
-        "TaskSeries",
-        back_populates="workspace",
-    )
-
-    daily_form_definition: Mapped["DailyFormDefinition | None"] = relationship(
-        "DailyFormDefinition",
-        back_populates="workspace",
-        uselist=False,
-    )
-
-    daily_form_submissions: Mapped[list["DailyFormSubmission"]] = relationship(
-        "DailyFormSubmission", back_populates="workspace",
-    )
-
-    settings: Mapped["WorkspaceSettings | None"] = relationship(
-        "WorkspaceSettings", back_populates="workspace", uselist=False,
+    members: Mapped[list[WorkspaceMember]] = relationship("WorkspaceMember", back_populates="workspace")
+    tracking_metadata: Mapped[WorkspaceTrackingMetadata | None] = relationship(
+        "WorkspaceTrackingMetadata", back_populates="workspace", uselist=False,
         cascade="all, delete-orphan", single_parent=True,
+    )
+    categories: Mapped[list[Category]] = relationship("Category", back_populates="workspace")
+    master_tasks: Mapped[list[MasterTask]] = relationship(
+        "MasterTask", back_populates="workspace", overlaps="category,master_tasks"
+    )
+    tasks: Mapped[list[Task]] = relationship(
+        "Task", back_populates="workspace", overlaps="master_task,tasks"
+    )
+    pending_items: Mapped[list[PendingItem]] = relationship(
+        "PendingItem", back_populates="workspace", overlaps="category,pending_items"
+    )
+    projects: Mapped[list[Project]] = relationship(
+        "Project", back_populates="workspace", overlaps="category,projects"
     )
