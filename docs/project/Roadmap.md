@@ -13,7 +13,7 @@ La infraestructura, autenticación, modelos base, APIs y frontend PWA existen. L
 1. **Auditoría y transición de datos**
    - inventariar datos existentes;
    - diseñar Tarea maestra, nueva Tarea, Pendiente, Proyecto/Paso y timestamps de revisión;
-   - completar `docs/database/V1-Target-Data-Model.md`, actualmente reservado y pendiente de aprobación;
+   - usar el modelo físico aprobado en `docs/database/V1-Target-Data-Model.md` y ADR-006 como base de la auditoría;
    - definir backfills y compatibilidad;
    - crear migraciones nuevas sin editar historial.
 2. **Personal Workspace y registro**

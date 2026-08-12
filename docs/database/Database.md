@@ -482,15 +482,15 @@ La pertenencia al workspace y la autoría del recurso son conceptos diferentes.
 
 ---
 
-## 15. Próximo modelo físico de LifeManager V1
+## 15. Modelo físico objetivo de LifeManager V1
 
-El estado actual del diseño físico se documenta en:
+El modelo aprobado se documenta en:
 
 ```text
 docs/database/V1-Target-Data-Model.md
 ```
 
-El nuevo esquema todavía no ha sido aprobado. ADR-005 y `docs/requirements/Functional.md` son autoritativos para el comportamiento, pero no deben convertirse directamente en migraciones hasta definir el diccionario físico, relaciones, restricciones, backfills y estrategia de transición. El diseño reemplazado permanece únicamente en `docs/database/Legacy-V1-Target-Data-Model.md`.
+ADR-005 y `docs/requirements/Functional.md` son autoritativos para comportamiento; ADR-006 y el documento anterior definen su traducción física. El diseño reemplazado permanece únicamente en `docs/database/Legacy-V1-Target-Data-Model.md`. Antes de implementar se realizará la auditoría de compatibilidad y se diseñarán migraciones incrementales nuevas, sin editar el historial Alembic.
 
 ---
 

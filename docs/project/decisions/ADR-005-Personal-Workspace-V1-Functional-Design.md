@@ -63,4 +63,4 @@ Este ADR reemplaza ADR-004 para el alcance funcional V1 y limita ADR-003: el mod
 
 `docs/requirements/Functional.md` contiene las reglas completas y es la especificación funcional autoritativa.
 
-El modelo físico nuevo todavía no está aprobado. Su estado y las condiciones para la próxima etapa se documentan en `docs/database/V1-Target-Data-Model.md`. El archivo `docs/database/Legacy-V1-Target-Data-Model.md` es únicamente histórico y no debe orientar migraciones nuevas.
+El modelo físico fue aprobado posteriormente mediante ADR-006 y se documenta en `docs/database/V1-Target-Data-Model.md`. El archivo `docs/database/Legacy-V1-Target-Data-Model.md` es únicamente histórico y no debe orientar migraciones nuevas.
