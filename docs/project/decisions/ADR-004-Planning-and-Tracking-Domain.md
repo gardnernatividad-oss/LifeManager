@@ -2,7 +2,9 @@
 
 ## Estado
 
-Aceptado.
+Reemplazado por ADR-005.
+
+> Registro histórico: esta decisión conserva el razonamiento del diseño anterior, pero ya no define LifeManager V1. En particular, quedaron reemplazados `TaskSeries` persistente, cancelación de Tareas, Proyectos que agrupan Tareas, Daily Checklist/Daily Form como modelo de Revisión, Dashboard con accesos rápidos y Categorías dentro de Configuración.
 
 ## Fecha
 

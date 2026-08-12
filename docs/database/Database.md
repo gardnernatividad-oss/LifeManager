@@ -1,5 +1,7 @@
 # Base de datos de LifeManager
 
+> **Nota de alcance:** este documento contiene fundamentos e implementación histórica. El modelo funcional V1 fue redefinido por ADR-005 y `docs/requirements/Functional.md`. Las menciones a `TaskSeries` persistente, Proyectos que agrupan Tareas, cancelación y formularios diarios no son el nuevo objetivo y requieren revisión antes de crear migraciones.
+
 ## 1. Propósito
 
 Este documento describe el diseño general de la base de datos de LifeManager, las tecnologías utilizadas, las entidades principales y las reglas que deberán respetarse durante su desarrollo.
@@ -480,31 +482,15 @@ La pertenencia al workspace y la autoría del recurso son conceptos diferentes.
 
 ---
 
-## 15. Modelo objetivo de planificación y seguimiento de la Versión 1
+## 15. Próximo modelo físico de LifeManager V1
 
-El modelo objetivo aprobado se documenta en:
+El estado actual del diseño físico se documenta en:
 
 ```text
 docs/database/V1-Target-Data-Model.md
 ```
 
-Sus entidades de dominio serán:
-
-- `Category`;
-- `Project`;
-- `TaskSeries`;
-- `Task`;
-- `DailyChecklistSubmission`;
-- `TrackedItem`;
-- `TrackedItemProgressUpdate`.
-
-No existirán entidades separadas `TaskOccurrence`, `TaskResponse` ni `TaskTemplate` en el modelo objetivo.
-
-Toda Tarea será una ocurrencia individual. Una Tarea manual tendrá `task_series_id` nulo y una Tarea recurrente referenciará una `TaskSeries`.
-
-Toda `TaskSeries` será finita y tendrá `start_date` y `end_date` obligatorias. No se generarán ocurrencias fuera de ese rango inclusivo.
-
-Las Actividades con horas pertenecen al Calendario de la Versión 2 y quedan fuera de este modelo.
+El nuevo esquema todavía no ha sido aprobado. ADR-005 y `docs/requirements/Functional.md` son autoritativos para el comportamiento, pero no deben convertirse directamente en migraciones hasta definir el diccionario físico, relaciones, restricciones, backfills y estrategia de transición. El diseño reemplazado permanece únicamente en `docs/database/Legacy-V1-Target-Data-Model.md`.
 
 ---
 

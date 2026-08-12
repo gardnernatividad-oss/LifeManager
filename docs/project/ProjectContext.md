@@ -1,181 +1,47 @@
-# LifeManager
+# Contexto de LifeManager
 
-**Versión del proyecto:** v0.1.0
+## Producto objetivo
 
-**Estado:** En desarrollo
+LifeManager V1 es una PWA personal para planificar, revisar, seguir y analizar Tareas, Pendientes y Proyectos dentro del Personal Workspace del usuario.
 
----
+La especificación autoritativa es `docs/requirements/Functional.md`; la decisión vigente es ADR-005.
 
-# Objetivo
+## Alcance V1
 
-LifeManager es una Progressive Web App (PWA) diseñada para ayudar a personas, familias y equipos a organizar sus responsabilidades, hábitos, objetivos y proyectos desde una única plataforma.
+- Registro/login y perfil.
+- Creación automática de un único Workspace `Personal` y membresía OWNER.
+- Tablas maestras de Categorías y Tareas.
+- Planificación, Revisión, Seguimiento y Reportes separados.
+- Tareas fechadas, Pendientes porcentuales y Proyectos con Pasos ponderados.
+- Inicio operativo compacto.
+- Configuración limitada a perfil y zona horaria.
+- PWA responsive en español.
 
-El objetivo principal es convertirse en un sistema integral de gestión personal y colaborativa, priorizando simplicidad para el usuario y una arquitectura escalable para futuras funcionalidades.
+## Arquitectura técnica
 
----
+- Backend: FastAPI, SQLAlchemy 2.x, Alembic y PostgreSQL.
+- Frontend: React, TypeScript, Vite, TanStack Query, Axios, React Hook Form y Zod.
+- Autenticación mediante Bearer JWT.
+- UUID en entidades y aislamiento de recursos por `workspace_id`.
 
-# Visión
+El backend conserva una arquitectura multi-workspace capaz de evolucionar hacia V2. V1 no expone esa capacidad en la interfaz.
 
-LifeManager no será únicamente un gestor de tareas.
+## Estado actual frente al objetivo
 
-La aplicación evolucionará hasta convertirse en un ecosistema de productividad personal compuesto por módulos independientes que compartirán usuarios, espacios de trabajo, permisos, notificaciones y paneles de información.
+La aplicación existente implementa una base funcional amplia, pero refleja decisiones previas: TaskSeries persistente, Daily Form/Workflow, estados y settings ampliados, múltiples workspaces seleccionables y módulos frontend reorganizados de otra manera. Estos componentes no prueban el diseño objetivo y deberán refactorizarse incrementalmente.
 
----
+No se deben editar migraciones históricas. Los cambios de datos requieren migraciones nuevas, backfill explícito, compatibilidad temporal cuando sea necesaria y pruebas de aislamiento/historial.
 
-# Estado actual
+## Principios
 
-## Sprint actual
+- Claridad semántica antes que reutilización accidental.
+- Historial preservado.
+- Datos maestros inmutables después de uso.
+- Estados derivados cuando corresponda.
+- Separación entre Planificación, Revisión, Seguimiento y Reportes.
+- Interfaz compacta, accesible y responsive.
+- No presentar una función heredada como parte de V1 si contradice la especificación.
 
-Sprint 2
+## Fuera de alcance
 
-## Completado
-
-- Repositorio GitHub creado.
-- Backend FastAPI inicializado.
-- PostgreSQL configurado.
-- SQLAlchemy configurado.
-- Alembic configurado.
-- Modelo User implementado.
-- Modelo Workspace implementado.
-- Modelo WorkspaceMember implementado.
-- Primera migración creada correctamente.
-
-## En progreso
-
-- Refactor BaseEntity.
-- Definición de convenciones del proyecto.
-
-## Próximo objetivo
-
-Construir el núcleo colaborativo de la aplicación antes de comenzar con los módulos funcionales.
-
----
-
-# Stack tecnológico
-
-## Backend
-
-- Python
-- FastAPI
-- SQLAlchemy 2.x
-- Alembic
-
-## Base de datos
-
-- PostgreSQL
-
-## Frontend
-
-- Next.js
-- React
-- TypeScript
-
-## Control de versiones
-
-- Git
-- GitHub
-
----
-
-# Arquitectura general
-
-La arquitectura será modular.
-
-Todos los módulos compartirán el mismo sistema de autenticación, usuarios, permisos, notificaciones y espacios de trabajo.
-
-Los módulos deberán permanecer desacoplados entre sí siempre que sea posible.
-
----
-
-# Entidades principales
-
-Actualmente definidas:
-
-- User
-- Workspace
-- WorkspaceMember
-
-Próximas entidades previstas:
-
-- Category
-- TaskTemplate
-- TaskOccurrence
-- TaskResponse
-- Notification
-
-Posteriormente:
-
-- Habit
-- Goal
-- Finance
-- Calendar
-- Notes
-- Projects
-- Documents
-
----
-
-# Principios de diseño
-
-- Arquitectura modular.
-- Código limpio.
-- Convenciones consistentes.
-- UUID como clave primaria.
-- Soft Delete cuando aplique.
-- SQLAlchemy 2.x.
-- Tipado estricto.
-- Escalabilidad antes que rapidez.
-
----
-
-# Convenciones
-
-## Base de datos
-
-- UUID como Primary Key.
-- Nombres de tablas en plural.
-- snake_case.
-- Foreign Keys explícitas.
-
-## Backend
-
-- FastAPI.
-- Services separados de la API.
-- Schemas separados de Models.
-- Lógica de negocio fuera de los endpoints.
-
-## Frontend
-
-- Componentes reutilizables.
-- Separación entre UI y lógica.
-
----
-
-# Flujo de desarrollo
-
-Cada nueva funcionalidad seguirá el siguiente proceso:
-
-1. Diseño.
-2. Revisión.
-3. Implementación.
-4. Actualización de documentación.
-5. Commit.
-6. Revisión.
-
----
-
-# Gestión del proyecto
-
-Este documento es la fuente oficial del estado del proyecto.
-
-Si existe una diferencia entre una conversación y este documento, prevalecerá siempre este documento.
-
-Todas las decisiones importantes deberán reflejarse posteriormente mediante un ADR dentro de:
-
-docs/project/decisions/
-
----
-
-# Próxima revisión
-
-Actualizar este documento al finalizar cada Sprint.
+Calendario/Actividades, colaboración, invitaciones, workspaces adicionales, notificaciones, recordatorios, Notes, Goals, Finance, integraciones, administración avanzada, hábitos independientes y recurrencia perpetua.

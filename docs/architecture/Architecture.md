@@ -1,5 +1,7 @@
 # Arquitectura de LifeManager
 
+> **Alcance V1 vigente:** LifeManager expone exclusivamente el Personal Workspace creado automáticamente para cada usuario. La capacidad multi-workspace, roles y colaboración descrita en secciones históricas es arquitectura futura para V2, no funcionalidad V1. La fuente funcional autoritativa es `docs/requirements/Functional.md` y la decisión vigente es ADR-005.
+
 ## 1. Propósito
 
 Este documento describe la arquitectura general de LifeManager, sus componentes principales, responsabilidades y reglas de diseño.

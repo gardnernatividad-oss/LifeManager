@@ -2,7 +2,9 @@
 
 ## Estado
 
-Aceptado.
+Aceptado con alcance limitado por ADR-005.
+
+> La estructura técnica `Workspace`/`WorkspaceMember` y el aislamiento se conservan. ADR-005 reemplaza para V1 los flujos de múltiples workspaces, colaboración, invitaciones, selector y administración de miembros: V1 expone exactamente un Personal Workspace por usuario.
 
 ## Fecha
 
