@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Evolucionar de la implementación heredada al diseño funcional aprobado del Personal Workspace sin perder datos ni debilitar el aislamiento.
+Evolucionar de la implementación heredada al diseño funcional aprobado del Personal Workspace, descartando los datos de desarrollo/prueba y sin debilitar el aislamiento.
 
 ## Estado
 
@@ -10,18 +10,18 @@ La infraestructura, autenticación, modelos base, APIs y frontend PWA existen. L
 
 ## Secuencia recomendada
 
-1. **Auditoría y transición de datos**
-   - inventariar datos existentes;
-   - diseñar Tarea maestra, nueva Tarea, Pendiente, Proyecto/Paso y timestamps de revisión;
-   - usar el modelo físico aprobado en `docs/database/V1-Target-Data-Model.md` y ADR-006 como base de la auditoría;
-   - definir backfills y compatibilidad;
-   - crear migraciones nuevas sin editar historial.
-2. **Personal Workspace y registro**
+1. **Reset de esquema y modelos objetivo**
+   - tratar todos los registros actuales como datos descartables de desarrollo/prueba;
+   - conservar intacto el historial Alembic y añadir migraciones nuevas;
+   - validar tanto `base → head` como `head legado → head objetivo`;
+   - ejecutar las etapas y gates de `docs/project/V1-Transition-and-Migration-Plan.md`;
+   - no introducir backfills, archivos ni APIs paralelas para datos legados.
+2. **Personal Workspace, registro y zona horaria**
    - creación transaccional completa;
    - ocultar selector/flujos colaborativos en V1;
-   - perfil y selector de zona horaria.
-3. **Tablas**
-   - Categorías y Tareas maestras;
+   - perfil y selector controlado de zona horaria IANA.
+3. **Categorías y Tareas maestras**
+   - iniciar ambas tablas vacías;
    - inmutabilidad después del primer uso.
 4. **Planificación**
    - ocurrencias por fecha;
@@ -40,14 +40,15 @@ La infraestructura, autenticación, modelos base, APIs y frontend PWA existen. L
    - Inicio operativo;
    - agregaciones correctas por cada dominio;
    - reportes visuales sin mezclar edición histórica.
-8. **Retiro de compatibilidad heredada**
-   - retirar TaskSeries, Daily Form/Workflow, Reminder Engine y settings no V1 cuando los datos estén migrados;
-   - eliminar rutas/UI obsoletas solo después de validar reemplazos.
+8. **Retiro del runtime heredado y QA**
+   - retirar TaskSeries, Daily Form/Workflow, Reminder Engine y settings no V1 sin migrar sus datos descartables;
+   - eliminar rutas/UI obsoletas cuando sus etapas objetivo sean coherentes;
+   - reconstruir una base vacía mediante toda la cadena Alembic y validar el producto final.
 
 ## Criterios de finalización V1
 
 - La implementación coincide con `docs/requirements/Functional.md`.
-- Migraciones y backfills son reversibles o tienen rollback documentado.
+- La cadena Alembic completa produce el esquema objetivo desde una base vacía y documenta el alcance de los downgrades destructivos.
 - Pruebas cubren reglas, aislamiento, transiciones y batch save.
 - UI compacta y responsive validada.
 - No quedan rutas públicas que presenten conceptos explícitamente fuera de V1.
