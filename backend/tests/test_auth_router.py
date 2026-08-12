@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.tokens import decode_access_token
 from app.main import app
 from app.models import User
+from app.services.user import EmailAlreadyRegisteredError
 
 
 class AuthRouterTests(unittest.TestCase):
@@ -45,6 +46,7 @@ class AuthRouterTests(unittest.TestCase):
             hashed_password="hashed-secret",
             first_name="Ada",
             last_name="Lovelace",
+            timezone="America/Lima",
             is_active=True,
             is_verified=False,
             created_at=timestamp,
@@ -129,6 +131,7 @@ class AuthRouterTests(unittest.TestCase):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "timezone": user.timezone,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
                 "created_at": user.created_at.isoformat().replace("+00:00", "Z"),
@@ -230,10 +233,84 @@ class AuthRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         authenticate_mock.assert_not_called()
 
-    def test_stage_four_routes_remain_coherent(self) -> None:
+    def test_registration_returns_target_user_and_commits_once(self) -> None:
+        user = self.make_user()
+
+        with patch("app.api.routes.auth.register_user", return_value=user) as register_mock:
+            response = self.client.post("/api/v1/auth/register", json=self.payload)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["timezone"], "America/Lima")
+        self.assertNotIn("password", response.json())
+        self.assertNotIn("hashed_password", response.json())
+        register_mock.assert_called_once()
+        self.assertEqual(register_mock.call_args.kwargs["user_in"].email, self.payload["email"])
+        self.db.commit.assert_called_once_with()
+        self.db.refresh.assert_called_once_with(user)
+        self.db.rollback.assert_not_called()
+
+    def test_duplicate_registration_rolls_back_and_returns_conflict(self) -> None:
+        with patch(
+            "app.api.routes.auth.register_user",
+            side_effect=EmailAlreadyRegisteredError("Email already registered"),
+        ):
+            response = self.client.post("/api/v1/auth/register", json=self.payload)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json(), {"detail": "Email already registered"})
+        self.db.rollback.assert_called_once_with()
+        self.db.commit.assert_not_called()
+
+    def test_registration_failure_rolls_back_without_commit(self) -> None:
+        with patch("app.api.routes.auth.register_user", side_effect=RuntimeError("provisioning failed")):
+            with self.assertRaises(RuntimeError):
+                self.client.post("/api/v1/auth/register", json=self.payload)
+
+        self.db.rollback.assert_called_once_with()
+        self.db.commit.assert_not_called()
+
+    def test_profile_update_changes_target_fields_and_timezone(self) -> None:
+        user = self.make_user()
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        with patch("app.api.routes.auth.update_user_profile", return_value=user) as update_mock:
+            response = self.client.patch(
+                "/api/v1/auth/me",
+                json={"first_name": "Augusta", "timezone": "Europe/London"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        update_input = update_mock.call_args.kwargs["user_in"]
+        self.assertEqual(update_input.first_name, "Augusta")
+        self.assertEqual(update_input.timezone, "Europe/London")
+        self.db.commit.assert_called_once_with()
+        self.db.refresh.assert_called_once_with(user)
+
+    def test_profile_update_rejects_invalid_timezone_without_writes(self) -> None:
+        app.dependency_overrides[get_current_user] = self.make_user
+
+        response = self.client.patch(
+            "/api/v1/auth/me",
+            json={"timezone": "Lima/Not-A-Timezone"},
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("valid IANA identifier", response.text)
+        self.db.commit.assert_not_called()
+        self.db.flush.assert_not_called()
+
+    def test_registration_rejects_obsolete_fields(self) -> None:
+        response = self.client.post(
+            "/api/v1/auth/register",
+            json={**self.payload, "username": "ada"},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_stage_five_routes_remain_coherent(self) -> None:
         self.assertEqual(self.client.get("/health").status_code, 200)
         self.assertEqual(self.client.get("/api/v1/workspaces").status_code, 404)
-        self.assertEqual(self.client.post("/auth/register", json={}).status_code, 404)
+        self.assertEqual(self.client.post("/auth/register", json={}).status_code, 422)
 
 
 if __name__ == "__main__":

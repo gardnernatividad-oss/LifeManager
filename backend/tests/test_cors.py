@@ -30,6 +30,7 @@ class CorsTests(unittest.TestCase):
             hashed_password="hashed-secret",
             first_name="Ada",
             last_name="Lovelace",
+            timezone="America/Lima",
             is_active=True,
             is_verified=False,
             created_at=timestamp,

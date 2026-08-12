@@ -7,9 +7,9 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, get_personal_workspace
 from app.main import app
-from app.models import User
+from app.models import User, Workspace, WorkspaceKind
 
 
 class ApiDependencyTests(unittest.TestCase):
@@ -139,11 +139,56 @@ class ApiDependencyTests(unittest.TestCase):
                 email="ada@example.com",
                 password="plain-secret",
             )
-            self.assertEqual(client.post("/auth/register", json={}).status_code, 404)
+            self.assertEqual(client.post("/auth/register", json={}).status_code, 422)
             self.assertEqual(client.get("/api/v1/workspaces").status_code, 404)
         finally:
             client.close()
             app.dependency_overrides.clear()
+
+    def test_personal_workspace_resolver_returns_exact_owner_workspace(self) -> None:
+        workspace = Workspace(id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL)
+        self.db.scalars.return_value.all.return_value = [workspace]
+
+        result = get_personal_workspace(self.user, self.db)
+
+        self.assertIs(result, workspace)
+        statement = self.db.scalars.call_args.args[0]
+        parameters = set(statement.compile().params.values())
+        self.assertIn(self.user_id, parameters)
+        self.assertIn(WorkspaceKind.PERSONAL, parameters)
+
+    def test_personal_workspace_resolver_rejects_no_match(self) -> None:
+        self.db.scalars.return_value.all.return_value = []
+
+        with self.assertRaises(HTTPException) as context:
+            get_personal_workspace(self.user, self.db)
+
+        self.assertEqual(context.exception.status_code, 409)
+        self.assertEqual(context.exception.detail, "Personal workspace invariant violated")
+
+    def test_personal_workspace_resolver_rejects_multiple_matches(self) -> None:
+        self.db.scalars.return_value.all.return_value = [
+            Workspace(id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL),
+            Workspace(id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL),
+        ]
+
+        with self.assertRaises(HTTPException) as context:
+            get_personal_workspace(self.user, self.db)
+
+        self.assertEqual(context.exception.status_code, 409)
+
+    def test_personal_workspace_resolver_is_read_only(self) -> None:
+        self.db.scalars.return_value.all.return_value = [
+            Workspace(id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL)
+        ]
+
+        get_personal_workspace(self.user, self.db)
+
+        self.db.add.assert_not_called()
+        self.db.flush.assert_not_called()
+        self.db.commit.assert_not_called()
+        self.db.rollback.assert_not_called()
+        self.db.delete.assert_not_called()
 
 
 if __name__ == "__main__":

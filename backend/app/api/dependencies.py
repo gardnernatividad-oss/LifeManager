@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.tokens import decode_access_token
 from app.db.session import SessionLocal
-from app.models.user import User
+from app.models import User, Workspace, WorkspaceKind, WorkspaceMember, WorkspaceRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -56,3 +56,28 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_personal_workspace(
+    current_user: CurrentUser,
+    db: SessionDependency,
+) -> Workspace:
+    statement = (
+        select(Workspace)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.role == WorkspaceRole.OWNER,
+            Workspace.kind == WorkspaceKind.PERSONAL,
+        )
+    )
+    workspaces = list(db.scalars(statement).all())
+    if len(workspaces) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Personal workspace invariant violated",
+        )
+    return workspaces[0]
+
+
+PersonalWorkspace = Annotated[Workspace, Depends(get_personal_workspace)]
