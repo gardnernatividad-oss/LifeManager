@@ -64,6 +64,12 @@ from app.schemas.task import (
     TaskStatus,
     TaskUpdate,
 )
+from app.schemas.task_report import (
+    TaskMasterTaskReportRow,
+    TaskOutcomeMetrics,
+    TaskReportPeriod,
+    TaskReportResponse,
+)
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 
@@ -125,6 +131,10 @@ __all__ = [
     "TaskResultUpdate",
     "TaskStatus",
     "TaskUpdate",
+    "TaskMasterTaskReportRow",
+    "TaskOutcomeMetrics",
+    "TaskReportPeriod",
+    "TaskReportResponse",
     "TokenResponse",
     "UserCreate",
     "UserRead",

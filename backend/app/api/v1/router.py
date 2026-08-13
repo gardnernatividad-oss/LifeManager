@@ -8,6 +8,7 @@ from app.api.v1.pending_items import router as pending_items_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.review import router as review_router
 from app.api.v1.tasks import router as tasks_router
+from app.api.v1.task_reports import router as task_reports_router
 
 
 api_router = APIRouter()
@@ -19,3 +20,4 @@ api_router.include_router(pending_items_router)
 api_router.include_router(projects_router)
 api_router.include_router(review_router)
 api_router.include_router(tasks_router)
+api_router.include_router(task_reports_router)
