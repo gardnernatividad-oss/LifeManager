@@ -5,6 +5,7 @@ from app.api.v1.categories import router as categories_router
 from app.api.v1.home import router as home_router
 from app.api.v1.master_tasks import router as master_tasks_router
 from app.api.v1.pending_items import router as pending_items_router
+from app.api.v1.pending_item_reports import router as pending_item_reports_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.review import router as review_router
 from app.api.v1.tasks import router as tasks_router
@@ -17,6 +18,7 @@ api_router.include_router(categories_router)
 api_router.include_router(home_router)
 api_router.include_router(master_tasks_router)
 api_router.include_router(pending_items_router)
+api_router.include_router(pending_item_reports_router)
 api_router.include_router(projects_router)
 api_router.include_router(review_router)
 api_router.include_router(tasks_router)

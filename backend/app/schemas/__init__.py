@@ -23,6 +23,15 @@ from app.schemas.pending_item import (
     PendingItemTrackingBatchResponse,
     PendingItemTrackingUpdate,
 )
+from app.schemas.pending_item_report import (
+    PendingItemCategoryReportRow,
+    PendingItemComplianceSummary,
+    PendingItemDetailSummary,
+    PendingItemReportFilters,
+    PendingItemReportPeriod,
+    PendingItemReportResponse,
+    PendingItemReportSummary,
+)
 from app.schemas.project import (
     ProjectCreate,
     ProjectDetailRead,
@@ -96,6 +105,13 @@ __all__ = [
     "PendingItemTrackingBatch",
     "PendingItemTrackingBatchResponse",
     "PendingItemTrackingUpdate",
+    "PendingItemCategoryReportRow",
+    "PendingItemComplianceSummary",
+    "PendingItemDetailSummary",
+    "PendingItemReportFilters",
+    "PendingItemReportPeriod",
+    "PendingItemReportResponse",
+    "PendingItemReportSummary",
     "ProjectCreate",
     "ProjectDetailRead",
     "ProjectGeneralTrackingUpdate",
