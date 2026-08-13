@@ -48,6 +48,15 @@ from app.schemas.project import (
     ProjectTrackingBatchResponse,
     StepCompliance,
 )
+from app.schemas.project_report import (
+    ProjectReportFilters,
+    ProjectReportPeriod,
+    ProjectReportResponse,
+    ProjectReportRow,
+    ProjectReportSummary,
+    ProjectStepComplianceSummary,
+    ProjectStepDetailSummary,
+)
 from app.schemas.review import (
     ReviewPendingItemRead,
     ReviewPendingItemUpdate,
@@ -125,6 +134,13 @@ __all__ = [
     "ProjectStepTrackingUpdate",
     "ProjectTrackingBatch",
     "ProjectTrackingBatchResponse",
+    "ProjectReportFilters",
+    "ProjectReportPeriod",
+    "ProjectReportResponse",
+    "ProjectReportRow",
+    "ProjectReportSummary",
+    "ProjectStepComplianceSummary",
+    "ProjectStepDetailSummary",
     "StepCompliance",
     "ReviewPendingItemRead",
     "ReviewPendingItemUpdate",
