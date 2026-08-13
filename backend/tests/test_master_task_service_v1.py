@@ -136,6 +136,10 @@ def test_update_unused_master_task_name_and_category() -> None:
     assert result.normalized_name == "leer"
     assert result.category is new_category
     assert result.category_id == new_category.id
+    master_lookup = db.scalar.call_args_list[0].args[0]
+    category_lookup = db.scalar.call_args_list[3].args[0]
+    assert master_lookup._for_update_arg is not None
+    assert category_lookup._for_update_arg is not None
     db.flush.assert_called_once_with()
 
 

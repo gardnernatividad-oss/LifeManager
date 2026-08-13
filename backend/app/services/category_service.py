@@ -45,13 +45,20 @@ def _flush(db: Session) -> None:
         raise
 
 
-def _get_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID) -> Category:
-    category = db.scalar(
-        select(Category).where(
-            Category.id == category_id,
-            Category.workspace_id == workspace_id,
-        )
+def _get_category(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    category_id: uuid.UUID,
+    for_update: bool = False,
+) -> Category:
+    statement = select(Category).where(
+        Category.id == category_id,
+        Category.workspace_id == workspace_id,
     )
+    if for_update:
+        statement = statement.with_for_update()
+    category = db.scalar(statement)
     if category is None:
         raise CategoryNotFoundError("Category not found")
     return category
@@ -131,7 +138,9 @@ def update_category(
     category_id: uuid.UUID,
     category_in: CategoryUpdate,
 ) -> Category:
-    category = _get_category(db, workspace_id=workspace_id, category_id=category_id)
+    category = _get_category(
+        db, workspace_id=workspace_id, category_id=category_id, for_update=True
+    )
     changes = category_in.model_dump(exclude_unset=True)
     if not changes:
         return category
@@ -159,7 +168,9 @@ def delete_category(
     workspace_id: uuid.UUID,
     category_id: uuid.UUID,
 ) -> None:
-    category = _get_category(db, workspace_id=workspace_id, category_id=category_id)
+    category = _get_category(
+        db, workspace_id=workspace_id, category_id=category_id, for_update=True
+    )
     if _is_used(db, category_id=category.id):
         raise CategoryInUseError("Category is already in use")
     db.delete(category)

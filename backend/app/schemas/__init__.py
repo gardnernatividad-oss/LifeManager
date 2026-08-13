@@ -6,6 +6,18 @@ from app.schemas.master_task import (
     MasterTaskRead,
     MasterTaskUpdate,
 )
+from app.schemas.task import (
+    BulkTaskPattern,
+    TaskBulkCreate,
+    TaskBulkCreateResponse,
+    TaskBulkDelete,
+    TaskBulkDeleteResponse,
+    TaskCreate,
+    TaskListResponse,
+    TaskRead,
+    TaskStatus,
+    TaskUpdate,
+)
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 
@@ -19,6 +31,16 @@ __all__ = [
     "MasterTaskListResponse",
     "MasterTaskRead",
     "MasterTaskUpdate",
+    "BulkTaskPattern",
+    "TaskBulkCreate",
+    "TaskBulkCreateResponse",
+    "TaskBulkDelete",
+    "TaskBulkDeleteResponse",
+    "TaskCreate",
+    "TaskListResponse",
+    "TaskRead",
+    "TaskStatus",
+    "TaskUpdate",
     "TokenResponse",
     "UserCreate",
     "UserRead",

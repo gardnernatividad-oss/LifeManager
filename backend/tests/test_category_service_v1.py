@@ -102,6 +102,8 @@ def test_update_unused_category_and_delete_unused_category() -> None:
     )
     assert result.name == "Trabajo Personal"
     assert result.normalized_name == "trabajo personal"
+    category_lookup = update_db.scalar.call_args_list[0].args[0]
+    assert category_lookup._for_update_arg is not None
     update_db.flush.assert_called_once_with()
 
     delete_db = _db()

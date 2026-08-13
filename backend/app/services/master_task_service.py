@@ -45,22 +45,33 @@ def _flush(db: Session) -> None:
         raise
 
 
-def _get_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID) -> Category:
-    category = db.scalar(
-        select(Category).where(
-            Category.id == category_id,
-            Category.workspace_id == workspace_id,
-        )
+def _get_category(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    category_id: uuid.UUID,
+    for_update: bool = False,
+) -> Category:
+    statement = select(Category).where(
+        Category.id == category_id,
+        Category.workspace_id == workspace_id,
     )
+    if for_update:
+        statement = statement.with_for_update()
+    category = db.scalar(statement)
     if category is None:
         raise MasterTaskCategoryNotFoundError("Category not found")
     return category
 
 
 def _get_master_task(
-    db: Session, *, workspace_id: uuid.UUID, master_task_id: uuid.UUID
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    master_task_id: uuid.UUID,
+    for_update: bool = False,
 ) -> MasterTask:
-    master_task = db.scalar(
+    statement = (
         select(MasterTask)
         .options(selectinload(MasterTask.category))
         .where(
@@ -68,6 +79,9 @@ def _get_master_task(
             MasterTask.workspace_id == workspace_id,
         )
     )
+    if for_update:
+        statement = statement.with_for_update()
+    master_task = db.scalar(statement)
     if master_task is None:
         raise MasterTaskNotFoundError("Master task not found")
     return master_task
@@ -100,7 +114,10 @@ def create_master_task(
     master_task_in: MasterTaskCreate,
 ) -> MasterTask:
     category = _get_category(
-        db, workspace_id=workspace_id, category_id=master_task_in.category_id
+        db,
+        workspace_id=workspace_id,
+        category_id=master_task_in.category_id,
+        for_update=True,
     )
     name, normalized_name = normalize_name(
         master_task_in.name, max_length=150, field_label="Master task"
@@ -151,7 +168,10 @@ def update_master_task(
     master_task_in: MasterTaskUpdate,
 ) -> MasterTask:
     master_task = _get_master_task(
-        db, workspace_id=workspace_id, master_task_id=master_task_id
+        db,
+        workspace_id=workspace_id,
+        master_task_id=master_task_id,
+        for_update=True,
     )
     changes = master_task_in.model_dump(exclude_unset=True)
     if not changes:
@@ -173,7 +193,10 @@ def update_master_task(
         master_task.normalized_name = normalized_name
     if "category_id" in changes and changes["category_id"] != master_task.category_id:
         category = _get_category(
-            db, workspace_id=workspace_id, category_id=changes["category_id"]
+            db,
+            workspace_id=workspace_id,
+            category_id=changes["category_id"],
+            for_update=True,
         )
         master_task.category_id = category.id
         master_task.category = category
@@ -188,7 +211,10 @@ def delete_master_task(
     master_task_id: uuid.UUID,
 ) -> None:
     master_task = _get_master_task(
-        db, workspace_id=workspace_id, master_task_id=master_task_id
+        db,
+        workspace_id=workspace_id,
+        master_task_id=master_task_id,
+        for_update=True,
     )
     if _is_used(db, master_task_id=master_task.id):
         raise MasterTaskInUseError("Master task is already in use")

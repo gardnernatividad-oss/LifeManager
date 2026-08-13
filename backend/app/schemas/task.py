@@ -1,111 +1,144 @@
+import enum
 import uuid
 
-from datetime import datetime, timezone
-from typing import Annotated
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models.task import Task, TaskOutcome, TaskStatus
-
-
-TaskTitle = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=255),
-]
+from app.models import Task, TaskResult
 
 
-def _aware_utc(value: datetime) -> datetime:
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("datetime must be timezone-aware")
-    return value.astimezone(timezone.utc)
+class TaskStatus(str, enum.Enum):
+    PROGRAMADA = "PROGRAMADA"
+    PENDIENTE = "PENDIENTE"
+    COMPLETADA = "COMPLETADA"
+    NO_REALIZADA = "NO_REALIZADA"
 
 
-def derive_task_status(task: Task, *, now: datetime) -> TaskStatus:
-    current = _aware_utc(now)
-    if task.outcome is not None:
-        return TaskStatus(task.outcome.value)
-    scheduled_at = _aware_utc(task.scheduled_at)
-    return TaskStatus.SCHEDULED if scheduled_at > current else TaskStatus.PENDING
+class BulkTaskPattern(str, enum.Enum):
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+
+
+def derive_task_status(task: Task, *, local_date: date) -> TaskStatus:
+    if task.result == TaskResult.COMPLETED or task.result == TaskResult.COMPLETED.value:
+        return TaskStatus.COMPLETADA
+    if task.result == TaskResult.NOT_COMPLETED or task.result == TaskResult.NOT_COMPLETED.value:
+        return TaskStatus.NO_REALIZADA
+    return TaskStatus.PROGRAMADA if task.planned_date > local_date else TaskStatus.PENDIENTE
 
 
 class TaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: TaskTitle
-    description: str | None = None
-    scheduled_at: datetime
-    category_id: uuid.UUID | None = None
-    project_id: uuid.UUID | None = None
-
-    _validate_scheduled_at = field_validator("scheduled_at")(_aware_utc)
+    master_task_id: uuid.UUID
+    planned_date: date
 
 
 class TaskUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: TaskTitle | None = None
-    description: str | None = None
-    scheduled_at: datetime | None = None
-    category_id: uuid.UUID | None = None
-    project_id: uuid.UUID | None = None
-
-    @field_validator("title")
-    @classmethod
-    def title_must_not_be_null(cls, value: str | None) -> str:
-        if value is None:
-            raise ValueError("title cannot be null")
-        return value
-
-    @field_validator("scheduled_at")
-    @classmethod
-    def scheduled_at_must_not_be_null(cls, value: datetime | None) -> datetime:
-        if value is None:
-            raise ValueError("scheduled_at cannot be null")
-        return _aware_utc(value)
+    planned_date: date
+    lock_version: int = Field(ge=1)
 
 
-class TaskRead(BaseModel):
+class TaskDeleteItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID
-    workspace_id: uuid.UUID
-    created_by_id: uuid.UUID
-    category_id: uuid.UUID | None
-    project_id: uuid.UUID | None
-    task_series_id: uuid.UUID | None
-    title: str
-    description: str | None
-    scheduled_at: datetime
+    lock_version: int = Field(ge=1)
+
+
+class TaskBulkDelete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[TaskDeleteItem] = Field(min_length=1)
+
+    @field_validator("items")
+    @classmethod
+    def task_ids_must_be_unique(cls, value: list[TaskDeleteItem]) -> list[TaskDeleteItem]:
+        if len({item.id for item in value}) != len(value):
+            raise ValueError("task IDs must be unique")
+        return value
+
+
+class TaskBulkCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    master_task_id: uuid.UUID
+    start_date: date
+    end_date: date
+    pattern: BulkTaskPattern
+    weekdays: list[int] | None = None
+
+    @model_validator(mode="after")
+    def validate_pattern(self) -> "TaskBulkCreate":
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must be on or before end_date")
+        if self.pattern is BulkTaskPattern.WEEKLY:
+            if not self.weekdays:
+                raise ValueError("weekly pattern requires at least one weekday")
+            if len(set(self.weekdays)) != len(self.weekdays):
+                raise ValueError("weekdays must be unique")
+            if any(day < 0 or day > 6 for day in self.weekdays):
+                raise ValueError("weekdays must use Monday=0 through Sunday=6")
+        elif self.weekdays is not None:
+            raise ValueError("weekdays are only valid for weekly pattern")
+        return self
+
+
+class TaskCategoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+
+
+class TaskMasterTaskRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    category_id: uuid.UUID
+    category: TaskCategoryRead
+
+
+class TaskRead(BaseModel):
+    id: uuid.UUID
+    master_task_id: uuid.UUID
+    planned_date: date
     status: TaskStatus
-    resolved_at: datetime | None
+    master_task: TaskMasterTaskRead
+    lock_version: int
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_task(cls, task: Task, *, now: datetime | None = None) -> "TaskRead":
-        boundary = now or datetime.now(timezone.utc)
+    def from_task(cls, task: Task, *, local_date: date) -> "TaskRead":
         return cls(
             id=task.id,
-            workspace_id=task.workspace_id,
-            created_by_id=task.created_by_id,
-            category_id=task.category_id,
-            project_id=task.project_id,
-            task_series_id=task.task_series_id,
-            title=task.title,
-            description=task.description,
-            scheduled_at=task.scheduled_at,
-            status=derive_task_status(task, now=boundary),
-            resolved_at=task.resolved_at,
+            master_task_id=task.master_task_id,
+            planned_date=task.planned_date,
+            status=derive_task_status(task, local_date=local_date),
+            master_task=TaskMasterTaskRead.model_validate(task.master_task),
+            lock_version=task.lock_version,
             created_at=task.created_at,
             updated_at=task.updated_at,
         )
 
 
 class TaskListResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     items: list[TaskRead]
-    total: int = Field(ge=0)
-    page: int = Field(ge=1)
-    page_size: int = Field(ge=1, le=100)
-    total_pages: int = Field(ge=0)
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class TaskBulkCreateResponse(BaseModel):
+    created_count: int
+    items: list[TaskRead]
+
+
+class TaskBulkDeleteResponse(BaseModel):
+    deleted_count: int

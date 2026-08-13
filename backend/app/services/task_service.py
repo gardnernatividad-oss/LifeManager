@@ -1,113 +1,145 @@
 import uuid
 
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import date, timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
-from app.models.category import Category
-from app.models.project import Project
-from app.models.task import Task, TaskOutcome, TaskStatus
-from app.models.user import User
-from app.models.workspace_member import WorkspaceMember
-from app.schemas.task import TaskCreate, TaskUpdate
-from app.services.workspace import get_workspace_membership
-from app.services.task_resolution_service import TaskAlreadyResolved
+from app.core.config import settings
+from app.models import Category, MasterTask, Task, TaskResult, User
+from app.schemas.task import (
+    BulkTaskPattern,
+    TaskBulkCreate,
+    TaskBulkDelete,
+    TaskCreate,
+    TaskStatus,
+    TaskUpdate,
+)
 
 
 class TaskNotFoundError(LookupError):
     pass
 
 
-class TaskPermissionError(PermissionError):
+class TaskMasterTaskNotFoundError(LookupError):
     pass
 
 
-class TaskCategoryNotFoundError(LookupError):
+class TaskOccurrenceConflictError(ValueError):
     pass
 
 
-class TaskCategoryInactiveError(ValueError):
+class TaskPlanningConflictError(ValueError):
     pass
 
 
-class TaskProjectNotFoundError(LookupError):
+class TaskVersionConflictError(ValueError):
     pass
 
 
-class TaskProjectInactiveError(ValueError):
+class TaskBulkValidationError(ValueError):
     pass
 
 
-def _require_membership(
+_TASK_UNIQUE_CONSTRAINT = "uq_tasks_workspace_id_master_task_id_planned_date"
+
+
+def _constraint_name(error: IntegrityError) -> str | None:
+    return getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+
+
+def _flush(db: Session) -> None:
+    try:
+        db.flush()
+    except IntegrityError as error:
+        if _constraint_name(error) == _TASK_UNIQUE_CONSTRAINT:
+            raise TaskOccurrenceConflictError("Task occurrence already exists") from error
+        raise
+
+
+def _task_options():
+    return selectinload(Task.master_task).selectinload(MasterTask.category)
+
+
+def _get_master_task(
     db: Session,
     *,
     workspace_id: uuid.UUID,
-    user_id: uuid.UUID,
-) -> WorkspaceMember:
-    membership = get_workspace_membership(
-        db,
-        workspace_id=workspace_id,
-        user_id=user_id,
+    master_task_id: uuid.UUID,
+    for_update: bool = False,
+) -> MasterTask:
+    statement = (
+        select(MasterTask)
+        .options(selectinload(MasterTask.category))
+        .where(
+            MasterTask.id == master_task_id,
+            MasterTask.workspace_id == workspace_id,
+        )
     )
-    if membership is None:
-        raise TaskPermissionError("Workspace access denied")
-    return membership
+    if for_update:
+        statement = statement.with_for_update()
+    master_task = db.scalar(statement)
+    if master_task is None:
+        raise TaskMasterTaskNotFoundError("Master task not found")
+    return master_task
 
 
-def _get_scoped_task(
+def _get_task(
     db: Session,
     *,
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
+    for_update: bool = False,
 ) -> Task:
-    statement = select(Task).where(
-        Task.id == task_id,
-        Task.workspace_id == workspace_id,
+    statement = (
+        select(Task)
+        .options(_task_options())
+        .where(Task.id == task_id, Task.workspace_id == workspace_id)
     )
+    if for_update:
+        statement = statement.with_for_update()
     task = db.scalar(statement)
     if task is None:
         raise TaskNotFoundError("Task not found")
     return task
 
 
-def _resolve_category(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    category_id: uuid.UUID,
-    require_active: bool,
-) -> Category:
-    statement = select(Category).where(
-        Category.id == category_id,
-        Category.workspace_id == workspace_id,
-    )
-    category = db.scalar(statement)
-    if category is None:
-        raise TaskCategoryNotFoundError("Category not found")
-    if require_active and not category.is_active:
-        raise TaskCategoryInactiveError("Category is inactive")
-    return category
+def _is_programada(task: Task, *, local_date: date) -> bool:
+    return task.result is None and task.planned_date > local_date
 
 
-def _resolve_project(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    project_id: uuid.UUID,
-    require_active: bool,
-) -> Project:
-    statement = select(Project).where(
-        Project.id == project_id,
-        Project.workspace_id == workspace_id,
-    )
-    project = db.scalar(statement)
-    if project is None:
-        raise TaskProjectNotFoundError("Project not found")
-    if require_active and not project.is_active:
-        raise TaskProjectInactiveError("Project is inactive")
-    return project
+def _dates_for_bulk(request: TaskBulkCreate) -> list[date]:
+    dates: list[date]
+    if request.pattern is BulkTaskPattern.DAILY:
+        count = (request.end_date - request.start_date).days + 1
+        if count > settings.TASK_BULK_MAX_OCCURRENCES:
+            raise TaskBulkValidationError(
+                "Bulk request exceeds the configured safeguard of "
+                f"{settings.TASK_BULK_MAX_OCCURRENCES} occurrences"
+            )
+        dates = [request.start_date + timedelta(days=offset) for offset in range(count)]
+    elif request.pattern is BulkTaskPattern.WEEKLY:
+        dates = []
+        for weekday in request.weekdays or []:
+            candidate = request.start_date + timedelta(
+                days=(weekday - request.start_date.weekday()) % 7
+            )
+            while candidate <= request.end_date:
+                dates.append(candidate)
+                if len(dates) > settings.TASK_BULK_MAX_OCCURRENCES:
+                    raise TaskBulkValidationError(
+                        "Bulk request exceeds the configured safeguard of "
+                        f"{settings.TASK_BULK_MAX_OCCURRENCES} occurrences"
+                    )
+                candidate += timedelta(days=7)
+        dates.sort()
+    if not dates:
+        raise TaskBulkValidationError("Bulk request does not produce any dates")
+    if len(set(dates)) != len(dates):
+        raise TaskBulkValidationError("Bulk request produced duplicate dates")
+    return dates
 
 
 def create_task(
@@ -117,136 +149,134 @@ def create_task(
     current_user: User,
     task_in: TaskCreate,
 ) -> Task:
-    _require_membership(
+    master_task = _get_master_task(
         db,
         workspace_id=workspace_id,
-        user_id=current_user.id,
+        master_task_id=task_in.master_task_id,
+        for_update=True,
     )
-    task_data = task_in.model_dump()
-    category_id = task_data.pop("category_id")
-    project_id = task_data.pop("project_id")
-    if category_id is not None:
-        _resolve_category(
-            db,
-            workspace_id=workspace_id,
-            category_id=category_id,
-            require_active=True,
+    conflict = db.scalar(
+        select(Task.id).where(
+            Task.workspace_id == workspace_id,
+            Task.master_task_id == master_task.id,
+            Task.planned_date == task_in.planned_date,
         )
-    if project_id is not None:
-        _resolve_project(
-            db,
-            workspace_id=workspace_id,
-            project_id=project_id,
-            require_active=True,
-        )
+    )
+    if conflict is not None:
+        raise TaskOccurrenceConflictError("Task occurrence already exists")
     task = Task(
         workspace_id=workspace_id,
-        created_by_id=current_user.id,
-        category_id=category_id,
-        project_id=project_id,
-        outcome=None,
+        master_task_id=master_task.id,
+        master_task=master_task,
+        planned_date=task_in.planned_date,
+        result=None,
         resolved_at=None,
-        **task_data,
+        resolved_by_id=None,
+        created_by_id=current_user.id,
+        lock_version=1,
     )
     db.add(task)
-    db.flush()
+    _flush(db)
     return task
+
+
+def create_tasks_bulk(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    current_user: User,
+    task_in: TaskBulkCreate,
+) -> list[Task]:
+    master_task = _get_master_task(
+        db,
+        workspace_id=workspace_id,
+        master_task_id=task_in.master_task_id,
+        for_update=True,
+    )
+    planned_dates = _dates_for_bulk(task_in)
+    conflicts = list(
+        db.scalars(
+            select(Task.planned_date).where(
+                Task.workspace_id == workspace_id,
+                Task.master_task_id == master_task.id,
+                Task.planned_date.in_(planned_dates),
+            )
+        ).all()
+    )
+    if conflicts:
+        raise TaskOccurrenceConflictError("One or more Task occurrences already exist")
+    tasks = [
+        Task(
+            workspace_id=workspace_id,
+            master_task_id=master_task.id,
+            master_task=master_task,
+            planned_date=planned_date,
+            result=None,
+            resolved_at=None,
+            resolved_by_id=None,
+            created_by_id=current_user.id,
+            lock_version=1,
+        )
+        for planned_date in planned_dates
+    ]
+    db.add_all(tasks)
+    _flush(db)
+    return tasks
 
 
 def list_tasks(
     db: Session,
     *,
     workspace_id: uuid.UUID,
-    current_user: User,
+    local_date: date,
+    page: int,
+    page_size: int,
+    planned_from: date | None = None,
+    planned_to: date | None = None,
+    master_task_id: uuid.UUID | None = None,
     category_id: uuid.UUID | None = None,
-    project_id: uuid.UUID | None = None,
-    page: int = 1,
-    page_size: int = 20,
-    order_by: Literal["scheduled_at", "created_at", "updated_at", "title"] = "scheduled_at",
-    order_direction: Literal["asc", "desc"] = "asc",
     status: TaskStatus | None = None,
-    outcome: TaskOutcome | None = None,
-    scheduled_from: datetime | None = None,
-    scheduled_to: datetime | None = None,
-    search: str | None = None,
 ) -> tuple[list[Task], int]:
-    _require_membership(
-        db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-    filters: list[object] = [Task.workspace_id == workspace_id]
+    filters = [Task.workspace_id == workspace_id]
+    if planned_from is not None:
+        filters.append(Task.planned_date >= planned_from)
+    if planned_to is not None:
+        filters.append(Task.planned_date <= planned_to)
+    if master_task_id is not None:
+        _get_master_task(db, workspace_id=workspace_id, master_task_id=master_task_id)
+        filters.append(Task.master_task_id == master_task_id)
     if category_id is not None:
-        _resolve_category(
-            db,
-            workspace_id=workspace_id,
-            category_id=category_id,
-            require_active=False,
+        category_exists = db.scalar(
+            select(Category.id).where(
+                Category.id == category_id,
+                Category.workspace_id == workspace_id,
+            )
         )
-        filters.append(Task.category_id == category_id)
-    if project_id is not None:
-        _resolve_project(
-            db,
-            workspace_id=workspace_id,
-            project_id=project_id,
-            require_active=False,
-        )
-        filters.append(Task.project_id == project_id)
-    if status is not None:
-        status_boundary = datetime.now(timezone.utc)
-        if status is TaskStatus.SCHEDULED:
-            filters.extend((Task.outcome.is_(None), Task.scheduled_at > status_boundary))
-        elif status is TaskStatus.PENDING:
-            filters.extend((Task.outcome.is_(None), Task.scheduled_at <= status_boundary))
-        else:
-            filters.append(Task.outcome == TaskOutcome(status.value))
-    if outcome is not None:
-        filters.append(Task.outcome == outcome)
-    if scheduled_from is not None:
-        filters.append(Task.scheduled_at >= scheduled_from)
-    if scheduled_to is not None:
-        filters.append(Task.scheduled_at <= scheduled_to)
-    if search is not None and search.strip():
-        escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        filters.append(Task.title.ilike(f"%{escaped}%", escape="\\"))
+        if category_exists is None:
+            raise TaskMasterTaskNotFoundError("Category not found")
+        filters.append(MasterTask.category_id == category_id)
+    if status is TaskStatus.PROGRAMADA:
+        filters.extend((Task.result.is_(None), Task.planned_date > local_date))
+    elif status is TaskStatus.PENDIENTE:
+        filters.extend((Task.result.is_(None), Task.planned_date <= local_date))
+    elif status is TaskStatus.COMPLETADA:
+        filters.append(Task.result == TaskResult.COMPLETED)
+    elif status is TaskStatus.NO_REALIZADA:
+        filters.append(Task.result == TaskResult.NOT_COMPLETED)
 
-    order_column = getattr(Task, order_by)
-    direction = getattr(order_column, order_direction)
-    ordering = [direction()]
-    if order_by == "scheduled_at":
-        ordering.append(getattr(Task.created_at, order_direction)())
-    ordering.append(getattr(Task.id, order_direction)())
+    count_statement = select(func.count()).select_from(Task)
+    statement = select(Task).options(_task_options())
+    if category_id is not None:
+        count_statement = count_statement.join(MasterTask)
+        statement = statement.join(MasterTask)
+    total = db.scalar(count_statement.where(*filters)) or 0
     statement = (
-        select(Task)
-        .where(*filters)
-        .order_by(*ordering)
+        statement.where(*filters)
+        .order_by(Task.planned_date, Task.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    count_statement = select(func.count()).select_from(Task).where(*filters)
-
-    tasks = list(db.scalars(statement).all())
-    total = db.scalar(count_statement)
-    return tasks, int(total or 0)
-
-
-def get_task(
-    db: Session,
-    *,
-    workspace_id: uuid.UUID,
-    task_id: uuid.UUID,
-    current_user: User,
-) -> Task:
-    _require_membership(
-        db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
-    )
-    return _get_scoped_task(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-    )
+    return list(db.scalars(statement).all()), int(total)
 
 
 def update_task(
@@ -254,47 +284,75 @@ def update_task(
     *,
     workspace_id: uuid.UUID,
     task_id: uuid.UUID,
-    current_user: User,
     task_in: TaskUpdate,
+    local_date: date,
 ) -> Task:
-    _require_membership(
-        db,
-        workspace_id=workspace_id,
-        user_id=current_user.id,
+    task = _get_task(db, workspace_id=workspace_id, task_id=task_id)
+    if not _is_programada(task, local_date=local_date):
+        raise TaskPlanningConflictError("Only scheduled Tasks can be edited")
+    statement = (
+        update(Task)
+        .where(
+            Task.id == task_id,
+            Task.workspace_id == workspace_id,
+            Task.lock_version == task_in.lock_version,
+        )
+        .values(planned_date=task_in.planned_date, lock_version=Task.lock_version + 1)
+        .execution_options(synchronize_session=False)
     )
-    task = _get_scoped_task(
-        db,
-        workspace_id=workspace_id,
-        task_id=task_id,
-    )
-    changes = task_in.model_dump(exclude_unset=True)
-    if task.outcome is not None and changes:
-        raise TaskAlreadyResolved("Task is already resolved")
-    if "category_id" in changes:
-        category_id = changes.pop("category_id")
-        if category_id is not None:
-            _resolve_category(
-                db,
-                workspace_id=workspace_id,
-                category_id=category_id,
-                require_active=True,
-            )
-        task.category_id = category_id
-    if "project_id" in changes:
-        project_id = changes.pop("project_id")
-        if project_id is not None:
-            _resolve_project(
-                db,
-                workspace_id=workspace_id,
-                project_id=project_id,
-                require_active=True,
-            )
-        task.project_id = project_id
-    if "scheduled_at" in changes:
-        scheduled_at = changes.pop("scheduled_at")
-        task.scheduled_at = scheduled_at
-    for field, value in changes.items():
-        setattr(task, field, value)
-
+    try:
+        result = db.execute(statement)
+    except IntegrityError as error:
+        if _constraint_name(error) == _TASK_UNIQUE_CONSTRAINT:
+            raise TaskOccurrenceConflictError("Task occurrence already exists") from error
+        raise
+    if result.rowcount != 1:
+        raise TaskVersionConflictError("Task version is stale")
+    set_committed_value(task, "planned_date", task_in.planned_date)
+    set_committed_value(task, "lock_version", task_in.lock_version + 1)
     db.flush()
     return task
+
+
+def delete_task(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    lock_version: int,
+    local_date: date,
+) -> None:
+    task = _get_task(db, workspace_id=workspace_id, task_id=task_id, for_update=True)
+    if task.lock_version != lock_version:
+        raise TaskVersionConflictError("Task version is stale")
+    if not _is_programada(task, local_date=local_date):
+        raise TaskPlanningConflictError("Only scheduled Tasks can be deleted")
+    db.delete(task)
+    _flush(db)
+
+
+def delete_tasks_bulk(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_in: TaskBulkDelete,
+    local_date: date,
+) -> int:
+    expected_versions = {item.id: item.lock_version for item in task_in.items}
+    tasks = list(
+        db.scalars(
+            select(Task)
+            .where(Task.workspace_id == workspace_id, Task.id.in_(expected_versions))
+            .with_for_update()
+        ).all()
+    )
+    if len(tasks) != len(expected_versions):
+        raise TaskNotFoundError("One or more Tasks were not found")
+    if any(task.lock_version != expected_versions[task.id] for task in tasks):
+        raise TaskVersionConflictError("One or more Task versions are stale")
+    if any(not _is_programada(task, local_date=local_date) for task in tasks):
+        raise TaskPlanningConflictError("All selected Tasks must be scheduled")
+    for task in tasks:
+        db.delete(task)
+    _flush(db)
+    return len(tasks)
