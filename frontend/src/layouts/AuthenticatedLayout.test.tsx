@@ -1,16 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuth } from "../hooks/useAuth";
-import { useWorkspaces } from "../hooks/useWorkspaces";
 import type { AuthState } from "../store/auth-context";
 import { testUser } from "../test/testUser";
 import { AuthenticatedLayout } from "./AuthenticatedLayout";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
-vi.mock("../hooks/useWorkspaces", () => ({ useWorkspaces: vi.fn() }));
 
 function setMobileViewport(matches: boolean) {
   window.matchMedia = vi.fn().mockImplementation(() => ({
@@ -39,65 +37,82 @@ function authenticatedState(logout = vi.fn()): AuthState {
   };
 }
 
-function renderLayout(initialEntry = "/dashboard") {
+function renderLayout(initialEntry = "/inicio") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<AuthenticatedLayout />}>
-          <Route path="/dashboard" element={<h1>Dashboard content</h1>} />
-          <Route path="/tasks" element={<h1>Tasks content</h1>} />
-          <Route path="/tasks/recurring" element={<h1>Recurring content</h1>} />
+          <Route path="/inicio" element={<h1>Contenido de Inicio</h1>} />
+          <Route path="/planificacion/tareas" element={<h1>Contenido de Planificación</h1>} />
         </Route>
-        <Route path="/login" element={<h1>Login destination</h1>} />
+        <Route path="/login" element={<h1>Destino de inicio de sesión</h1>} />
       </Routes>
     </MemoryRouter>
   );
 }
 
-describe("AuthenticatedLayout", () => {
+describe("AuthenticatedLayout V1", () => {
   beforeEach(() => {
     setMobileViewport(false);
     vi.mocked(useAuth).mockReturnValue(authenticatedState());
-    vi.mocked(useWorkspaces).mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false
-    } as unknown as ReturnType<typeof useWorkspaces>);
   });
 
-  it("renders the application shell and protected route outlet", () => {
+  it("renders the target shell without Workspace selection", () => {
     renderLayout();
-
     expect(screen.getByRole("navigation", { name: "Secciones de LifeManager" })).toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Dashboard content" })).toBeInTheDocument();
-    expect(screen.getByText("Sin espacio")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Contenido de Inicio" })).toBeInTheDocument();
+    expect(screen.queryByText(/Espacio de trabajo|Sin espacio|Cambiar espacio/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("highlights only the active navigation item", () => {
-    renderLayout("/tasks/recurring");
+  it("renders exact top-level entries and exact nested menus", () => {
+    renderLayout("/planificacion/tareas");
+    const navigation = screen.getByRole("navigation", { name: "Secciones de LifeManager" });
+    expect(within(navigation).getByRole("link", { name: "Inicio" })).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: "Revisión" })).toBeInTheDocument();
+    expect(within(navigation).getByText("Planificación")).toBeInTheDocument();
+    expect(within(navigation).getByText("Seguimiento")).toBeInTheDocument();
+    expect(within(navigation).getByText("Reportes")).toBeInTheDocument();
+    expect(within(navigation).getByText("Tablas")).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: "Configuración" })).toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: "Tareas recurrentes" })).toHaveClass("sidebar__link--active");
-    expect(screen.getByRole("link", { name: "Tareas" })).not.toHaveClass("sidebar__link--active");
+    const groups = navigation.querySelectorAll("details");
+    expect(groups).toHaveLength(4);
+    expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
+    expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
+    expect(within(groups[2]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
+    expect(within(groups[3]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Categorías"]);
   });
 
-  it("renders the current user's full name and email", () => {
+  it("highlights the active nested navigation item and excludes legacy labels", () => {
+    renderLayout("/planificacion/tareas");
+    const active = screen.getByRole("link", { name: "Tareas", current: "page" });
+    expect(active).toHaveClass("sidebar__sublink--active");
+    for (const label of ["Dashboard", "Tareas recurrentes", "Daily Workflow", "Daily Form", "Workspaces", "Settings"]) {
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
+  });
+
+  it("expands a nested navigation section on demand", async () => {
+    const user = userEvent.setup();
     renderLayout();
-
-    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    const planning = screen.getByText("Planificación").closest("details");
+    expect(planning).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Planificación"));
+    expect(planning).toHaveAttribute("open");
   });
 
-  it("logs out through the auth context and navigates to Login", async () => {
+  it("renders the current user and logs out to Login", async () => {
     const logout = vi.fn();
     vi.mocked(useAuth).mockReturnValue(authenticatedState(logout));
     const user = userEvent.setup();
     renderLayout();
-
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-
     expect(logout).toHaveBeenCalledOnce();
-    expect(screen.getByRole("heading", { name: "Login destination" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Destino de inicio de sesión" })).toBeInTheDocument();
   });
 
   it("opens and closes the mobile sidebar with focus management", async () => {
@@ -105,16 +120,12 @@ describe("AuthenticatedLayout", () => {
     const user = userEvent.setup();
     renderLayout();
     const menuButton = await screen.findByRole("button", { name: "Abrir menú de navegación" });
-
     await user.click(menuButton);
-
     const sidebar = screen.getByLabelText("Navegación principal");
     const closeButtons = screen.getAllByRole("button", { name: "Cerrar menú de navegación" });
     expect(sidebar).toHaveClass("sidebar--open");
     expect(closeButtons[0]).toHaveFocus();
-
     await user.keyboard("{Escape}");
-
     await waitFor(() => expect(sidebar).not.toHaveClass("sidebar--open"));
     expect(menuButton).toHaveFocus();
   });

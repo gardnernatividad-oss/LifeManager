@@ -28,8 +28,8 @@ function renderLogin(initialEntry: string | { pathname: string; state: unknown }
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<span>Dashboard destination</span>} />
-        <Route path="/tasks" element={<span>Tasks destination</span>} />
+        <Route path="/inicio" element={<span>Inicio destination</span>} />
+        <Route path="/revision" element={<span>Review destination</span>} />
       </Routes>
     </MemoryRouter>
   );
@@ -85,7 +85,7 @@ describe("LoginPage", () => {
     );
   });
 
-  it("redirects successful login to Dashboard", async () => {
+  it("redirects successful login to Inicio", async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     vi.mocked(useAuth).mockReturnValue(authState(login));
     const user = userEvent.setup();
@@ -94,19 +94,19 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText("Contraseña"), "secret");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByText("Dashboard destination")).toBeInTheDocument();
+    expect(await screen.findByText("Inicio destination")).toBeInTheDocument();
     expect(login).toHaveBeenCalledWith({ email: "ada@example.com", password: "secret" });
   });
 
   it("returns to the attempted protected route after login", async () => {
     vi.mocked(useAuth).mockReturnValue(authState(vi.fn().mockResolvedValue(undefined)));
     const user = userEvent.setup();
-    renderLogin({ pathname: "/login", state: { from: { pathname: "/tasks" } } });
+    renderLogin({ pathname: "/login", state: { from: { pathname: "/revision" } } });
     await user.type(screen.getByLabelText("Correo electrónico"), "ada@example.com");
     await user.type(screen.getByLabelText("Contraseña"), "secret");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByText("Tasks destination")).toBeInTheDocument();
+    expect(await screen.findByText("Review destination")).toBeInTheDocument();
   });
 
   it("disables submission while login is pending", async () => {
@@ -121,6 +121,6 @@ describe("LoginPage", () => {
 
     expect(screen.getByRole("button", { name: "Ingresando…" })).toBeDisabled();
     resolveLogin?.();
-    await waitFor(() => expect(screen.getByText("Dashboard destination")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Inicio destination")).toBeInTheDocument());
   });
 });

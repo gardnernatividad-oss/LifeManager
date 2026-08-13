@@ -34,17 +34,17 @@ describe("authentication route guards", () => {
   it("redirects an unauthenticated protected route and preserves its location", () => {
     vi.mocked(useAuth).mockReturnValue(authState());
     render(
-      <MemoryRouter initialEntries={["/tasks?view=today"]}>
+      <MemoryRouter initialEntries={["/revision?view=today"]}>
         <Routes>
           <Route element={<ProtectedRoute />}>
-            <Route path="/tasks" element={<span>Tasks</span>} />
+            <Route path="/revision" element={<span>Review</span>} />
           </Route>
           <Route path="/login" element={<LoginDestination />} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Login from /tasks?view=today")).toBeInTheDocument();
+    expect(screen.getByText("Login from /revision?view=today")).toBeInTheDocument();
   });
 
   it("redirects an authenticated user away from Login", () => {
@@ -59,21 +59,21 @@ describe("authentication route guards", () => {
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<span>Login</span>} />
           </Route>
-          <Route path="/dashboard" element={<span>Dashboard</span>} />
+          <Route path="/inicio" element={<span>Inicio</span>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Inicio")).toBeInTheDocument();
   });
 
   it("does not render protected content during initialization", () => {
     vi.mocked(useAuth).mockReturnValue(authState({ isInitializing: true }));
     render(
-      <MemoryRouter initialEntries={["/tasks"]}>
+      <MemoryRouter initialEntries={["/revision"]}>
         <Routes>
           <Route element={<ProtectedRoute />}>
-            <Route path="/tasks" element={<span>Tasks</span>} />
+            <Route path="/revision" element={<span>Review</span>} />
           </Route>
         </Routes>
       </MemoryRouter>

@@ -125,7 +125,65 @@ p {
   background: rgb(255 255 255 / 12%);
 }
 
+.sidebar__group {
+  color: #dcebe6;
+}
+
+.sidebar__group-label {
+  padding: 0.7rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sidebar__group-label::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar__group-label::after {
+  margin-left: auto;
+  content: "⌄";
+  transition: transform 150ms ease;
+}
+
+.sidebar__group[open] .sidebar__group-label::after {
+  transform: rotate(180deg);
+}
+
+.sidebar__group-label:hover,
+.sidebar__group[open] > .sidebar__group-label {
+  color: #fff;
+  background: rgb(255 255 255 / 8%);
+}
+
+.sidebar__subnav {
+  margin: 0.2rem 0 0.35rem 2rem;
+  padding-left: 0.55rem;
+  display: grid;
+  gap: 0.1rem;
+  border-left: 1px solid rgb(255 255 255 / 22%);
+}
+
+.sidebar__sublink {
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.4rem;
+  color: #dcebe6;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.sidebar__sublink:hover,
+.sidebar__sublink--active {
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+}
+
 .sidebar__link:focus-visible,
+.sidebar__group-label:focus-visible,
+.sidebar__sublink:focus-visible,
 .sidebar__logout:focus-visible,
 .sidebar__close:focus-visible,
 .topbar__menu-button:focus-visible {
@@ -177,17 +235,16 @@ p {
   background: var(--color-surface);
 }
 
-.topbar__workspace,
+.topbar__context,
 .topbar__user {
   display: flex;
   align-items: center;
 }
 
-.topbar__workspace {
+.topbar__context {
   gap: 0.85rem;
 }
 
-.topbar__workspace > div,
 .topbar__identity {
   display: grid;
   gap: 0.15rem;

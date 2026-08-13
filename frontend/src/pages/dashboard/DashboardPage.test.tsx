@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRef, useMemo, useState, type PropsWithChildren } from "react";
+import { useMemo, useState, type PropsWithChildren } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as dashboardApi from "../../api/dashboardApi";
 import * as workspaceApi from "../../api/workspaceApi";
-import { Topbar } from "../../components/layout/Topbar";
 import { AuthContext, type AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import type { WorkspaceSummary } from "../../types/auth";
@@ -82,11 +81,6 @@ function renderDashboard(initialWorkspace: WorkspaceSummary | null = null) {
     <QueryClientProvider client={queryClient}>
       <StatefulAuth initialWorkspace={initialWorkspace}>
         <MemoryRouter>
-          <Topbar
-            isMenuOpen={false}
-            menuButtonRef={createRef<HTMLButtonElement>()}
-            onMenuToggle={vi.fn()}
-          />
           <DashboardPage />
         </MemoryRouter>
       </StatefulAuth>
@@ -117,24 +111,16 @@ describe("DashboardPage", () => {
     vi.mocked(workspaceApi.listWorkspaces).mockResolvedValue([workspaceOne, workspaceTwo]);
     renderDashboard(workspaceTwo);
 
-    expect(await screen.findByLabelText("Espacio de trabajo")).toHaveValue(workspaceTwo.id);
     await waitFor(() => expect(dashboardApi.getDashboardSummary).toHaveBeenCalledWith(workspaceTwo.id));
     expect(dashboardApi.getDashboardSummary).not.toHaveBeenCalledWith(workspaceOne.id);
   });
 
-  it("renders a selector and reloads isolated Dashboard queries when Workspace changes", async () => {
+  it("does not expose Workspace switching from the legacy page", async () => {
     vi.mocked(workspaceApi.listWorkspaces).mockResolvedValue([workspaceOne, workspaceTwo]);
-    const user = userEvent.setup();
-    const queryClient = renderDashboard(workspaceOne);
-    const selector = await screen.findByLabelText("Espacio de trabajo");
+    renderDashboard(workspaceOne);
     await waitFor(() => expect(dashboardApi.getDashboardSummary).toHaveBeenCalledWith(workspaceOne.id));
-
-    await user.selectOptions(selector, workspaceTwo.id);
-
-    await waitFor(() => expect(dashboardApi.getDashboardSummary).toHaveBeenCalledWith(workspaceTwo.id));
-    expect(dashboardApi.getDashboardStatistics).toHaveBeenCalledWith(workspaceTwo.id);
-    expect(queryClient.getQueryData(["dashboard", "summary", workspaceOne.id])).toEqual(summary);
-    expect(queryClient.getQueryData(["dashboard", "summary", workspaceTwo.id])).toEqual(summary);
+    expect(screen.queryByLabelText("Espacio de trabajo")).not.toBeInTheDocument();
+    expect(dashboardApi.getDashboardSummary).not.toHaveBeenCalledWith(workspaceTwo.id);
   });
 
   it("shows a stable loading state while Workspaces load", () => {

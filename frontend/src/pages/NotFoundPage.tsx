@@ -4,9 +4,9 @@ export function NotFoundPage() {
   return (
     <section className="page-placeholder">
       <p className="eyebrow">404</p>
-      <h1>Page not found</h1>
-      <p>The page you requested does not exist.</p>
-      <Link to="/dashboard">Return to Dashboard</Link>
+      <h1>Página no encontrada</h1>
+      <p>La página solicitada no existe.</p>
+      <Link to="/inicio">Volver a Inicio</Link>
     </section>
   );
 }

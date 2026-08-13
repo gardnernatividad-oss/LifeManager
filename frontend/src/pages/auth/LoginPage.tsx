@@ -41,7 +41,7 @@ export function LoginPage() {
       const attemptedLocation = state?.from;
       const destination = attemptedLocation?.pathname
         ? `${attemptedLocation.pathname}${attemptedLocation.search ?? ""}${attemptedLocation.hash ?? ""}`
-        : "/dashboard";
+        : "/inicio";
       navigate(destination, { replace: true });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
