@@ -53,42 +53,10 @@ class AuthRouterTests(unittest.TestCase):
             updated_at=timestamp,
         )
 
-    def test_login_returns_access_token_for_valid_credentials(self) -> None:
-        user = self.make_user()
-
-        with patch(
-            "app.api.routes.auth.authenticate_user",
-            return_value=user,
-        ) as authenticate_mock:
-            response = self.client.post(
-                "/auth/login",
-                json={
-                    "email": "ada@example.com",
-                    "password": "plain-secret",
-                },
-            )
-
-        self.assertEqual(response.status_code, 200)
-        response_data = response.json()
-        self.assertIsInstance(response_data["access_token"], str)
-        self.assertEqual(response_data["access_token"].count("."), 2)
-        self.assertEqual(response_data["token_type"], "bearer")
-        self.assertEqual(
-            decode_access_token(response_data["access_token"]),
-            str(user.id),
-        )
-        authenticate_mock.assert_called_once_with(
-            self.db,
-            email="ada@example.com",
-            password="plain-secret",
-        )
-        self.assertNotIn("password", response_data)
-        self.assertNotIn("hashed_password", response_data)
-        self.db.add.assert_not_called()
-        self.db.flush.assert_not_called()
-        self.db.commit.assert_not_called()
-        self.db.refresh.assert_not_called()
-        self.db.rollback.assert_not_called()
+    def test_unversioned_auth_routes_are_not_registered(self) -> None:
+        self.assertEqual(self.client.post("/auth/login", json={}).status_code, 404)
+        self.assertEqual(self.client.post("/auth/register", json={}).status_code, 404)
+        self.assertEqual(self.client.get("/auth/me").status_code, 404)
 
     def test_versioned_login_preserves_existing_login_behavior(self) -> None:
         user = self.make_user()
@@ -182,7 +150,7 @@ class AuthRouterTests(unittest.TestCase):
             return_value=None,
         ):
             response = self.client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "missing@example.com",
                     "password": "wrong-secret",
@@ -202,7 +170,7 @@ class AuthRouterTests(unittest.TestCase):
             return_value=None,
         ):
             response = self.client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "inactive@example.com",
                     "password": "plain-secret",
@@ -219,7 +187,7 @@ class AuthRouterTests(unittest.TestCase):
     def test_login_rejects_invalid_email(self) -> None:
         with patch("app.api.routes.auth.authenticate_user") as authenticate_mock:
             response = self.client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "not-an-email",
                     "password": "plain-secret",
@@ -306,7 +274,7 @@ class AuthRouterTests(unittest.TestCase):
     def test_stage_five_routes_remain_coherent(self) -> None:
         self.assertEqual(self.client.get("/health").status_code, 200)
         self.assertEqual(self.client.get("/api/v1/workspaces").status_code, 404)
-        self.assertEqual(self.client.post("/auth/register", json={}).status_code, 422)
+        self.assertEqual(self.client.post("/auth/register", json={}).status_code, 404)
 
 
 if __name__ == "__main__":

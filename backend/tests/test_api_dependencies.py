@@ -126,7 +126,7 @@ class ApiDependencyTests(unittest.TestCase):
                 return_value=None,
             ) as authenticate_mock:
                 login_response = client.post(
-                    "/auth/login",
+                    "/api/v1/auth/login",
                     json={
                         "email": "ada@example.com",
                         "password": "plain-secret",
@@ -139,7 +139,7 @@ class ApiDependencyTests(unittest.TestCase):
                 email="ada@example.com",
                 password="plain-secret",
             )
-            self.assertEqual(client.post("/auth/register", json={}).status_code, 422)
+            self.assertEqual(client.post("/api/v1/auth/register", json={}).status_code, 422)
             self.assertEqual(client.get("/api/v1/workspaces").status_code, 404)
         finally:
             client.close()

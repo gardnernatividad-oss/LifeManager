@@ -20,11 +20,3 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
-
-from sqlalchemy import text
-
-
-def test_connection():
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT version();"))
-        return result.scalar()

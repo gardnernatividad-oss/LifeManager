@@ -41,8 +41,8 @@ La infraestructura, autenticación, modelos base, APIs y frontend PWA existen. L
    - agregaciones correctas por cada dominio;
    - reportes visuales sin mezclar edición histórica.
 8. **Retiro del runtime heredado y QA**
-   - retirar TaskSeries, Daily Form/Workflow, Reminder Engine y settings no V1 sin migrar sus datos descartables;
-   - eliminar rutas/UI obsoletas cuando sus etapas objetivo sean coherentes;
+   - backend completado: TaskSeries, Daily Form/Workflow, Reminder Engine, settings no V1, rutas Workspace públicas y auth no versionado ya no forman parte del runtime;
+   - siguiente paso: reemplazar la UI obsoleta durante el corte frontend coordinado;
    - reconstruir una base vacía mediante toda la cadena Alembic y validar el producto final.
 
 ## Criterios de finalización V1

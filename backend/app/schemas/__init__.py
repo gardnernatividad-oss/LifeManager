@@ -90,7 +90,6 @@ from app.schemas.task_report import (
 )
 from app.schemas.timezone import TimezoneListResponse
 from app.schemas.user import UserCreate, UserProfileRead, UserRead, UserUpdate
-from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 
 __all__ = [
     "LoginRequest",
@@ -174,7 +173,4 @@ __all__ = [
     "UserProfileRead",
     "UserRead",
     "UserUpdate",
-    "WorkspaceCreate",
-    "WorkspaceRead",
-    "WorkspaceUpdate",
 ]

@@ -12,7 +12,7 @@ from app.core.tokens import decode_access_token
 from app.db.session import SessionLocal
 from app.models import User, Workspace, WorkspaceKind, WorkspaceMember, WorkspaceRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -292,8 +292,9 @@ An alternative validation path applies the new destructive migration to a dispos
 
 ### Stage L — Remaining legacy runtime cleanup
 
-- Remove Daily Form/Workflow, settings/reminder, old Dashboard/Reports, duplicate auth mount, stale exports/imports/tests, and obsolete database types not already removed.
-- Gate: repository-wide legacy reference scan distinguishes only immutable migrations/superseded docs.
+- **Completada.** Se retiraron del runtime Daily Form/Workflow, settings/reminders, Dashboard heredado, TaskSeries/materialización, CRUD público de Workspaces, el montaje auth no versionado y sus exports/imports obsoletos.
+- La metadata activa conserva exactamente las diez tablas objetivo. Las menciones legacy restantes pertenecen únicamente a migraciones históricas inmutables o documentación histórica/superseded.
+- Gate cumplido mediante auditoría de OpenAPI, metadata, imports, cadena de migraciones y búsqueda estática del runtime.
 
 ### Stage M — Final validation and QA
 
