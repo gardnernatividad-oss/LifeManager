@@ -1,5 +1,11 @@
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.category import CategoryCreate, CategoryListResponse, CategoryRead, CategoryUpdate
+from app.schemas.home import (
+    HomePendingItemAttention,
+    HomeProjectStepAttention,
+    HomeSummary,
+    HomeTaskAttention,
+)
 from app.schemas.master_task import (
     MasterTaskCreate,
     MasterTaskListResponse,
@@ -67,6 +73,10 @@ __all__ = [
     "CategoryListResponse",
     "CategoryRead",
     "CategoryUpdate",
+    "HomePendingItemAttention",
+    "HomeProjectStepAttention",
+    "HomeSummary",
+    "HomeTaskAttention",
     "MasterTaskCreate",
     "MasterTaskListResponse",
     "MasterTaskRead",
