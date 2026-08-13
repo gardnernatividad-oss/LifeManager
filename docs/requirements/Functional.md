@@ -104,7 +104,7 @@ Seguimiento > Tareas es el registro completo paginado, no crea ni elimina. Colum
 
 ### 8.1 Planificación
 
-Campos: Vigencia Activo/Inactivo, Categoría, nombre libre y Fecha planificada. Activo exige fecha; Inactivo permite fecha nula. No existe tabla maestra de Pendientes ni historial de reprogramación. Planificación es el único lugar donde se cambia la fecha.
+Campos: Vigencia Activo/Inactivo, Categoría, nombre libre y Fecha planificada. Activo exige fecha; Inactivo exige que la fecha sea nula. Desactivar limpia la fecha planificada y reactivar exige asignar una nueva fecha desde Planificación. Seguimiento no puede asignarla. No existe tabla maestra de Pendientes ni historial de reprogramación. Planificación es el único lugar donde se cambia la fecha.
 
 ### 8.2 Reglas derivadas
 

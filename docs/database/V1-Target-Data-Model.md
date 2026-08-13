@@ -150,7 +150,7 @@ No existe entidad, FK ni procedencia de recurrencia. El request temporal valida 
 | `category_id` | UUID | no | Categoría del mismo Workspace, `RESTRICT` |
 | `name` | VARCHAR(255) | no | check no vacío |
 | `is_active` | BOOLEAN | no | default `true` |
-| `planned_date` | DATE | sí | obligatorio si activo |
+| `planned_date` | DATE | sí | obligatorio si activo; nulo si inactivo |
 | `progress` | SMALLINT | no | default 0, check 0–100 |
 | `completion_date` | DATE | sí | consistencia con progreso |
 | `comment` | TEXT | sí | valor actual, no historial |
@@ -158,7 +158,7 @@ No existe entidad, FK ni procedencia de recurrencia. El request temporal valida 
 | `lock_version` | INTEGER | no | control optimista |
 | auditoría estándar | — | — | — |
 
-Checks: `NOT is_active OR planned_date IS NOT NULL`; `progress = 100` si y solo si `completion_date IS NOT NULL`. No hay descripción, tabla de progreso ni historial de comentarios.
+Checks: `NOT is_active OR planned_date IS NOT NULL`; `progress = 100` si y solo si `completion_date IS NOT NULL`. El service aplica además la regla de producto completa: desactivar limpia `planned_date`, reactivar requiere una nueva fecha desde Planificación y Seguimiento no puede asignarla. No hay descripción, tabla de progreso ni historial de comentarios.
 
 Estado, Cumplimiento y Detalle son derivados. Al guardar 100 se asigna fecha local; al bajar se limpia; un 100 posterior usa la nueva fecha.
 

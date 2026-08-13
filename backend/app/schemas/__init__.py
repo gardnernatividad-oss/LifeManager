@@ -6,6 +6,17 @@ from app.schemas.master_task import (
     MasterTaskRead,
     MasterTaskUpdate,
 )
+from app.schemas.pending_item import (
+    PendingItemCompliance,
+    PendingItemCreate,
+    PendingItemListResponse,
+    PendingItemPlanningUpdate,
+    PendingItemRead,
+    PendingItemState,
+    PendingItemTrackingBatch,
+    PendingItemTrackingBatchResponse,
+    PendingItemTrackingUpdate,
+)
 from app.schemas.task import (
     BulkTaskPattern,
     TaskBulkCreate,
@@ -32,6 +43,15 @@ __all__ = [
     "MasterTaskListResponse",
     "MasterTaskRead",
     "MasterTaskUpdate",
+    "PendingItemCompliance",
+    "PendingItemCreate",
+    "PendingItemListResponse",
+    "PendingItemPlanningUpdate",
+    "PendingItemRead",
+    "PendingItemState",
+    "PendingItemTrackingBatch",
+    "PendingItemTrackingBatchResponse",
+    "PendingItemTrackingUpdate",
     "BulkTaskPattern",
     "TaskBulkCreate",
     "TaskBulkCreateResponse",
