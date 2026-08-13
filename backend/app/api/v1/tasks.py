@@ -14,13 +14,14 @@ from app.schemas.task import (
     TaskCreate,
     TaskListResponse,
     TaskRead,
+    TaskResultUpdate,
     TaskStatus,
     TaskUpdate,
 )
 from app.services import task_service
 
 
-router = APIRouter(prefix="/tasks", tags=["Task Planning"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 _DOMAIN_ERRORS = (
     task_service.TaskNotFoundError,
@@ -29,6 +30,7 @@ _DOMAIN_ERRORS = (
     task_service.TaskPlanningConflictError,
     task_service.TaskVersionConflictError,
     task_service.TaskBulkValidationError,
+    task_service.TaskResultConflictError,
 )
 
 
@@ -45,6 +47,7 @@ def _task_error(error: Exception) -> HTTPException:
             task_service.TaskOccurrenceConflictError,
             task_service.TaskPlanningConflictError,
             task_service.TaskVersionConflictError,
+            task_service.TaskResultConflictError,
         ),
     ):
         return HTTPException(status_code=409, detail=str(error))
@@ -165,6 +168,35 @@ def update_task(
             workspace_id=workspace.id,
             task_id=task_id,
             task_in=task_in,
+            local_date=today,
+        )
+        db.commit()
+        db.refresh(task)
+    except _DOMAIN_ERRORS as error:
+        db.rollback()
+        raise _task_error(error) from error
+    except Exception:
+        db.rollback()
+        raise
+    return TaskRead.from_task(task, local_date=today)
+
+
+@router.patch("/{task_id}/result", response_model=TaskRead)
+def set_task_result(
+    task_id: uuid.UUID,
+    result_in: TaskResultUpdate,
+    db: SessionDependency,
+    current_user: CurrentUser,
+    workspace: PersonalWorkspace,
+) -> TaskRead:
+    today = _today(current_user)
+    try:
+        task = task_service.set_task_result(
+            db,
+            workspace_id=workspace.id,
+            task_id=task_id,
+            current_user=current_user,
+            result_in=result_in,
             local_date=today,
         )
         db.commit()

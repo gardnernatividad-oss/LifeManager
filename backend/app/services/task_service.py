@@ -1,6 +1,6 @@
 import uuid
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +16,7 @@ from app.schemas.task import (
     TaskCreate,
     TaskStatus,
     TaskUpdate,
+    TaskResultUpdate,
 )
 
 
@@ -40,6 +41,10 @@ class TaskVersionConflictError(ValueError):
 
 
 class TaskBulkValidationError(ValueError):
+    pass
+
+
+class TaskResultConflictError(ValueError):
     pass
 
 
@@ -310,6 +315,60 @@ def update_task(
         raise TaskVersionConflictError("Task version is stale")
     set_committed_value(task, "planned_date", task_in.planned_date)
     set_committed_value(task, "lock_version", task_in.lock_version + 1)
+    db.flush()
+    return task
+
+
+def set_task_result(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    current_user: User,
+    result_in: TaskResultUpdate,
+    local_date: date,
+    resolved_at: datetime | None = None,
+) -> Task:
+    task = _get_task(db, workspace_id=workspace_id, task_id=task_id)
+    if task.lock_version != result_in.lock_version:
+        raise TaskVersionConflictError("Task version is stale")
+    if task.result is None:
+        if task.planned_date > local_date:
+            raise TaskResultConflictError("Scheduled Tasks cannot receive a result")
+        expected_result = None
+    else:
+        if task.result == result_in.result or task.result == result_in.result.value:
+            raise TaskResultConflictError("Task already has the requested result")
+        expected_result = task.result
+
+    resolution_time = resolved_at or datetime.now(timezone.utc)
+    if resolution_time.tzinfo is None or resolution_time.utcoffset() is None:
+        raise ValueError("resolved_at must be timezone-aware")
+    resolution_time = resolution_time.astimezone(timezone.utc)
+
+    result = db.execute(
+        update(Task)
+        .where(
+            Task.id == task_id,
+            Task.workspace_id == workspace_id,
+            Task.lock_version == result_in.lock_version,
+            Task.result == expected_result if expected_result is not None else Task.result.is_(None),
+        )
+        .values(
+            result=result_in.result,
+            resolved_at=resolution_time,
+            resolved_by_id=current_user.id,
+            lock_version=Task.lock_version + 1,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount != 1:
+        raise TaskVersionConflictError("Task version is stale")
+
+    set_committed_value(task, "result", result_in.result)
+    set_committed_value(task, "resolved_at", resolution_time)
+    set_committed_value(task, "resolved_by_id", current_user.id)
+    set_committed_value(task, "lock_version", result_in.lock_version + 1)
     db.flush()
     return task
 

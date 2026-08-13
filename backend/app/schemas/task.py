@@ -42,6 +42,13 @@ class TaskUpdate(BaseModel):
     lock_version: int = Field(ge=1)
 
 
+class TaskResultUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    result: TaskResult
+    lock_version: int = Field(ge=1)
+
+
 class TaskDeleteItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -108,6 +115,9 @@ class TaskRead(BaseModel):
     master_task_id: uuid.UUID
     planned_date: date
     status: TaskStatus
+    result: TaskResult | None
+    resolved_at: datetime | None
+    resolved_by_id: uuid.UUID | None
     master_task: TaskMasterTaskRead
     lock_version: int
     created_at: datetime
@@ -120,6 +130,9 @@ class TaskRead(BaseModel):
             master_task_id=task.master_task_id,
             planned_date=task.planned_date,
             status=derive_task_status(task, local_date=local_date),
+            result=task.result,
+            resolved_at=task.resolved_at,
+            resolved_by_id=task.resolved_by_id,
             master_task=TaskMasterTaskRead.model_validate(task.master_task),
             lock_version=task.lock_version,
             created_at=task.created_at,

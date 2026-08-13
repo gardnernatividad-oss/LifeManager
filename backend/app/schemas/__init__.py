@@ -15,6 +15,7 @@ from app.schemas.task import (
     TaskCreate,
     TaskListResponse,
     TaskRead,
+    TaskResultUpdate,
     TaskStatus,
     TaskUpdate,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "TaskCreate",
     "TaskListResponse",
     "TaskRead",
+    "TaskResultUpdate",
     "TaskStatus",
     "TaskUpdate",
     "TokenResponse",
