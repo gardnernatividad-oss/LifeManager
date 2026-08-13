@@ -6,6 +6,7 @@ import { PagePlaceholder } from "../components/common/PagePlaceholder";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { HomePage } from "../pages/home/HomePage";
+import { ReviewPage } from "../pages/review/ReviewPage";
 import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 const placeholder = (title: string) => (
@@ -16,7 +17,6 @@ const placeholder = (title: string) => (
 );
 
 export const v1PlaceholderRoutes = [
-  ["/revision", "Revisión"],
   ["/planificacion/tareas", "Planificación · Tareas"],
   ["/planificacion/pendientes", "Planificación · Pendientes"],
   ["/planificacion/proyectos", "Planificación · Proyectos"],
@@ -52,6 +52,7 @@ export const appRouter = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/inicio" replace /> },
           { path: "/inicio", element: <HomePage /> },
+          { path: "/revision", element: <ReviewPage /> },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,
             element: placeholder(title)

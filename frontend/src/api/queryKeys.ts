@@ -1,5 +1,6 @@
 export const queryKeys = {
   home: ["home"] as const,
+  review: ["review"] as const,
   workspaces: ["workspaces"] as const,
   userSettings: ["user-settings"] as const,
   dashboardSummary: (workspaceId: string) => ["dashboard", "summary", workspaceId] as const,

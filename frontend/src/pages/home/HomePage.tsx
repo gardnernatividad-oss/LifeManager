@@ -3,29 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getHomeSummary } from "../../api/homeApi";
 import { queryKeys } from "../../api/queryKeys";
 import { useAuth } from "../../hooks/useAuth";
-
-function formatLocalDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return value;
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
-  return `Hoy, ${new Intl.DateTimeFormat("es-PE", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC"
-  }).format(date)}`;
-}
-
-function formatTimestamp(value: string | null, timeZone: string): string {
-  if (!value) return "Sin registro";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Sin registro";
-  return new Intl.DateTimeFormat("es-PE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone
-  }).format(parsed);
-}
+import { formatCalendarDate, formatLocalTimestamp } from "../../utils/localizedDate";
 
 function HomeLoading() {
   return (
@@ -80,7 +58,7 @@ export function HomePage() {
     <section className="home-page">
       <header className="home-header">
         <div>
-          <p className="eyebrow">{formatLocalDate(data.local_date)}</p>
+          <p className="eyebrow">{formatCalendarDate(data.local_date, "Hoy")}</p>
           <h1>Bienvenido a LifeManager, {data.user_first_name}</h1>
         </div>
         <div className="home-refresh">
@@ -113,11 +91,11 @@ export function HomePage() {
       <dl className="home-timestamps" aria-label="Últimas actualizaciones">
         <div>
           <dt>Última revisión</dt>
-          <dd>{formatTimestamp(data.last_review_saved_at, timeZone)}</dd>
+          <dd>{formatLocalTimestamp(data.last_review_saved_at, timeZone)}</dd>
         </div>
         <div>
           <dt>Última actualización de pendientes</dt>
-          <dd>{formatTimestamp(data.pending_items_last_tracking_saved_at, timeZone)}</dd>
+          <dd>{formatLocalTimestamp(data.pending_items_last_tracking_saved_at, timeZone)}</dd>
         </div>
       </dl>
     </section>
