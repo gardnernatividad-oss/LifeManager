@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.dependencies import CurrentUser, SessionDependency
 from app.core.tokens import create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import UserCreate, UserProfileRead, UserRead, UserUpdate
 from app.services.user import (
     EmailAlreadyRegisteredError,
     authenticate_user,
@@ -14,17 +14,17 @@ from app.services.user import (
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.get("/me", response_model=UserRead)
-def get_authenticated_user(current_user: CurrentUser) -> UserRead:
-    return UserRead.model_validate(current_user)
+@router.get("/me", response_model=UserProfileRead)
+def get_authenticated_user(current_user: CurrentUser) -> UserProfileRead:
+    return UserProfileRead.model_validate(current_user)
 
 
-@router.patch("/me", response_model=UserRead)
+@router.patch("/me", response_model=UserProfileRead)
 def update_authenticated_user(
     user_in: UserUpdate,
     db: SessionDependency,
     current_user: CurrentUser,
-) -> UserRead:
+) -> UserProfileRead:
     try:
         user = update_user_profile(db, user=current_user, user_in=user_in)
         db.commit()
@@ -32,7 +32,7 @@ def update_authenticated_user(
     except Exception:
         db.rollback()
         raise
-    return UserRead.model_validate(user)
+    return UserProfileRead.model_validate(user)
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)

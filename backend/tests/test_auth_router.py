@@ -132,10 +132,6 @@ class AuthRouterTests(unittest.TestCase):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "timezone": user.timezone,
-                "is_active": user.is_active,
-                "is_verified": user.is_verified,
-                "created_at": user.created_at.isoformat().replace("+00:00", "Z"),
-                "updated_at": user.updated_at.isoformat().replace("+00:00", "Z"),
             },
         )
         self.db.add.assert_not_called()

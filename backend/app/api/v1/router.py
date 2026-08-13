@@ -11,6 +11,7 @@ from app.api.v1.project_reports import router as project_reports_router
 from app.api.v1.review import router as review_router
 from app.api.v1.tasks import router as tasks_router
 from app.api.v1.task_reports import router as task_reports_router
+from app.api.v1.timezones import router as timezones_router
 
 
 api_router = APIRouter()
@@ -25,3 +26,4 @@ api_router.include_router(project_reports_router)
 api_router.include_router(review_router)
 api_router.include_router(tasks_router)
 api_router.include_router(task_reports_router)
+api_router.include_router(timezones_router)

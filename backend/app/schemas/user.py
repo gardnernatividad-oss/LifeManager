@@ -66,3 +66,13 @@ class UserRead(BaseModel):
     is_verified: bool
     created_at: datetime
     updated_at: datetime
+
+
+class UserProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: EmailStr
+    first_name: str
+    last_name: str
+    timezone: str

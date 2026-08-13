@@ -88,7 +88,8 @@ from app.schemas.task_report import (
     TaskReportPeriod,
     TaskReportResponse,
 )
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.timezone import TimezoneListResponse
+from app.schemas.user import UserCreate, UserProfileRead, UserRead, UserUpdate
 from app.schemas.workspace import WorkspaceCreate, WorkspaceRead, WorkspaceUpdate
 
 __all__ = [
@@ -167,8 +168,10 @@ __all__ = [
     "TaskOutcomeMetrics",
     "TaskReportPeriod",
     "TaskReportResponse",
+    "TimezoneListResponse",
     "TokenResponse",
     "UserCreate",
+    "UserProfileRead",
     "UserRead",
     "UserUpdate",
     "WorkspaceCreate",
