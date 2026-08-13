@@ -5,6 +5,7 @@ export const testUser: AuthenticatedUser = {
   email: "ada@example.com",
   first_name: "Ada",
   last_name: "Lovelace",
+  timezone: "America/Lima",
   is_active: true,
   is_verified: false,
   created_at: "2026-08-06T12:00:00Z",

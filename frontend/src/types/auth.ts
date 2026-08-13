@@ -3,6 +3,7 @@ export interface AuthenticatedUser {
   email: string;
   first_name: string;
   last_name: string;
+  timezone: string;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
