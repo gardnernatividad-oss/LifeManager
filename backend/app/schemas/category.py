@@ -1,46 +1,51 @@
 import uuid
 
 from datetime import datetime
-from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+from app.core.names import normalize_name
 
 
-CategoryName = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
-]
-CategoryDescription = Annotated[str, StringConstraints(max_length=500)]
+def _clean_category_name(value: str) -> str:
+    return normalize_name(value, max_length=100, field_label="Category")[0]
 
 
 class CategoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: CategoryName
-    description: CategoryDescription | None = None
+    name: str
+
+    _name = field_validator("name")(_clean_category_name)
 
 
 class CategoryUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: CategoryName | None = None
-    description: CategoryDescription | None = None
+    name: str | None = None
 
-    @field_validator("name")
+    @model_validator(mode="before")
     @classmethod
-    def name_must_not_be_null(cls, value: str | None) -> str:
-        if value is None:
+    def reject_explicit_null(cls, value: object) -> object:
+        if isinstance(value, dict) and value.get("name", ...) is None:
             raise ValueError("name cannot be null")
         return value
 
+    _name = field_validator("name")(_clean_category_name)
+
 
 class CategoryRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="forbid")
+    model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    workspace_id: uuid.UUID
     name: str
-    description: str | None
-    is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class CategoryListResponse(BaseModel):
+    items: list[CategoryRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

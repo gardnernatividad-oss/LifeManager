@@ -1,163 +1,123 @@
 import uuid
 
-from collections.abc import Callable
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
-from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy.orm import Session
-
-from app.api.dependencies import CurrentUser, SessionDependency
-from app.models.category import Category
-from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
+from app.api.dependencies import PersonalWorkspace, SessionDependency
+from app.schemas.category import (
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryRead,
+    CategoryUpdate,
+)
 from app.services import category_service
 
 
-router = APIRouter(
-    prefix="/workspaces/{workspace_id}/categories",
-    tags=["Categories"],
-)
+router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
-def _raise_http_error(error: Exception) -> None:
+def _category_error(error: Exception) -> HTTPException:
     if isinstance(error, category_service.CategoryNotFoundError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found",
-        ) from error
+        return HTTPException(status_code=404, detail="Category not found")
     if isinstance(error, category_service.CategoryNameConflictError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Category name already exists",
-        ) from error
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=str(error),
-    ) from error
+        return HTTPException(status_code=409, detail="Category name already exists")
+    if isinstance(error, category_service.CategoryInUseError):
+        return HTTPException(status_code=409, detail="Category is already in use")
+    raise error
 
 
-def _commit_category_write(
-    db: Session,
-    operation: Callable[..., Category],
-    **kwargs: object,
+@router.post("", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
+def create_category(
+    category_in: CategoryCreate,
+    db: SessionDependency,
+    workspace: PersonalWorkspace,
 ) -> CategoryRead:
     try:
-        category = operation(db, **kwargs)
+        category = category_service.create_category(
+            db, workspace_id=workspace.id, category_in=category_in
+        )
         db.commit()
         db.refresh(category)
     except (
-        category_service.CategoryNotFoundError,
-        category_service.CategoryPermissionError,
         category_service.CategoryNameConflictError,
+        category_service.CategoryInUseError,
     ) as error:
         db.rollback()
-        _raise_http_error(error)
+        raise _category_error(error) from error
     except Exception:
         db.rollback()
         raise
     return CategoryRead.model_validate(category)
 
 
-@router.post("", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
-def create_category(
-    workspace_id: uuid.UUID,
-    category_in: CategoryCreate,
-    db: SessionDependency,
-    current_user: CurrentUser,
-) -> CategoryRead:
-    return _commit_category_write(
-        db,
-        category_service.create_category,
-        workspace_id=workspace_id,
-        current_user=current_user,
-        category_in=category_in,
-    )
-
-
-@router.get("", response_model=list[CategoryRead])
+@router.get("", response_model=CategoryListResponse)
 def list_categories(
-    workspace_id: uuid.UUID,
     db: SessionDependency,
-    current_user: CurrentUser,
-    active: bool | None = Query(default=None),
-) -> list[CategoryRead]:
-    try:
-        categories = category_service.list_categories(
-            db,
-            workspace_id=workspace_id,
-            current_user=current_user,
-            active=active,
-        )
-    except category_service.CategoryPermissionError as error:
-        _raise_http_error(error)
-    return [CategoryRead.model_validate(category) for category in categories]
-
-
-@router.get("/{category_id}", response_model=CategoryRead)
-def get_category(
-    workspace_id: uuid.UUID,
-    category_id: uuid.UUID,
-    db: SessionDependency,
-    current_user: CurrentUser,
-) -> CategoryRead:
-    try:
-        category = category_service.get_category(
-            db,
-            workspace_id=workspace_id,
-            category_id=category_id,
-            current_user=current_user,
-        )
-    except (
-        category_service.CategoryNotFoundError,
-        category_service.CategoryPermissionError,
-    ) as error:
-        _raise_http_error(error)
-    return CategoryRead.model_validate(category)
+    workspace: PersonalWorkspace,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+) -> CategoryListResponse:
+    items, total = category_service.list_categories(
+        db,
+        workspace_id=workspace.id,
+        page=page,
+        page_size=page_size,
+    )
+    return CategoryListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+    )
 
 
 @router.patch("/{category_id}", response_model=CategoryRead)
 def update_category(
-    workspace_id: uuid.UUID,
     category_id: uuid.UUID,
     category_in: CategoryUpdate,
     db: SessionDependency,
-    current_user: CurrentUser,
+    workspace: PersonalWorkspace,
 ) -> CategoryRead:
-    return _commit_category_write(
-        db,
-        category_service.update_category,
-        workspace_id=workspace_id,
-        category_id=category_id,
-        current_user=current_user,
-        category_in=category_in,
-    )
+    try:
+        category = category_service.update_category(
+            db,
+            workspace_id=workspace.id,
+            category_id=category_id,
+            category_in=category_in,
+        )
+        db.commit()
+        db.refresh(category)
+    except (
+        category_service.CategoryNotFoundError,
+        category_service.CategoryNameConflictError,
+        category_service.CategoryInUseError,
+    ) as error:
+        db.rollback()
+        raise _category_error(error) from error
+    except Exception:
+        db.rollback()
+        raise
+    return CategoryRead.model_validate(category)
 
 
-@router.post("/{category_id}/activate", response_model=CategoryRead)
-def activate_category(
-    workspace_id: uuid.UUID,
+@router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
     category_id: uuid.UUID,
     db: SessionDependency,
-    current_user: CurrentUser,
-) -> CategoryRead:
-    return _commit_category_write(
-        db,
-        category_service.activate_category,
-        workspace_id=workspace_id,
-        category_id=category_id,
-        current_user=current_user,
-    )
-
-
-@router.post("/{category_id}/deactivate", response_model=CategoryRead)
-def deactivate_category(
-    workspace_id: uuid.UUID,
-    category_id: uuid.UUID,
-    db: SessionDependency,
-    current_user: CurrentUser,
-) -> CategoryRead:
-    return _commit_category_write(
-        db,
-        category_service.deactivate_category,
-        workspace_id=workspace_id,
-        category_id=category_id,
-        current_user=current_user,
-    )
+    workspace: PersonalWorkspace,
+) -> Response:
+    try:
+        category_service.delete_category(
+            db, workspace_id=workspace.id, category_id=category_id
+        )
+        db.commit()
+    except (
+        category_service.CategoryNotFoundError,
+        category_service.CategoryInUseError,
+    ) as error:
+        db.rollback()
+        raise _category_error(error) from error
+    except Exception:
+        db.rollback()
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
