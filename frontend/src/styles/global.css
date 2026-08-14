@@ -1617,6 +1617,9 @@ div.settings-toggles { border: 0; padding: 0; }
 .project-tracking-row button { width:2rem; min-height:2rem; padding:0; }
 .project-step-tracking-row { display:grid; grid-template-columns:7rem minmax(9rem,1fr) 5rem 5rem 7rem 8rem 5rem 8rem minmax(10rem,1fr); gap:.6rem; align-items:center; min-width:76rem; padding:.65rem; border-bottom:1px solid var(--color-border); }
 .project-step-tracking-row input,.project-tracking-panel textarea { min-width:0; width:100%; padding:.5rem; border:1px solid var(--color-border); border-radius:.4rem; }
+.task-report-page{display:grid;gap:1.25rem}.task-report-panel{display:grid;gap:1rem;padding:1.25rem;border:1px solid var(--color-border);border-radius:.75rem;background:var(--color-surface)}.task-report-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem}.task-report-filters label{display:grid;gap:.3rem}.task-report-filters input,.task-report-filters select{min-width:0;padding:.55rem;border:1px solid var(--color-border);border-radius:.4rem}.task-report-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin:0}.task-report-summary div{padding:.75rem;border:1px solid var(--color-border);border-radius:.5rem}.task-report-summary dd{margin:.25rem 0 0;font-weight:750}.task-report-table{overflow-x:auto}.task-report-row{display:grid;grid-template-columns:minmax(10rem,1.4fr) 8rem repeat(4,7rem);gap:.6rem;min-width:55rem;padding:.65rem;border-bottom:1px solid var(--color-border)}.task-report-row.head{font-weight:700;background:var(--color-background)}
+@media (max-width:48rem){.task-report-filters,.task-report-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:32rem){.task-report-filters,.task-report-summary{grid-template-columns:1fr}}
 .project-planning-step-edit { display: contents; }
 .project-planning-step-edit .project-planning-step-fields { display: contents; }
 

@@ -21,6 +21,8 @@ export const queryKeys = {
   trackingProjects: (params: object) => ["projects", "tracking", params] as const,
   trackingProjectsRoot: ["projects", "tracking"] as const,
   trackingProjectDetail: (id: string) => ["projects", "tracking", "detail", id] as const,
+  taskReports: (params: object) => ["reports", "tasks", params] as const,
+  taskReportsRoot: ["reports", "tasks"] as const,
   workspaces: ["workspaces"] as const,
   userSettings: ["user-settings"] as const,
   dashboardSummary: (workspaceId: string) => ["dashboard", "summary", workspaceId] as const,

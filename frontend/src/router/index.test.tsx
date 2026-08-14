@@ -11,11 +11,12 @@ import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { TrackingTasksPage } from "../pages/tracking/TrackingTasksPage";
 import { TrackingPendingItemsPage } from "../pages/tracking/TrackingPendingItemsPage";
 import { TrackingProjectsPage } from "../pages/tracking/TrackingProjectsPage";
+import { TaskReportsPage } from "../pages/reports/TaskReportsPage";
 import { appRouter, v1PlaceholderRoutes } from "./index";
 
 describe("V1 route contract", () => {
   it("registers every finalized protected route", () => {
-    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", "/seguimiento/pendientes", "/seguimiento/proyectos", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
+    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", "/seguimiento/pendientes", "/seguimiento/proyectos", "/reportes/tareas", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
       "/inicio",
       "/revision",
       "/planificacion/tareas",
@@ -79,6 +80,7 @@ describe("V1 route contract", () => {
     expect((protectedChildren?.find((item) => item.path === "/seguimiento/pendientes")?.element as { type: unknown }).type).toBe(TrackingPendingItemsPage);
   });
   it("mounts the functional Tracking Projects page", () => { const children=appRouter.routes[1].children?.[0].children; expect((children?.find(r=>r.path==="/seguimiento/proyectos")?.element as {type:unknown}).type).toBe(TrackingProjectsPage); });
+  it("mounts the functional Task Reports page",()=>{const children=appRouter.routes[1].children?.[0].children;expect((children?.find(r=>r.path==="/reportes/tareas")?.element as {type:unknown}).type).toBe(TaskReportsPage);});
 
   it("does not register legacy business routes", () => {
     const paths = v1PlaceholderRoutes.map(([path]) => path);
