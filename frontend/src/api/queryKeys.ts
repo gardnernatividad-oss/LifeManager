@@ -14,6 +14,8 @@ export const queryKeys = {
   categoryTableRoot: ["categories", "table"] as const,
   masterTaskTable: (params: object) => ["master-tasks", "table", params] as const,
   masterTaskTableRoot: ["master-tasks", "table"] as const,
+  trackingTasks: (params: object) => ["tasks", "tracking", params] as const,
+  trackingTasksRoot: ["tasks", "tracking"] as const,
   workspaces: ["workspaces"] as const,
   userSettings: ["user-settings"] as const,
   dashboardSummary: (workspaceId: string) => ["dashboard", "summary", workspaceId] as const,

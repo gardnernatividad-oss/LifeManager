@@ -1585,6 +1585,17 @@ div.settings-toggles { border: 0; padding: 0; }
 .master-data-edit { display: contents; }
 .master-data-actions { display: flex; justify-content: flex-start; gap: 0.4rem; }
 .master-data-actions button { width: 2rem; min-height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.4rem; color: var(--color-primary); background: var(--color-surface); }
+.tracking-tasks-page { display: grid; gap: 1.25rem; }
+.tracking-tasks-page header h1, .tracking-tasks-panel h2 { margin: 0.15rem 0; }
+.tracking-tasks-panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.tracking-task-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.7rem; }
+.tracking-task-filters label { display: grid; gap: 0.3rem; color: var(--color-muted); font-size: 0.8rem; font-weight: 650; }
+.tracking-task-filters input, .tracking-task-filters select, .tracking-task-result select { min-height: 2.45rem; min-width: 0; padding: 0.45rem 0.55rem; border: 1px solid var(--color-border); border-radius: 0.45rem; background: var(--color-surface); }
+.tracking-task-table { overflow-x: auto; }
+.tracking-task-row { display: grid; grid-template-columns: 0.8fr minmax(10rem, 1.5fr) 1fr 0.8fr 1.2fr; align-items: center; gap: 0.7rem; min-width: 42rem; padding: 0.7rem; border-bottom: 1px solid var(--color-border); }
+.tracking-task-row--head { color: var(--color-muted); background: var(--color-background); font-size: 0.8rem; font-weight: 700; }
+.tracking-task-result { display: flex; align-items: center; gap: 0.4rem; }
+.tracking-task-result button { width: 2rem; min-height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.4rem; color: var(--color-primary); background: var(--color-surface); }
 .project-planning-step-edit { display: contents; }
 .project-planning-step-edit .project-planning-step-fields { display: contents; }
 
@@ -1744,6 +1755,7 @@ div.settings-toggles { border: 0; padding: 0; }
 
   .pending-planning-form, .pending-planning-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-planning-step-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tracking-task-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pending-planning-form .primary-button { width: 100%; }
 
   .project-list {
@@ -1830,6 +1842,7 @@ div.settings-toggles { border: 0; padding: 0; }
   .pending-planning-form, .pending-planning-filters { grid-template-columns: 1fr; }
   .pending-planning-pagination { align-items: stretch; flex-direction: column; }
   .project-planning-step-fields { grid-template-columns: 1fr; }
+  .tracking-task-filters { grid-template-columns: 1fr; }
 .project-planning-detail-heading { align-items: stretch; flex-direction: column; }
 
   .dashboard-error {
