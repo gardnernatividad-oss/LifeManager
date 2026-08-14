@@ -10,6 +10,8 @@ import { ReviewPage } from "../pages/review/ReviewPage";
 import { PlanningTasksPage } from "../pages/planning/PlanningTasksPage";
 import { PlanningPendingItemsPage } from "../pages/planning/PlanningPendingItemsPage";
 import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
+import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
+import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 const placeholder = (title: string) => (
@@ -26,8 +28,6 @@ export const v1PlaceholderRoutes = [
   ["/reportes/tareas", "Reportes · Tareas"],
   ["/reportes/pendientes", "Reportes · Pendientes"],
   ["/reportes/proyectos", "Reportes · Proyectos"],
-  ["/tablas/tareas", "Tablas · Tareas"],
-  ["/tablas/categorias", "Tablas · Categorías"],
   ["/configuracion", "Configuración"]
 ] as const;
 
@@ -56,6 +56,8 @@ export const appRouter = createBrowserRouter([
           { path: "/planificacion/tareas", element: <PlanningTasksPage /> },
           { path: "/planificacion/pendientes", element: <PlanningPendingItemsPage /> },
           { path: "/planificacion/proyectos", element: <PlanningProjectsPage /> },
+          { path: "/tablas/tareas", element: <MasterTasksTablePage /> },
+          { path: "/tablas/categorias", element: <CategoriesTablePage /> },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,
             element: placeholder(title)
