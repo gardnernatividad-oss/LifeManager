@@ -66,6 +66,9 @@ def test_list_returns_tracking_fields_filters_and_pagination(pending_routes) -> 
     client, db, user, workspace = pending_routes
     item = _item(workspace.id, user.id)
     with patch(
+        "app.api.v1.pending_items._today",
+        return_value=date(2026, 8, 12),
+    ), patch(
         "app.api.v1.pending_items.pending_item_service.list_pending_items",
         return_value=([item], 26),
     ) as service:
@@ -79,6 +82,7 @@ def test_list_returns_tracking_fields_filters_and_pagination(pending_routes) -> 
     assert payload["total_pages"] == 2 and payload["items"][0]["category"]["name"] == "Salud"
     assert payload["items"][0]["compliance"] == "EN_PLAZO"
     assert service.call_args.kwargs["workspace_id"] == workspace.id
+    assert service.call_args.kwargs["local_date"] == date(2026, 8, 12)
     db.commit.assert_not_called(); db.flush.assert_not_called()
 
 

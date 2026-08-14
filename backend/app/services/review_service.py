@@ -137,7 +137,7 @@ def _lock_project_steps(
     if not expected:
         return []
     identified_steps = list(
-        db.scalars(
+        db.execute(
             select(ProjectStep.id, ProjectStep.project_id)
             .join(Project)
             .where(

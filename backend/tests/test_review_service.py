@@ -2,6 +2,7 @@ import uuid
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -89,11 +90,12 @@ def test_save_review_updates_all_sections_and_only_review_timestamp() -> None:
     db.scalars.side_effect = [
         MagicMock(all=MagicMock(return_value=[task])),
         MagicMock(all=MagicMock(return_value=[pending])),
-        MagicMock(all=MagicMock(return_value=[step])),
         MagicMock(all=MagicMock(return_value=[project])),
         MagicMock(all=MagicMock(return_value=[step])),
     ]
-    db.execute.return_value.rowcount = 1; db.get.return_value = metadata
+    identified = MagicMock(all=MagicMock(return_value=[SimpleNamespace(id=step.id, project_id=project.id)]))
+    updated = MagicMock(rowcount=1)
+    db.execute.side_effect = [identified, updated, updated, updated]; db.get.return_value = metadata
     saved_at = datetime(2026, 8, 12, 20, tzinfo=timezone.utc)
     result = save_review(
         db, workspace_id=workspace_id, current_user=user,
@@ -104,11 +106,11 @@ def test_save_review_updates_all_sections_and_only_review_timestamp() -> None:
             project_steps=[{"id": step.id, "progress": 100, "comment": "Listo", "lock_version": 3}],
         ),
     )
-    assert result == saved_at and db.execute.call_count == 3
-    task_values = db.execute.call_args_list[0].args[0].compile().params.values()
+    assert result == saved_at and db.execute.call_count == 4
+    task_values = db.execute.call_args_list[1].args[0].compile().params.values()
     assert TaskResult.COMPLETED in task_values and user.id in task_values and saved_at in task_values
-    assert date(2026, 8, 12) in db.execute.call_args_list[1].args[0].compile().params.values()
     assert date(2026, 8, 12) in db.execute.call_args_list[2].args[0].compile().params.values()
+    assert date(2026, 8, 12) in db.execute.call_args_list[3].args[0].compile().params.values()
     assert metadata.last_review_saved_at == saved_at
     assert metadata.pending_items_last_tracking_saved_at == datetime(2026, 8, 1, tzinfo=timezone.utc)
     assert project.last_tracking_saved_at == project_timestamp
@@ -130,9 +132,11 @@ def test_review_locks_projects_before_steps_in_deterministic_order() -> None:
     steps = sorted([first_step, second_step], key=lambda item: (str(item.project_id), str(item.id)))
     db = MagicMock(spec=Session)
     db.scalars.side_effect = [
-        MagicMock(all=MagicMock(return_value=[first_step, second_step])),
         MagicMock(all=MagicMock(return_value=projects)),
         MagicMock(all=MagicMock(return_value=steps)),
+    ]
+    db.execute.return_value.all.return_value = [
+        SimpleNamespace(id=step.id, project_id=step.project_id) for step in steps
     ]
     result = _lock_project_steps(
         db, workspace_id=workspace_id, local_date=date(2026, 8, 12),
@@ -142,14 +146,53 @@ def test_review_locks_projects_before_steps_in_deterministic_order() -> None:
         ]),
     )
     assert result == steps
-    identify, project_lock, step_lock = [call.args[0] for call in db.scalars.call_args_list]
+    identify = db.execute.call_args.args[0]
+    project_lock, step_lock = [call.args[0] for call in db.scalars.call_args_list]
     assert identify._for_update_arg is None
     assert project_lock._for_update_arg is not None
     assert step_lock._for_update_arg is not None
     assert "projects.id" in str(project_lock._order_by_clause)
     assert "project_steps.project_id" in str(step_lock._order_by_clause)
     assert "project_steps.id" in str(step_lock._order_by_clause)
-    db.execute.assert_not_called(); db.flush.assert_not_called()
+    assert db.execute.call_count == 1; db.flush.assert_not_called()
+
+
+def test_project_step_identification_uses_both_columns_and_save_continues() -> None:
+    workspace_id, user, _task, _pending, project, step = _domain()
+    db = MagicMock(spec=Session)
+    identification = MagicMock(
+        all=MagicMock(
+            return_value=[SimpleNamespace(id=step.id, project_id=project.id)]
+        )
+    )
+    updated = MagicMock(rowcount=1)
+    db.execute.side_effect = [identification, updated]
+    db.scalars.side_effect = [
+        MagicMock(all=MagicMock(return_value=[project])),
+        MagicMock(all=MagicMock(return_value=[step])),
+    ]
+    db.get.return_value = None
+
+    saved_at = datetime(2026, 8, 12, 20, tzinfo=timezone.utc)
+    assert save_review(
+        db,
+        workspace_id=workspace_id,
+        current_user=user,
+        local_date=date(2026, 8, 12),
+        saved_at=saved_at,
+        review_in=ReviewSave(project_steps=[{
+            "id": step.id, "progress": 50, "lock_version": step.lock_version,
+        }]),
+    ) == saved_at
+
+    identification_statement = db.execute.call_args_list[0].args[0]
+    assert "project_steps.id" in str(identification_statement)
+    assert "project_steps.project_id" in str(identification_statement)
+    project_lock, step_lock = [call.args[0] for call in db.scalars.call_args_list]
+    assert project_lock._for_update_arg is not None
+    assert step_lock._for_update_arg is not None
+    assert db.execute.call_args_list[1].args[0].is_update
+    db.flush.assert_called_once_with()
 
 
 def test_missing_or_inactive_project_aborts_before_step_lock_or_update() -> None:
@@ -161,16 +204,20 @@ def test_missing_or_inactive_project_aborts_before_step_lock_or_update() -> None
         project.is_active = False
         db = MagicMock(spec=Session)
         db.scalars.side_effect = [
-            MagicMock(all=MagicMock(return_value=[step])),
             MagicMock(all=MagicMock(return_value=projects)),
+        ]
+        db.execute.return_value.all.return_value = [
+            SimpleNamespace(id=step.id, project_id=project.id)
         ]
         with pytest.raises(error):
             _lock_project_steps(
                 db, workspace_id=workspace_id, local_date=date(2026, 8, 12),
                 review_in=request,
             )
-        assert db.scalars.call_count == 2
-        db.execute.assert_not_called(); db.flush.assert_not_called()
+        assert db.scalars.call_count == 1
+        assert db.execute.call_count == 1
+        assert db.execute.call_args.args[0].is_select
+        db.flush.assert_not_called()
 
 
 def test_empty_review_is_meaningful_and_updates_only_last_review() -> None:
@@ -200,15 +247,22 @@ def test_ineligible_row_is_rejected_before_updates(invalid) -> None:
     db.scalars.side_effect = [
         MagicMock(all=MagicMock(return_value=[task])),
         MagicMock(all=MagicMock(return_value=[pending])),
-        MagicMock(all=MagicMock(return_value=[step])),
         MagicMock(all=MagicMock(return_value=[project])),
+    ]
+    db.execute.return_value.all.return_value = [
+        SimpleNamespace(id=step.id, project_id=project.id)
     ]
     with pytest.raises(ReviewConflictError):
         save_review(
             db, workspace_id=workspace_id, current_user=user,
             local_date=date(2026, 8, 12), review_in=request,
         )
-    db.execute.assert_not_called(); db.get.assert_not_called(); db.flush.assert_not_called()
+    if invalid == "step":
+        assert db.execute.call_count == 1
+        assert db.execute.call_args.args[0].is_select
+    else:
+        db.execute.assert_not_called()
+    db.get.assert_not_called(); db.flush.assert_not_called()
 
 
 def test_missing_or_stale_across_sections_aborts_before_updates() -> None:
