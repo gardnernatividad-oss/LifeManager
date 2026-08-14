@@ -1555,6 +1555,24 @@ div.settings-toggles { border: 0; padding: 0; }
 .pending-planning-actions button { min-width: 2.4rem; min-height: 2.4rem; border: 1px solid var(--color-border); border-radius: 0.45rem; color: var(--color-primary); background: var(--color-surface); font-weight: 750; }
 .pending-planning-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
 .pending-planning-pagination > div { display: flex; gap: 0.5rem; }
+.project-planning-page { display: grid; gap: 1.25rem; }
+.project-planning-page header h1, .project-planning-panel h2 { margin: 0.15rem 0; }
+.project-planning-panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.project-planning-create, .project-planning-edit, .project-planning-new-step { display: grid; gap: 0.8rem; }
+.project-planning-create > label, .project-planning-edit label, .project-planning-step-fields label { display: grid; gap: 0.3rem; color: var(--color-muted); font-size: 0.84rem; font-weight: 650; }
+.project-planning-create > label { max-width: 28rem; }
+.project-planning-page input, .project-planning-page select { min-height: 2.6rem; min-width: 0; padding: 0.6rem 0.7rem; border: 1px solid var(--color-border); border-radius: 0.5rem; background: var(--color-surface); }
+.project-planning-drafts { display: grid; gap: 0.7rem; padding: 0.8rem; border: 1px solid var(--color-border); border-radius: 0.6rem; }
+.project-planning-drafts > div:first-child, .project-planning-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.project-planning-detail-heading > div { display: grid; gap: 0.2rem; }
+.project-planning-step-fields { display: grid; grid-template-columns: 0.55fr 1.5fr 1fr 0.7fr; gap: 0.7rem; }
+.project-planning-table { overflow-x: auto; }
+.project-planning-row { display: grid; grid-template-columns: 0.7fr 1.5fr 1fr 1fr 0.8fr; align-items: center; gap: 0.7rem; min-width: 44rem; padding: 0.7rem; border-bottom: 1px solid var(--color-border); }
+.project-planning-step-row { display: grid; grid-template-columns: 0.6fr 1.5fr 1fr 0.7fr 0.8fr; align-items: center; gap: 0.7rem; min-width: 44rem; padding: 0.7rem; border-bottom: 1px solid var(--color-border); }
+.project-planning-row--head { color: var(--color-muted); background: var(--color-background); font-size: 0.8rem; font-weight: 700; }
+.project-planning-open { width: 2rem; min-height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.4rem; color: var(--color-primary); background: var(--color-surface); font-size: 1.35rem; line-height: 1; }
+.project-planning-step-edit { display: contents; }
+.project-planning-step-edit .project-planning-step-fields { display: contents; }
 
 @media (max-width: 64rem) { .task-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .task-card { flex-direction: column; } .task-actions { justify-content: flex-start; } }
 @media (max-width: 64rem) { .series-card { grid-template-columns: 1fr; } .series-actions { justify-content: flex-start; max-width: none; } }
@@ -1711,6 +1729,7 @@ div.settings-toggles { border: 0; padding: 0; }
   .report-section-heading > strong { white-space: normal; }
 
   .pending-planning-form, .pending-planning-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-planning-step-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pending-planning-form .primary-button { width: 100%; }
 
   .project-list {
@@ -1796,6 +1815,8 @@ div.settings-toggles { border: 0; padding: 0; }
 
   .pending-planning-form, .pending-planning-filters { grid-template-columns: 1fr; }
   .pending-planning-pagination { align-items: stretch; flex-direction: column; }
+  .project-planning-step-fields { grid-template-columns: 1fr; }
+  .project-planning-detail-heading { align-items: stretch; flex-direction: column; }
 
   .dashboard-error {
     align-items: stretch;

@@ -5,11 +5,12 @@ import { HomePage } from "../pages/home/HomePage";
 import { ReviewPage } from "../pages/review/ReviewPage";
 import { PlanningTasksPage } from "../pages/planning/PlanningTasksPage";
 import { PlanningPendingItemsPage } from "../pages/planning/PlanningPendingItemsPage";
+import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
 import { appRouter, v1PlaceholderRoutes } from "./index";
 
 describe("V1 route contract", () => {
   it("registers every finalized protected route", () => {
-    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
+    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
       "/inicio",
       "/revision",
       "/planificacion/tareas",
@@ -49,6 +50,12 @@ describe("V1 route contract", () => {
     const protectedChildren = appRouter.routes[1].children?.[0].children;
     const route = protectedChildren?.find((item) => item.path === "/planificacion/pendientes");
     expect(isValidElement(route?.element) && route.element.type).toBe(PlanningPendingItemsPage);
+  });
+
+  it("mounts the functional Planning Projects page", () => {
+    const protectedChildren = appRouter.routes[1].children?.[0].children;
+    const route = protectedChildren?.find((item) => item.path === "/planificacion/proyectos");
+    expect(isValidElement(route?.element) && route.element.type).toBe(PlanningProjectsPage);
   });
 
   it("does not register legacy business routes", () => {
