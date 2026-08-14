@@ -24,7 +24,47 @@ workspace_role_enum = postgresql.ENUM(
 )
 
 
+LEGACY_TABLES = (
+    "daily_form_answers",
+    "daily_form_submissions",
+    "daily_form_questions",
+    "daily_form_definitions",
+    "workspace_settings",
+    "user_settings",
+    "tasks",
+    "task_series",
+    "projects",
+    "categories",
+    "workspace_members",
+    "workspaces",
+    "users",
+)
+
+
+def _is_verified_empty_bootstrap_database(bind: sa.Connection) -> bool:
+    revision_rows = bind.execute(
+        sa.text("SELECT version_num FROM alembic_version")
+    ).scalars().all()
+    if revision_rows != [down_revision]:
+        return False
+
+    existing_tables = set(sa.inspect(bind).get_table_names(schema="public"))
+    if not set(LEGACY_TABLES).issubset(existing_tables):
+        return False
+
+    for table_name in LEGACY_TABLES:
+        has_rows = bind.execute(
+            sa.text(f'SELECT EXISTS (SELECT 1 FROM "{table_name}" LIMIT 1)')
+        ).scalar_one()
+        if has_rows:
+            return False
+    return True
+
+
 def _require_explicit_development_database(bind: sa.Connection) -> None:
+    if _is_verified_empty_bootstrap_database(bind):
+        return
+
     if os.getenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_SCHEMA_RESET") != "1":
         raise RuntimeError(
             "Destructive V1 schema reset refused. Set "
@@ -58,21 +98,7 @@ def upgrade() -> None:
     _require_explicit_development_database(op.get_bind())
     # All rows are approved disposable development data. Explicit application
     # table names prevent this revision from affecting unrelated schemas.
-    for table_name in (
-        "daily_form_answers",
-        "daily_form_submissions",
-        "daily_form_questions",
-        "daily_form_definitions",
-        "workspace_settings",
-        "user_settings",
-        "tasks",
-        "task_series",
-        "projects",
-        "categories",
-        "workspace_members",
-        "workspaces",
-        "users",
-    ):
+    for table_name in LEGACY_TABLES:
         op.execute(sa.text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
 
     for type_name in (

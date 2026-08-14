@@ -28,6 +28,15 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
 Keep `SQL_ECHO=false` in production. Do not expose `.env`, database URLs, or
 JWT secrets to the frontend.
 
+For a brand-new empty PostgreSQL database, the migration chain verifies that
+the expected legacy bootstrap tables contain no rows before its historical V1
+reset revision can run without the local-development reset flag. If any
+application row exists, the reset remains refused. Never set
+`LIFEMANAGER_ALLOW_DESTRUCTIVE_SCHEMA_RESET=1` in production. After a failed
+first bootstrap that rolled back transactionally, rerun `python -m alembic
+upgrade head` normally and verify `python -m alembic current` reports the
+expected head.
+
 ### Frontend
 
 Set `VITE_API_BASE_URL` at build time to the public versioned API URL, for
