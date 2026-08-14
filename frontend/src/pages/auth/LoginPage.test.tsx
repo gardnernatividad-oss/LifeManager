@@ -41,6 +41,12 @@ describe("LoginPage", () => {
     vi.mocked(useAuth).mockReset();
   });
 
+  it("links new users to Registration without a page reload", () => {
+    vi.mocked(useAuth).mockReturnValue(authState(vi.fn()));
+    renderLogin();
+    expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/registro");
+  });
+
   it("validates email and password before submitting", async () => {
     const login = vi.fn();
     vi.mocked(useAuth).mockReturnValue(authState(login));

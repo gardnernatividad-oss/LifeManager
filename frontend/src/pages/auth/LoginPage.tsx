@@ -2,7 +2,7 @@ import axios from "axios";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import { useAuth } from "../../hooks/useAuth";
@@ -94,6 +94,7 @@ export function LoginPage() {
           {isSubmitting ? "Ingresando…" : "Entrar"}
         </button>
       </form>
+      <p>¿No tienes cuenta? <Link to="/registro">Crear cuenta</Link></p>
     </section>
   );
 }
