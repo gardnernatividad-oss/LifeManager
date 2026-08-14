@@ -10,3 +10,9 @@ export interface PendingItemListParams { page: number; page_size: number; is_act
 export interface PendingItemListResponse { items: PlanningPendingItem[]; total: number; page: number; page_size: number; total_pages: number }
 export interface PendingItemCreatePayload { category_id: string; name: string; is_active: boolean; planned_date: string | null }
 export interface PendingItemUpdatePayload { category_id?: string; name?: string; is_active?: boolean; planned_date?: string | null; lock_version: number }
+
+export type PendingItemState = "NO_INICIADO" | "EN_PROCESO" | "FINALIZADO";
+export type PendingItemCompliance = "EN_PLAZO" | "ATRASADO" | "CON_ADELANTO" | "A_TIEMPO" | "CON_RETRASO";
+export interface TrackingPendingItemListParams extends PendingItemListParams { unfinished?: boolean; state?: PendingItemState; compliance?: PendingItemCompliance }
+export interface PendingItemTrackingUpdate { id: string; is_active?: boolean; progress?: number; comment?: string | null; lock_version: number }
+export interface PendingItemTrackingBatchResponse { items: PlanningPendingItem[]; saved_at: string }

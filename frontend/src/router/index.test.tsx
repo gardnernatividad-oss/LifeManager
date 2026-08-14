@@ -9,11 +9,12 @@ import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { TrackingTasksPage } from "../pages/tracking/TrackingTasksPage";
+import { TrackingPendingItemsPage } from "../pages/tracking/TrackingPendingItemsPage";
 import { appRouter, v1PlaceholderRoutes } from "./index";
 
 describe("V1 route contract", () => {
   it("registers every finalized protected route", () => {
-    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
+    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", "/seguimiento/pendientes", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
       "/inicio",
       "/revision",
       "/planificacion/tareas",
@@ -70,6 +71,11 @@ describe("V1 route contract", () => {
   it("mounts the functional Tracking Tasks page", () => {
     const protectedChildren = appRouter.routes[1].children?.[0].children;
     expect((protectedChildren?.find((item) => item.path === "/seguimiento/tareas")?.element as { type: unknown }).type).toBe(TrackingTasksPage);
+  });
+
+  it("mounts the functional Tracking Pending Items page", () => {
+    const protectedChildren = appRouter.routes[1].children?.[0].children;
+    expect((protectedChildren?.find((item) => item.path === "/seguimiento/pendientes")?.element as { type: unknown }).type).toBe(TrackingPendingItemsPage);
   });
 
   it("does not register legacy business routes", () => {

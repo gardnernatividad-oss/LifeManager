@@ -1596,6 +1596,19 @@ div.settings-toggles { border: 0; padding: 0; }
 .tracking-task-row--head { color: var(--color-muted); background: var(--color-background); font-size: 0.8rem; font-weight: 700; }
 .tracking-task-result { display: flex; align-items: center; gap: 0.4rem; }
 .tracking-task-result button { width: 2rem; min-height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.4rem; color: var(--color-primary); background: var(--color-surface); }
+.pending-tracking-page { display: grid; gap: 1.25rem; }
+.pending-tracking-page header h1, .pending-tracking-panel h2 { margin: 0.15rem 0; }
+.pending-tracking-page header p:last-child { margin: 0.35rem 0 0; color: var(--color-muted); font-size: 0.85rem; }
+.pending-tracking-panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
+.pending-tracking-filters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.7rem; }
+.pending-tracking-filters label { display: grid; gap: 0.3rem; color: var(--color-muted); font-size: 0.8rem; font-weight: 650; }
+.pending-tracking-filters input, .pending-tracking-filters select, .pending-tracking-row input, .pending-tracking-row select { min-width: 0; min-height: 2.4rem; padding: 0.45rem 0.55rem; border: 1px solid var(--color-border); border-radius: 0.45rem; color: var(--color-text); background: var(--color-surface); }
+.pending-tracking-table { overflow-x: auto; }
+.pending-tracking-row { display: grid; grid-template-columns: 6rem 7.5rem 8rem minmax(10rem, 1.4fr) 8rem 5rem 7rem 8rem 5rem minmax(10rem, 1.4fr); align-items: center; gap: 0.6rem; min-width: 84rem; padding: 0.65rem; border-bottom: 1px solid var(--color-border); }
+.pending-tracking-row--head { color: var(--color-muted); background: var(--color-background); font-size: 0.78rem; font-weight: 700; }
+.pending-tracking-row input { width: 100%; }
+.pending-tracking-save { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; }
+.pending-tracking-save span { color: var(--color-muted); font-size: 0.85rem; }
 .project-planning-step-edit { display: contents; }
 .project-planning-step-edit .project-planning-step-fields { display: contents; }
 
@@ -1756,6 +1769,7 @@ div.settings-toggles { border: 0; padding: 0; }
   .pending-planning-form, .pending-planning-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-planning-step-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tracking-task-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pending-tracking-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pending-planning-form .primary-button { width: 100%; }
 
   .project-list {
@@ -1843,6 +1857,7 @@ div.settings-toggles { border: 0; padding: 0; }
   .pending-planning-pagination { align-items: stretch; flex-direction: column; }
   .project-planning-step-fields { grid-template-columns: 1fr; }
   .tracking-task-filters { grid-template-columns: 1fr; }
+  .pending-tracking-filters { grid-template-columns: 1fr; }
 .project-planning-detail-heading { align-items: stretch; flex-direction: column; }
 
   .dashboard-error {
