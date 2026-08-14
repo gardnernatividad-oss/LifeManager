@@ -20,6 +20,7 @@ function authState(overrides: Partial<AuthState> = {}): AuthState {
     logout: vi.fn(),
     setWorkspace: vi.fn(),
     clearSession: vi.fn(),
+    setAuthenticatedUser: vi.fn(),
     ...overrides
   };
 }

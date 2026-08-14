@@ -4,10 +4,10 @@ export interface AuthenticatedUser {
   first_name: string;
   last_name: string;
   timezone: string;
-  is_active: boolean;
-  is_verified: boolean;
-  created_at: string;
-  updated_at: string;
+  is_active?: boolean;
+  is_verified?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WorkspaceSummary {
@@ -27,4 +27,17 @@ export interface LoginCredentials {
 export interface TokenResponse {
   access_token: string;
   token_type: "bearer";
+}
+
+export interface RegistrationPayload {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface ProfileUpdatePayload {
+  first_name?: string;
+  last_name?: string;
+  timezone?: string;
 }

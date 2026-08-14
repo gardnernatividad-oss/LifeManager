@@ -31,7 +31,7 @@ const review: ReviewRead = {
 const auth: AuthState = {
   accessToken: "token", user: testUser, workspace: null,
   isAuthenticated: true, isInitializing: false,
-  login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn()
+  login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn(), setAuthenticatedUser: vi.fn()
 };
 
 function renderReview() {

@@ -4,6 +4,8 @@ import { AuthenticatedLayout } from "../layouts/AuthenticatedLayout";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { PagePlaceholder } from "../components/common/PagePlaceholder";
 import { LoginPage } from "../pages/auth/LoginPage";
+import { RegistrationPage } from "../pages/auth/RegistrationPage";
+import { ConfigurationPage } from "../pages/configuration/ConfigurationPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { HomePage } from "../pages/home/HomePage";
 import { ReviewPage } from "../pages/review/ReviewPage";
@@ -27,9 +29,7 @@ const placeholder = (title: string) => (
   />
 );
 
-export const v1PlaceholderRoutes = [
-  ["/configuracion", "Configuración"]
-] as const;
+export const v1PlaceholderRoutes: ReadonlyArray<readonly [string, string]> = [];
 
 export const appRouter = createBrowserRouter([
   {
@@ -39,7 +39,7 @@ export const appRouter = createBrowserRouter([
         element: <PublicLayout />,
         children: [
           { path: "/login", element: <LoginPage /> },
-          { path: "/registro", element: placeholder("Registro") }
+          { path: "/registro", element: <RegistrationPage /> }
         ]
       }
     ]
@@ -64,6 +64,7 @@ export const appRouter = createBrowserRouter([
           { path: "/reportes/tareas", element: <TaskReportsPage /> },
           { path: "/reportes/pendientes", element: <PendingItemReportsPage /> },
           { path: "/reportes/proyectos", element: <ProjectReportsPage /> },
+          { path: "/configuracion", element: <ConfigurationPage /> },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,
             element: placeholder(title)

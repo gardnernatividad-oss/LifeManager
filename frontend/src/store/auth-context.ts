@@ -16,6 +16,7 @@ export interface AuthState {
   logout: () => void;
   setWorkspace: (workspace: WorkspaceSummary | null) => void;
   clearSession: () => void;
+  setAuthenticatedUser: (user: AuthenticatedUser) => void;
 }
 
 export const AuthContext = createContext<AuthState | undefined>(undefined);

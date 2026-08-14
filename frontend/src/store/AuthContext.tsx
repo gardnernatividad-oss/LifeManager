@@ -96,7 +96,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       logout,
       setWorkspace,
-      clearSession
+      clearSession,
+      setAuthenticatedUser: setUser
     }),
     [accessToken, clearSession, isInitializing, login, logout, user, workspace]
   );

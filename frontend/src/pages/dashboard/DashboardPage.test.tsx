@@ -67,7 +67,8 @@ function StatefulAuth({ children, initialWorkspace }: PropsWithChildren<{ initia
     login: vi.fn(),
     logout: vi.fn(),
     setWorkspace,
-    clearSession: vi.fn()
+    clearSession: vi.fn(),
+    setAuthenticatedUser: vi.fn()
   }), [workspace]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

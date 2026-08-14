@@ -19,7 +19,8 @@ function authState(login: AuthState["login"]): AuthState {
     login,
     logout: vi.fn(),
     setWorkspace: vi.fn(),
-    clearSession: vi.fn()
+    clearSession: vi.fn(),
+    setAuthenticatedUser: vi.fn()
   };
 }
 
@@ -122,5 +123,11 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: "Ingresando…" })).toBeDisabled();
     resolveLogin?.();
     await waitFor(() => expect(screen.getByText("Inicio destination")).toBeInTheDocument());
+  });
+
+  it("shows registration success feedback", () => {
+    vi.mocked(useAuth).mockReturnValue(authState(vi.fn()));
+    renderLogin({ pathname: "/login", state: { registrationSuccess: true } });
+    expect(screen.getByRole("status")).toHaveTextContent("Cuenta creada. Ya puedes iniciar sesión.");
   });
 });

@@ -30,7 +30,8 @@ const authState: AuthState = {
   login: vi.fn(),
   logout: vi.fn(),
   setWorkspace: vi.fn(),
-  clearSession: vi.fn()
+  clearSession: vi.fn(),
+  setAuthenticatedUser: vi.fn()
 };
 
 function renderHome() {

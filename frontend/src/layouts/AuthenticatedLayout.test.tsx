@@ -33,7 +33,8 @@ function authenticatedState(logout = vi.fn()): AuthState {
     login: vi.fn(),
     logout,
     setWorkspace: vi.fn(),
-    clearSession: vi.fn()
+    clearSession: vi.fn(),
+    setAuthenticatedUser: vi.fn()
   };
 }
 

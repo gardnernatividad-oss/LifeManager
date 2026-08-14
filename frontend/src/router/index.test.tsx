@@ -14,11 +14,13 @@ import { TrackingProjectsPage } from "../pages/tracking/TrackingProjectsPage";
 import { TaskReportsPage } from "../pages/reports/TaskReportsPage";
 import { PendingItemReportsPage } from "../pages/reports/PendingItemReportsPage";
 import { ProjectReportsPage } from "../pages/reports/ProjectReportsPage";
+import { RegistrationPage } from "../pages/auth/RegistrationPage";
+import { ConfigurationPage } from "../pages/configuration/ConfigurationPage";
 import { appRouter, v1PlaceholderRoutes } from "./index";
 
 describe("V1 route contract", () => {
   it("registers every finalized protected route", () => {
-    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", "/seguimiento/pendientes", "/seguimiento/proyectos", "/reportes/tareas", "/reportes/pendientes", "/reportes/proyectos", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
+    expect(["/inicio", "/revision", "/planificacion/tareas", "/planificacion/pendientes", "/planificacion/proyectos", "/tablas/tareas", "/tablas/categorias", "/seguimiento/tareas", "/seguimiento/pendientes", "/seguimiento/proyectos", "/reportes/tareas", "/reportes/pendientes", "/reportes/proyectos", "/configuracion", ...v1PlaceholderRoutes.map(([path]) => path)]).toEqual([
       "/inicio",
       "/revision",
       "/planificacion/tareas",
@@ -85,6 +87,7 @@ describe("V1 route contract", () => {
   it("mounts the functional Task Reports page",()=>{const children=appRouter.routes[1].children?.[0].children;expect((children?.find(r=>r.path==="/reportes/tareas")?.element as {type:unknown}).type).toBe(TaskReportsPage);});
   it("mounts the functional Pending Item Reports page",()=>{const children=appRouter.routes[1].children?.[0].children;expect((children?.find(r=>r.path==="/reportes/pendientes")?.element as {type:unknown}).type).toBe(PendingItemReportsPage);});
   it("mounts the functional Project Reports page",()=>{const children=appRouter.routes[1].children?.[0].children;expect((children?.find(r=>r.path==="/reportes/proyectos")?.element as {type:unknown}).type).toBe(ProjectReportsPage);});
+  it("mounts real Registration and Configuration pages with no V1 placeholders",()=>{const publicChildren=appRouter.routes[0].children?.[0].children;const protectedChildren=appRouter.routes[1].children?.[0].children;expect((publicChildren?.find(r=>r.path==="/registro")?.element as {type:unknown}).type).toBe(RegistrationPage);expect((protectedChildren?.find(r=>r.path==="/configuracion")?.element as {type:unknown}).type).toBe(ConfigurationPage);expect(v1PlaceholderRoutes).toHaveLength(0);});
 
   it("does not register legacy business routes", () => {
     const paths = v1PlaceholderRoutes.map(([path]) => path);
