@@ -1624,6 +1624,10 @@ div.settings-toggles { border: 0; padding: 0; }
 @media (max-width:64rem){.pending-item-report-filters,.pending-item-report-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:48rem){.pending-item-report-filters,.pending-item-report-summary,.pending-item-report-summary.compliance,.pending-item-report-summary.detail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:32rem){.pending-item-report-filters,.pending-item-report-summary,.pending-item-report-summary.compliance,.pending-item-report-summary.detail{grid-template-columns:1fr}}
+.project-report-page{display:grid;gap:1.25rem}.project-report-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem}.project-report-filters label{display:grid;gap:.3rem}.project-report-filters input,.project-report-filters select{min-width:0;padding:.55rem;border:1px solid var(--color-border);border-radius:.4rem}.project-report-table table{min-width:58rem}
+@media (max-width:64rem){.project-report-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:48rem){.project-report-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:32rem){.project-report-filters{grid-template-columns:1fr}}
 .project-planning-step-edit { display: contents; }
 .project-planning-step-edit .project-planning-step-fields { display: contents; }
 
