@@ -20,7 +20,7 @@ describe("reviewApi", () => {
   it("gets Review without a Workspace parameter", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: review });
     await expect(getReview()).resolves.toEqual(review);
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:8000/api/v1/review");
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/review");
   });
 
   it("patches only the strict Review sections", async () => {
@@ -31,7 +31,7 @@ describe("reviewApi", () => {
     };
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { saved_at: "2026-08-13T20:00:00Z" } });
     await saveReview(payload);
-    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:8000/api/v1/review", payload);
+    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:3000/api/v1/review", payload);
     expect(JSON.stringify(payload)).not.toContain("workspace_id");
     expect(JSON.stringify(payload)).not.toContain("review_date");
   });

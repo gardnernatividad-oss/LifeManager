@@ -20,13 +20,13 @@ describe("planningPendingItemApi", () => {
 
     const result = api.listAllCategoryOptions();
     await vi.waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
-    expect(apiClient.get).not.toHaveBeenCalledWith("http://localhost:8000/api/v1/categories", { params: { page: 3, page_size: 100 } });
+    expect(apiClient.get).not.toHaveBeenCalledWith("http://localhost:3000/api/v1/categories", { params: { page: 3, page_size: 100 } });
     releaseSecondPage();
 
     await expect(result).resolves.toEqual([{ id: "one", name: "Casa" }, { id: "two", name: "Salud" }, { id: "three", name: "Trabajo" }]);
-    expect(apiClient.get).toHaveBeenNthCalledWith(1, "http://localhost:8000/api/v1/categories", { params: { page: 1, page_size: 100 } });
-    expect(apiClient.get).toHaveBeenNthCalledWith(2, "http://localhost:8000/api/v1/categories", { params: { page: 2, page_size: 100 } });
-    expect(apiClient.get).toHaveBeenNthCalledWith(3, "http://localhost:8000/api/v1/categories", { params: { page: 3, page_size: 100 } });
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "http://localhost:3000/api/v1/categories", { params: { page: 1, page_size: 100 } });
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "http://localhost:3000/api/v1/categories", { params: { page: 2, page_size: 100 } });
+    expect(apiClient.get).toHaveBeenNthCalledWith(3, "http://localhost:3000/api/v1/categories", { params: { page: 3, page_size: 100 } });
   });
 
   it("uses the exact Pending Item endpoints and payloads", async () => {
@@ -36,15 +36,15 @@ describe("planningPendingItemApi", () => {
 
     const params = { page: 1, page_size: 25, is_active: true, category_id: "category", planned_from: "2026-08-01", planned_to: "2026-08-31" };
     await api.listPlanningPendingItems(params);
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:8000/api/v1/pending-items", { params });
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/pending-items", { params });
 
     const createPayload = { category_id: "category", name: "Renovar documento", is_active: true, planned_date: "2026-08-20" };
     await api.createPlanningPendingItem(createPayload);
-    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:8000/api/v1/pending-items", createPayload);
+    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:3000/api/v1/pending-items", createPayload);
     expect(createPayload).not.toHaveProperty("workspace_id");
 
     const updatePayload = { category_id: "category", name: "Renovar DNI", is_active: false, planned_date: null, lock_version: 4 };
     await api.updatePlanningPendingItem("pending", updatePayload);
-    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:8000/api/v1/pending-items/pending", updatePayload);
+    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:3000/api/v1/pending-items/pending", updatePayload);
   });
 });

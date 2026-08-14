@@ -16,7 +16,7 @@ describe("projectReportApi", () => {
     };
     await getProjectReport(params);
     expect(apiClient.get).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/reports/projects",
+      "http://localhost:3000/api/v1/reports/projects",
       { params },
     );
     expect(params).not.toHaveProperty("workspace_id");

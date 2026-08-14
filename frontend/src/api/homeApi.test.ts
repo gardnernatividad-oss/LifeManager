@@ -22,7 +22,7 @@ describe("homeApi", () => {
   it("requests the versioned Home endpoint without Workspace parameters", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: summary });
     await expect(getHomeSummary()).resolves.toEqual(summary);
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:8000/api/v1/home");
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/home");
     expect(apiClient.get).toHaveBeenCalledTimes(1);
   });
 });

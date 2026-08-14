@@ -19,7 +19,7 @@ describe("pendingItemReportApi", () => {
     await getPendingItemReport(params);
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/reports/pending-items",
+      "http://localhost:3000/api/v1/reports/pending-items",
       { params },
     );
     expect(params).not.toHaveProperty("workspace_id");

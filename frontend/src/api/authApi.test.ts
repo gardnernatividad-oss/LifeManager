@@ -20,7 +20,7 @@ describe("authApi V1 paths", () => {
       data: { access_token: "token", token_type: "bearer" }
     });
     await login({ email: "ada@example.com", password: "secret" });
-    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:8000/api/v1/auth/login", {
+    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:3000/api/v1/auth/login", {
       email: "ada@example.com",
       password: "secret"
     });
@@ -30,7 +30,7 @@ describe("authApi V1 paths", () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: testUser });
     const payload = { email: "ada@example.com", password: "secret", first_name: "Ada", last_name: "Lovelace" };
     await registerUser(payload);
-    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:8000/api/v1/auth/register", payload);
+    expect(apiClient.post).toHaveBeenCalledWith("http://localhost:3000/api/v1/auth/register", payload);
     expect(payload).not.toHaveProperty("username");
     expect(payload).not.toHaveProperty("timezone");
     expect(payload).not.toHaveProperty("workspace");
@@ -40,19 +40,19 @@ describe("authApi V1 paths", () => {
     vi.mocked(apiClient.patch).mockResolvedValue({ data: testUser });
     const payload = { first_name: "Augusta", last_name: "King", timezone: "Europe/London" };
     await updateAuthenticatedUser(payload);
-    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:8000/api/v1/auth/me", payload);
+    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:3000/api/v1/auth/me", payload);
     expect(payload).not.toHaveProperty("email");
   });
 
   it("loads the authoritative timezone catalog", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { items: ["America/Lima", "Europe/London"] } });
     await expect(listTimezones()).resolves.toEqual(["America/Lima", "Europe/London"]);
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:8000/api/v1/timezones");
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/timezones");
   });
 
   it("uses only the versioned current-user endpoint", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: testUser });
     await getAuthenticatedUser();
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:8000/api/v1/auth/me");
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/auth/me");
   });
 });
