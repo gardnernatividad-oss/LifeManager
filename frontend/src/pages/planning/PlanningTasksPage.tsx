@@ -43,7 +43,8 @@ export function PlanningTasksPage() {
     await Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.planningTasksRoot }),
       client.invalidateQueries({ queryKey: queryKeys.home }),
-      client.invalidateQueries({ queryKey: queryKeys.review })
+      client.invalidateQueries({ queryKey: queryKeys.review }),
+      client.invalidateQueries({ queryKey: queryKeys.taskReportsRoot })
     ]);
   }
 

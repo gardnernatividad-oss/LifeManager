@@ -100,6 +100,9 @@ describe("ReviewPage", () => {
     }));
     await screen.findByText("Revisión guardada.");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.home });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.taskReportsRoot });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.pendingItemReportsRoot });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projectReportsRoot });
     expect(reviewApi.getReview).toHaveBeenCalledTimes(2);
   });
 

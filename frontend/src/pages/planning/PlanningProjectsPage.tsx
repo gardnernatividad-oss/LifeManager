@@ -45,7 +45,7 @@ export function PlanningProjectsPage() {
   const detail = useQuery({ queryKey: queryKeys.planningProjectDetail(selectedId ?? ""), queryFn: () => getPlanningProject(selectedId!), enabled: Boolean(selectedId) });
 
   async function refreshProject(id?: string) {
-    await Promise.all([client.invalidateQueries({ queryKey: queryKeys.planningProjectsRoot }), ...(id ? [client.invalidateQueries({ queryKey: queryKeys.planningProjectDetail(id) })] : []), client.invalidateQueries({ queryKey: queryKeys.home }), client.invalidateQueries({ queryKey: queryKeys.review })]);
+    await Promise.all([client.invalidateQueries({ queryKey: queryKeys.planningProjectsRoot }), ...(id ? [client.invalidateQueries({ queryKey: queryKeys.planningProjectDetail(id) })] : []), client.invalidateQueries({ queryKey: queryKeys.home }), client.invalidateQueries({ queryKey: queryKeys.review }), client.invalidateQueries({ queryKey: queryKeys.projectReportsRoot })]);
   }
   function mutationError(error: unknown, id?: string) {
     const conflict = axios.isAxiosError(error) && error.response?.status === 409;

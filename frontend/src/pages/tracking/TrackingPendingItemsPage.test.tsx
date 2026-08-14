@@ -102,7 +102,7 @@ describe("TrackingPendingItemsPage", () => {
   it("clears dirty state, shows saved timestamp and invalidates only related roots after success", async () => {
     const user = userEvent.setup(); const invalidate = renderPage(); await user.type(await screen.findByLabelText("Comentario de Pendiente two"), "Guardado"); await user.click(screen.getByRole("button", { name: "Guardar" }));
     expect(await screen.findByText(/Última actualización:/)).toBeInTheDocument(); expect(screen.getByText("0 con cambios")).toBeInTheDocument();
-    await waitFor(() => { for (const key of [queryKeys.trackingPendingItemsRoot, queryKeys.planningPendingItemsRoot, queryKeys.review, queryKeys.home]) expect(invalidate).toHaveBeenCalledWith({ queryKey: key }); });
+    await waitFor(() => { for (const key of [queryKeys.trackingPendingItemsRoot, queryKeys.planningPendingItemsRoot, queryKeys.review, queryKeys.home, queryKeys.pendingItemReportsRoot]) expect(invalidate).toHaveBeenCalledWith({ queryKey: key }); });
   });
 
   it("obtains the saved timestamp from Home after a remount", async () => {

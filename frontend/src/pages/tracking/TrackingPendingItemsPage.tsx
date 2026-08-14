@@ -46,7 +46,8 @@ export function TrackingPendingItemsPage() {
       client.invalidateQueries({ queryKey: queryKeys.trackingPendingItemsRoot }),
       client.invalidateQueries({ queryKey: queryKeys.planningPendingItemsRoot }),
       client.invalidateQueries({ queryKey: queryKeys.review }),
-      client.invalidateQueries({ queryKey: queryKeys.home })
+      client.invalidateQueries({ queryKey: queryKeys.home }),
+      client.invalidateQueries({ queryKey: queryKeys.pendingItemReportsRoot })
     ]);
   }
 

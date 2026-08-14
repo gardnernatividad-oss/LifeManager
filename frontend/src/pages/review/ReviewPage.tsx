@@ -96,6 +96,11 @@ export function ReviewPage() {
     onSuccess: async () => {
       setError(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.home });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.taskReportsRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pendingItemReportsRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectReportsRoot })
+      ]);
       await queryClient.refetchQueries({ queryKey: queryKeys.review });
       setTaskResults({});
       setPendingEdits({});

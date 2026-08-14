@@ -23,6 +23,14 @@ export function ConfigurationPage() {
       await Promise.all([
         client.invalidateQueries({ queryKey: queryKeys.home }),
         client.invalidateQueries({ queryKey: queryKeys.review }),
+        client.invalidateQueries({ queryKey: queryKeys.planningTasksRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.trackingTasksRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.planningPendingItemsRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.trackingPendingItemsRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.planningProjectsRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.trackingProjectsRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.pendingItemReportsRoot }),
+        client.invalidateQueries({ queryKey: queryKeys.projectReportsRoot }),
       ]);
     },
     onError: (error) => {

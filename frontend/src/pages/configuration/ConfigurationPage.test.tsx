@@ -62,6 +62,16 @@ describe("ConfigurationPage", () => {
     expect(setAuthenticatedUser).toHaveBeenCalledWith(saved);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.home });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.review });
+    for (const key of [
+      queryKeys.planningTasksRoot,
+      queryKeys.trackingTasksRoot,
+      queryKeys.planningPendingItemsRoot,
+      queryKeys.trackingPendingItemsRoot,
+      queryKeys.planningProjectsRoot,
+      queryKeys.trackingProjectsRoot,
+      queryKeys.pendingItemReportsRoot,
+      queryKeys.projectReportsRoot,
+    ]) expect(invalidate).toHaveBeenCalledWith({ queryKey: key });
     expect(await screen.findByRole("status")).toHaveTextContent("Configuración guardada.");
   });
 });
