@@ -20,6 +20,7 @@ LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está docum
 | Contrato API transversal V2, no implementado | `docs/api/V2-Contract-Status.md`, ADR-010 y ADR-011 |
 | Seguridad y requisitos no funcionales V2 | `docs/requirements/NonFunctional.md` |
 | Threat model y backlog de seguridad V2 | `docs/security/V2-Threat-Model.md` |
+| Auditoría de secretos, bundle, storage y configuración cloud V2 | `docs/security/V2-Secrets-and-Exposure-Audit.md` |
 | Roadmap V2 | `docs/project/Roadmap.md` |
 | Referencia histórica V1 | tag `v1.0.0`, `docs/requirements/Functional.md`, `docs/database/V1-Target-Data-Model.md`, `docs/database/ERD.md`, ADR-005 y ADR-006 |
 | Futuro no aprobado | `docs/requirements/FutureIdeas.md`, cuando se documente expresamente como idea |
@@ -54,7 +55,7 @@ V1 no expone colaboración, responsables, Calendario/Actividades, notificaciones
 
 Los datos V1 existentes son de prueba/no esenciales. El reset controlado V1→V2 fue implementado y validado exclusivamente sobre bases locales/test desechables; no se ejecutó contra producción ni una base compartida. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, los resets destructivos dejan de ser aceptables y toda evolución deberá preservar datos de producción.
 
-Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7c8d9`, constraints PostgreSQL, recurrencia, fixtures y el gate técnico. Phase 2 comienza con el threat model y continúa con secretos, identidad, sesión, anti-abuse, validación y pruebas antes de iniciar verticales funcionales.
+Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7c8d9`, constraints PostgreSQL, recurrencia, fixtures y el gate técnico. Phase 2 ya completó el threat model y la auditoría técnica de secretos/exposición. La credencial PostgreSQL histórica identificada requiere evidencia manual de no reutilización o rotación antes del gate 2.13. Continúan identidad, sesión, anti-abuse, validación y pruebas antes de iniciar verticales funcionales.
 
 ## Principios
 

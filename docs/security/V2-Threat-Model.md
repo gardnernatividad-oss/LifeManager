@@ -200,8 +200,10 @@ Un correo comprometido queda fuera del control completo del producto; se mitiga 
 ### Evidencia
 
 - Árbol actual: no se encontraron claves privadas ni tokens GitHub; los matches son placeholders explícitos o tests.
-- Historia Git: `backend/alembic.ini` contiene una URL PostgreSQL histórica con credencial de aspecto real. No está en el archivo vigente y no se verificó contra ningún sistema. Debe considerarse comprometida, confirmar que está rotada/no reutilizada y decidir limpieza de historia en Stage 2.2.
+- Historia Git: `backend/alembic.ini` contiene en una revisión inicial una URL PostgreSQL histórica con credencial de aspecto real y hostname local. No está en el archivo vigente y no se verificó contra ningún sistema. Debe considerarse expuesta, confirmar que fue desechable/no reutilizada o rotarla, y decidir por separado si procede limpiar historia.
 - `.env` está ignorado; solo `.env.example` está tracked.
+
+La caracterización completa, el inventario frontend/cloud y las acciones manuales se mantienen en [`V2-Secrets-and-Exposure-Audit.md`](V2-Secrets-and-Exposure-Audit.md).
 
 ### Reglas de redacción
 
@@ -268,7 +270,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 | NOTIF-003 | Disponibilidad | Amplificación/duplicados | MEDIUM | dedup index | one logical event, caps, retry-safe | Notifications | concurrency/fan-out |
 | JOB-001 | Jobs | Endpoint público/replay/HMAC leak | CRITICAL | diseño documental | HMAC+timestamp+nonce, hidden namespace | Scheduler stage | signature/replay suite |
 | INPUT-001 | DB/browser | SQLi/XSS/mass assignment | HIGH | ORM/React escaping | validation, CSP, DTO forbid | 2.11–2.12 | payload corpus |
-| SEC-001 | Secretos | Credencial histórica reutilizada | HIGH | retirada del árbol | verificar rotación, history policy | 2.2 | secret scan/rotation record |
+| SEC-001 | Secretos | Credencial histórica reutilizada | HIGH | retirada del árbol; hostname histórico local | confirmar no reutilización o rotar; history policy separada | 2.2/2.13 | secret scan/rotation record |
 | LOG-001 | Secretos/PII | Logs contienen auth/recovery/SQL | HIGH | SQL echo configurable | redaction + structured logging | 2.11/final hardening | log-capture tests |
 | DB-001 | Datos | Reset destructivo productivo | CRITICAL | guardas e4f5 | excluir pipeline, retire after bootstrap | final migration gate | refusal/schema-unchanged |
 | DB-002 | Datos | Credencial DB amplia o filtrada | CRITICAL | secrets backend-only | least privilege, rotation, TLS/backups | 2.2/cloud gate | privilege/restore audit |
@@ -305,7 +307,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 
 ## 23. Mapeo de etapas
 
-- **2.2:** inventario/rotación de secretos, credencial histórica, cloud configuration.
+- **2.2:** inventario de secretos, credencial histórica, bundle/storage y cloud configuration; la acción manual abierta bloquea 2.13.
 - **2.3:** global roles, account state y separación admin/private content.
 - **2.4:** registro/aprobación y anti-mass-assignment.
 - **2.5:** verificación email y tokens single-use.
@@ -327,4 +329,4 @@ No objetivos: defender un OS totalmente comprometido, SIEM empresarial, HSM, det
 
 ## 25. Resultado de Stage 2.1
 
-No se encontró una vulnerabilidad CRITICAL activa confirmada. La credencial histórica de aspecto real requiere verificación/rotación en Stage 2.2 y no se considera cerrada por este documento. Los riesgos CRITICAL/HIGH cuentan con controles y etapas de verificación asignados. Stage 2.1 queda **Completado** como threat model; no como implementación de controles.
+No se encontró una vulnerabilidad CRITICAL activa confirmada. Stage 2.2 caracterizó la credencial histórica como local y retirada del árbol actual, pero exige confirmar que fue desechable/no reutilizada o completar rotación; el gate 2.13 permanece bloqueado. Los riesgos CRITICAL/HIGH cuentan con controles y etapas de verificación asignados. Stage 2.1 queda **Completado** como threat model; no como implementación de controles.
