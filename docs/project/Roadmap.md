@@ -20,13 +20,14 @@ El roadmap conservará exactamente estas columnas:
 | Phase 1 — V2 Preparation | Stage 1.6 | Review and update architecture and technical decisions | Completado |
 | Phase 1 — V2 Preparation | Stage 1.8 | Finalize target Architecture, Database and API documentation | Completado |
 | Phase 1 — V2 Preparation | Stage 1.9 | Implement and validate the base V2 schema with Alembic | Completado |
+| Phase 1 — V2 Preparation | Stage 1.10 | Create coherent V2 development data and fixtures | Completado |
 
 `Estado` solo puede contener:
 
 - Completado
 - Pendiente
 
-Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. La siguiente etapa de implementación construirá el model layer V2 y sus pruebas de metadata antes de crear la migración de reset.
+Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2 y Stage 1.10 añadió factories explícitos, escenarios componibles y un dataset canónico exclusivamente para pruebas y desarrollo local. Su uso seguro está descrito en `docs/development/V2-Test-Data.md`.
 
 ## Referencia histórica
 
