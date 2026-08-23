@@ -19,6 +19,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 1 — V2 Preparation | Stage 1.5 | Constraints, relationships, indexes, data integrity and V1→V2 transition plan | Completado |
 | Phase 1 — V2 Preparation | Stage 1.6 | Review and update architecture and technical decisions | Completado |
 | Phase 1 — V2 Preparation | Stage 1.8 | Finalize target Architecture, Database and API documentation | Completado |
+| Phase 1 — V2 Preparation | Stage 1.9 | Implement and validate the base V2 schema with Alembic | Completado |
 
 `Estado` solo puede contener:
 
