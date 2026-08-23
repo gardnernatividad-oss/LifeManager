@@ -4,7 +4,7 @@
 
 LifeManager V1.0.0 es la implementación publicada y la línea base técnica. El tag anotado `v1.0.0` resuelve al commit `fafa8844f83763c837aa423d0773cd6d5782752c`.
 
-LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está documentado en `docs/requirements/Functional-V2.md` y ADR-007; todavía no está implementado.
+LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está documentado en `docs/requirements/Functional-V2.md` y ADR-007. La base física, recurrencia, fixtures y gate técnico de Phase 1 están implementados; las APIs y pantallas funcionales V2 todavía no lo están.
 
 ## Fuentes de autoridad
 
@@ -13,12 +13,13 @@ LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está docum
 | Runtime y comportamiento V1 actual | Código en el tag `v1.0.0`, `docs/requirements/Functional.md`, ADR-005 y ADR-006 |
 | Modelo físico V1 actual | `docs/database/V1-Target-Data-Model.md` y `docs/database/ERD.md` |
 | Objetivo funcional V2 aprobado | `docs/requirements/Functional-V2.md` y ADR-007 |
-| Arquitectura técnica V2 aprobada, no implementada | `docs/architecture/V2-Architecture-Baseline.md` y ADR-009–012 |
+| Arquitectura técnica V2 aprobada; foundation parcialmente implementada | `docs/architecture/V2-Architecture-Baseline.md` y ADR-009–012 |
 | Permisos y autorización V2 | `docs/architecture/Permissions.md` y ADR-011 |
-| Modelo lógico/físico V2 aprobado, no implementado | `docs/database/V2-Target-Data-Model.md`, `docs/database/V2-ERD.md` y ADR-008 |
-| Transición e implementación física V2 aprobadas, no ejecutadas | `docs/database/V2-Transition-Implementation-Plan.md` |
+| Modelo lógico/físico V2 aprobado e implementado | `docs/database/V2-Target-Data-Model.md`, `docs/database/V2-ERD.md`, `docs/database/V2-Data-Model-Status.md` y ADR-008 |
+| Transición física V2 implementada y validada solo en DB local/test desechable | `docs/database/V2-Transition-Implementation-Plan.md` |
 | Contrato API transversal V2, no implementado | `docs/api/V2-Contract-Status.md`, ADR-010 y ADR-011 |
 | Seguridad y requisitos no funcionales V2 | `docs/requirements/NonFunctional.md` |
+| Threat model y backlog de seguridad V2 | `docs/security/V2-Threat-Model.md` |
 | Roadmap V2 | `docs/project/Roadmap.md` |
 | Referencia histórica V1 | tag `v1.0.0`, `docs/requirements/Functional.md`, `docs/database/V1-Target-Data-Model.md`, `docs/database/ERD.md`, ADR-005 y ADR-006 |
 | Futuro no aprobado | `docs/requirements/FutureIdeas.md`, cuando se documente expresamente como idea |
@@ -51,9 +52,9 @@ V1 no expone colaboración, responsables, Calendario/Actividades, notificaciones
 
 ## Transición
 
-Los datos V1 existentes son de prueba/no esenciales. El reset controlado V1→V2 está diseñado y aprobado como estrategia excepcional previa al uso real, pero no se ha creado ni ejecutado. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, los resets destructivos dejan de ser aceptables y toda evolución deberá preservar datos de producción.
+Los datos V1 existentes son de prueba/no esenciales. El reset controlado V1→V2 fue implementado y validado exclusivamente sobre bases locales/test desechables; no se ejecutó contra producción ni una base compartida. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, los resets destructivos dejan de ser aceptables y toda evolución deberá preservar datos de producción.
 
-La preparación documental V2 ya define baseline funcional, modelo físico, transición desde `d3e4f5a6b7c8` y arquitectura técnica. La siguiente etapa de implementación debe construir primero enums/modelos V2 y sus pruebas de metadata; después debe crear y probar la revisión destructiva controlada, sin ejecutar el reset sobre una base compartida o productiva.
+Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7c8d9`, constraints PostgreSQL, recurrencia, fixtures y el gate técnico. Phase 2 comienza con el threat model y continúa con secretos, identidad, sesión, anti-abuse, validación y pruebas antes de iniciar verticales funcionales.
 
 ## Principios
 

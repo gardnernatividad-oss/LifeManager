@@ -20,7 +20,7 @@ El runtime V1 deriva un único Personal Workspace cuya membresía es `OWNER`. Lo
 
 ## Invariantes estructurales V2
 
-ADR-008 define estas garantías de datos, todavía no implementadas:
+ADR-008 define estas garantías de datos, implementadas en la base física V2 y pendientes de enforcement completo en services/APIs:
 
 - `workspaces.owner_user_id` es la única autoridad física de propiedad; el rol visible se deriva de esa columna.
 - `workspace_members` conserva una fila por Workspace+User y usa lifecycle ACTIVE/LEFT/REMOVED en vez de borrar historia.
@@ -43,3 +43,12 @@ ADR-008 define estas garantías de datos, todavía no implementadas:
 - `AVAILABILITY_ONLY` devuelve intervalos sin objetos/detalles de Activity; `HIDE` no devuelve datos subyacentes.
 
 La convención completa está en [`V2-Architecture-Baseline.md`](V2-Architecture-Baseline.md) y ADR-011. La matriz detallada por operación se incorporará con cada contrato vertical; ningún permiso se concede por omisión.
+
+## Requisitos de seguridad para implementación
+
+- El frontend, los IDs conocidos y cualquier estado de DevTools carecen de autoridad.
+- Cada operación scoped exige cuenta ACTIVE, membership ACTIVE y lookup por `resource_id + workspace_id`.
+- Actor, ownership, `global_role`, destinatario, timestamps e historial se derivan de contexto server-side.
+- GLOBAL_ADMIN no puede consultar contenido privado sin una membership ordinaria que lo autorice.
+- Las proyecciones `AVAILABILITY_ONLY` y `HIDE` se aplican antes de serializar, nunca ocultando en frontend datos ya enviados.
+- La matriz de amenazas y pruebas negativas obligatorias se encuentra en [`V2-Threat-Model.md`](../security/V2-Threat-Model.md).

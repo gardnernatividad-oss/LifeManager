@@ -6,6 +6,7 @@ Este documento complementa `Functional-V2.md`; si existe contradicción, prevale
 
 ## Seguridad
 
+- El threat model vigente y su matriz de riesgos se mantienen en `docs/security/V2-Threat-Model.md`; cada control debe enlazar una prueba antes de cerrar su gate.
 - Seguridad transversal durante todas las etapas y gate explícito antes de producción.
 - Registro restringido con Turnstile, creación del estado de cuenta requerido, verificación de correo, espera de aprobación global y activación solo después de aprobación por `GLOBAL_ADMIN`.
 - Contraseñas de al menos ocho caracteres con mayúscula, minúscula y símbolo.
@@ -21,6 +22,9 @@ Este documento complementa `Functional-V2.md`; si existe contradicción, prevale
 - SAST, SCA, dependencias y cadena de suministro auditados.
 - Seguridad de Neon, Render, Cloudflare y GitHub incluida en el gate.
 - RLS evaluado como defensa adicional, no asumido como obligatorio sin análisis.
+- Ningún secreto ni token de sesión se almacena en variables `VITE_*`, bundles, service-worker caches o Web Storage en V2.
+- Jobs internos exigen autenticación independiente con firma, freshness y protección de replay; no reutilizan cookies de usuario.
+- Logs y errores redactan credenciales, cookies, tokens, recovery links, firmas, endpoints push, SQL sensible y cuerpos de autenticación.
 
 ## Privacidad e integridad
 

@@ -22,13 +22,26 @@ El roadmap conservará exactamente estas columnas:
 | Phase 1 — V2 Preparation | Stage 1.9 | Implement and validate the base V2 schema with Alembic | Completado |
 | Phase 1 — V2 Preparation | Stage 1.10 | Create coherent V2 development data and fixtures | Completado |
 | Phase 1 — V2 Preparation | Stage 1.11 | Technical gate for the V2 foundation before functional modules | Completado |
+| Phase 2 — Security foundation and identity | Stage 2.1 | Initial V2 threat model and attack-surface inventory | Completado |
+| Phase 2 — Security foundation and identity | Stage 2.2 | Secrets and configuration audit | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.3 | Global roles and account state | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.4 | Registration and approval | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.5 | Email verification | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.6 | Password recovery | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.7 | Password policy and hashing | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.8 | Session architecture | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.9 | Rate limiting and brute-force protection | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.10 | Turnstile integration | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.11 | Server validation and error handling | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.12 | Security tests | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Pendiente |
 
 `Estado` solo puede contener:
 
 - Completado
 - Pendiente
 
-Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió factories explícitos y el dataset canónico, y Stage 1.11 validó reproducibilidad, seguridad del reset, constraints, recurrencia, rollback y fixtures sobre PostgreSQL local desechable. Su uso seguro está descrito en `docs/development/V2-Test-Data.md`.
+Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model, inventario de activos/superficies y backlog verificable en `docs/security/V2-Threat-Model.md`; todavía no implementa controles funcionales.
 
 ## Referencia histórica
 
