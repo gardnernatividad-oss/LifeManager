@@ -4,7 +4,7 @@
 
 Diseñado y aprobado documentalmente; no implementado.
 
-`docs/requirements/Functional-V2.md` y ADR-007 definen el objetivo funcional. `V2-Target-Data-Model.md`, `V2-ERD.md` y ADR-008 fijan el diseño lógico/físico para implementación futura. El esquema V1 actual permanece documentado en `V1-Target-Data-Model.md` y `ERD.md`.
+`docs/requirements/Functional-V2.md` y ADR-007 definen el objetivo funcional. `V2-Target-Data-Model.md`, `V2-ERD.md` y ADR-008 fijan el diseño lógico/físico para implementación futura. `V2-Transition-Implementation-Plan.md` fija la transición destructiva controlada, el orden de implementación y las salvaguardas. El esquema V1 actual permanece documentado en `V1-Target-Data-Model.md` y `ERD.md`.
 
 ## Capacidades resueltas por el diseño
 
@@ -27,7 +27,7 @@ Diseñado y aprobado documentalmente; no implementado.
 
 - No se editará el historial Alembic existente.
 - Los datos V1 actuales son descartables para desarrollo, pero ningún reset está autorizado en la etapa documental.
-- Antes de implementar se traducirá el diseño a modelos/migraciones revisados y pruebas PostgreSQL; este documento no autoriza ejecutarlos.
+- La transición se implementará mediante una revisión Alembic nueva después de `d3e4f5a6b7c8`; este documento no autoriza crearla ni ejecutarla.
 - Después de publicar V2, los datos reales deberán preservarse mediante migraciones seguras.
 
 Este archivo evita que el modelo V1 o documentos históricos se utilicen accidentalmente como diseño físico V2.

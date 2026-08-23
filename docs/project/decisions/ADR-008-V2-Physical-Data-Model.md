@@ -29,6 +29,8 @@ ADR-007 fija el comportamiento funcional V2. Stage 1.3 confirmó que la infraest
 - Se usan UUID, TIMESTAMPTZ, constraints explícitas, enums de aplicación con VARCHAR+CHECK, locking optimista y orden de locks determinístico.
 - Se recomienda una nueva migración destructiva controlada V1→V2 después del head, preservando historial Alembic y sin editar revisiones previas.
 
+El plan operativo vinculante para esa decisión está en [`V2-Transition-Implementation-Plan.md`](../../database/V2-Transition-Implementation-Plan.md). Allí se fija el head V1 `d3e4f5a6b7c8`, el límite exacto del reset, sus salvaguardas, el mapa de modelos, constraints, índices y pruebas. El plan no autoriza por sí mismo ejecutar el reset.
+
 ## Consecuencias positivas
 
 - La integridad de Workspace y asignaciones no depende solo de frontend/services.

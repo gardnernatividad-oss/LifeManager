@@ -14,6 +14,7 @@ LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está docum
 | Modelo físico V1 actual | `docs/database/V1-Target-Data-Model.md` y `docs/database/ERD.md` |
 | Objetivo funcional V2 aprobado | `docs/requirements/Functional-V2.md` y ADR-007 |
 | Modelo lógico/físico V2 aprobado, no implementado | `docs/database/V2-Target-Data-Model.md`, `docs/database/V2-ERD.md` y ADR-008 |
+| Transición e implementación física V2 aprobadas, no ejecutadas | `docs/database/V2-Transition-Implementation-Plan.md` |
 | Futuro no aprobado | `docs/requirements/FutureIdeas.md`, cuando se documente expresamente como idea |
 
 En caso de contradicción sobre V2, prevalecen `Functional-V2.md` y ADR-007. Ningún documento V2 implica que el runtime actual ya tenga esa capacidad.
@@ -46,7 +47,7 @@ V1 no expone colaboración, responsables, Calendario/Actividades, notificaciones
 
 Los datos V1 existentes son de prueba/no esenciales. Puede diseñarse un reset controlado para V2, pero no se ha autorizado ni ejecutado. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, toda evolución deberá preservar datos de producción.
 
-La siguiente etapa aprobada es Phase 1 — V2 Preparation, Stage 1.3 — Inventory of V1 components that are reusable, modifiable, or replaceable. La arquitectura y el modelo físico V2 se diseñarán después de clasificar primero los componentes V1.
+La preparación documental V2 ya define el baseline funcional, el modelo físico y la transición desde el head V1 `d3e4f5a6b7c8`. La siguiente etapa de implementación debe construir primero enums/modelos V2 y sus pruebas de metadata; después debe crear y probar la revisión destructiva controlada, sin ejecutar el reset sobre una base compartida o productiva.
 
 ## Principios
 
