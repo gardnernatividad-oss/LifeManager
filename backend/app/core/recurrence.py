@@ -11,16 +11,20 @@ def recurrence_dates(*, pattern: GenerationPattern, date_from: date, date_until:
     if date_until < date_from:
         raise ValueError("date_until must be on or after date_from")
     if pattern is GenerationPattern.DAILY:
+        if weekdays is not None or month_days is not None:
+            raise ValueError("daily recurrence does not accept weekday or month-day anchors")
         return [date_from + timedelta(days=i) for i in range((date_until - date_from).days + 1)]
     if pattern is GenerationPattern.WEEKLY:
-        anchors = set(weekdays or [])
-        if not anchors or any(day < 0 or day > 6 for day in anchors):
+        supplied = weekdays or []
+        anchors = set(supplied)
+        if month_days is not None or not anchors or len(anchors) != len(supplied) or any(day < 0 or day > 6 for day in anchors):
             raise ValueError("weekdays must contain values from 0 through 6")
         return [candidate for i in range((date_until - date_from).days + 1)
                 if (candidate := date_from + timedelta(days=i)).weekday() in anchors]
     if pattern is GenerationPattern.MONTHLY:
-        anchors = sorted(set(month_days or []))
-        if not anchors or any(day < 1 or day > 31 for day in anchors):
+        supplied = month_days or []
+        anchors = sorted(set(supplied))
+        if weekdays is not None or not anchors or len(anchors) != len(supplied) or any(day < 1 or day > 31 for day in anchors):
             raise ValueError("month_days must contain values from 1 through 31")
         result: set[date] = set()
         year, month = date_from.year, date_from.month

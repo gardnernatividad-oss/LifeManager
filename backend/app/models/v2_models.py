@@ -239,7 +239,7 @@ class GenerationBatch(Base):
         _enum_check("entity_type", GenerationEntityType, "ck_generation_batches_entity_type_valid"),
         _enum_check("pattern", GenerationPattern, "ck_generation_batches_pattern_valid"),
         CheckConstraint("date_until >= date_from", name="ck_generation_batches_date_range"),
-        CheckConstraint("(pattern = 'DAILY' AND weekdays IS NULL AND month_days IS NULL) OR (pattern = 'WEEKLY' AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (pattern = 'MONTHLY' AND lifemanager_smallint_array_unique_in_range(month_days, 1, 31) AND weekdays IS NULL)", name="ck_generation_batches_recurrence_shape"),
+        CheckConstraint("(pattern = 'DAILY' AND weekdays IS NULL AND month_days IS NULL) OR (pattern = 'WEEKLY' AND weekdays IS NOT NULL AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (pattern = 'MONTHLY' AND month_days IS NOT NULL AND lifemanager_smallint_array_unique_in_range(month_days, 1, 31) AND weekdays IS NULL)", name="ck_generation_batches_recurrence_shape"),
         CheckConstraint("(entity_type = 'TASK' AND timezone IS NULL) OR (entity_type = 'ACTIVITY' AND timezone IS NOT NULL AND length(btrim(timezone)) > 0)", name="ck_generation_batches_timezone_shape"),
         Index("ix_generation_batches_workspace_type_created", "workspace_id", "entity_type", desc("created_at")),
     )
@@ -516,7 +516,7 @@ class ReminderPreference(BaseEntity):
         _enum_check("reminder_type", ReminderType, "ck_reminder_preferences_type_valid"),
         _enum_check("schedule_kind", ScheduleKind, "ck_reminder_preferences_schedule_valid"),
         CheckConstraint("((reminder_type IN ('DAILY_SUMMARY','DAILY_REVIEW') AND schedule_kind = 'DAILY') OR reminder_type IN ('PENDING_FOLLOW_UP','PROJECT_FOLLOW_UP'))", name="ck_reminder_preferences_type_schedule"),
-        CheckConstraint("(schedule_kind = 'DAILY' AND weekdays IS NULL AND month_days IS NULL) OR (schedule_kind = 'WEEKLY' AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (schedule_kind = 'MONTHLY' AND lifemanager_smallint_array_unique_in_range(month_days, 1, 31) AND weekdays IS NULL)", name="ck_reminder_preferences_recurrence_shape"),
+        CheckConstraint("(schedule_kind = 'DAILY' AND weekdays IS NULL AND month_days IS NULL) OR (schedule_kind = 'WEEKLY' AND weekdays IS NOT NULL AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (schedule_kind = 'MONTHLY' AND month_days IS NOT NULL AND lifemanager_smallint_array_unique_in_range(month_days, 1, 31) AND weekdays IS NULL)", name="ck_reminder_preferences_recurrence_shape"),
         CheckConstraint("lock_version > 0", name="ck_reminder_preferences_lock_version_positive"),
         Index("ix_reminder_preferences_enabled_type_time", "is_enabled", "reminder_type", "local_time"),
     )

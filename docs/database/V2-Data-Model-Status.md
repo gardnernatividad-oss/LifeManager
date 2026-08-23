@@ -34,4 +34,10 @@ Implementado en el model layer SQLAlchemy y en la revisión Alembic guardada
 - La paridad entre la instantánea de migración y la metadata V2 vigente se validó localmente por introspección de tablas, columnas, nulabilidad, constraints, índices, funciones y triggers.
 - Después de publicar V2, los datos reales deberán preservarse mediante migraciones seguras.
 
+## Estado de aplicación
+
+- La infraestructura de fixtures V2 y el dataset canónico multi-Workspace están implementados exclusivamente para pruebas y desarrollo local.
+- Las APIs y servicios funcionales V2 todavía no están implementados.
+- El runtime y los tests de dominio V1 que importan símbolos retirados son temporalmente incompatibles y serán reemplazados por los verticales V2; no deben interpretarse como defectos del esquema V2.
+
 Este archivo evita que el modelo V1 o documentos históricos se utilicen accidentalmente como diseño físico V2.

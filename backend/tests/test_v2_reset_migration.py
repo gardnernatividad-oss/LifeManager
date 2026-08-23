@@ -2,6 +2,7 @@ import importlib.util
 import ast
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -35,6 +36,26 @@ def test_reset_refuses_before_inspection_without_opt_in(monkeypatch) -> None:
     monkeypatch.delenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", raising=False)
     with pytest.raises(RuntimeError, match="LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET"):
         migration._assert_safe_target(None)
+
+
+def test_any_safety_refusal_precedes_all_destructive_ddl(monkeypatch) -> None:
+    migration = _migration()
+    monkeypatch.setattr(migration.op, "get_bind", lambda: object())
+    monkeypatch.setattr(
+        migration,
+        "_assert_safe_target",
+        MagicMock(side_effect=RuntimeError("safety refusal")),
+    )
+    drop_table = MagicMock()
+    execute = MagicMock()
+    monkeypatch.setattr(migration.op, "drop_table", drop_table)
+    monkeypatch.setattr(migration.op, "execute", execute)
+
+    with pytest.raises(RuntimeError, match="safety refusal"):
+        migration.upgrade()
+
+    drop_table.assert_not_called()
+    execute.assert_not_called()
 
 
 def test_downgrade_is_explicitly_irreversible() -> None:
@@ -106,4 +127,63 @@ def test_unexpected_v1_object_is_refused_before_destructive_ddl(monkeypatch) -> 
     )
     monkeypatch.setattr(migration.sa, "inspect", lambda target: inspector)
     with pytest.raises(RuntimeError, match="table set"):
+        migration._assert_safe_target(bind)
+
+
+def test_nonallowlisted_database_is_refused_before_inspection(monkeypatch) -> None:
+    migration = _migration()
+    monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1")
+    monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+    monkeypatch.delenv("LIFEMANAGER_DESTRUCTIVE_DB_ALLOWLIST", raising=False)
+    bind = SimpleNamespace(engine=SimpleNamespace(url=__import__("sqlalchemy").engine.make_url(
+        "postgresql+psycopg://redacted@127.0.0.1/not_allowlisted"
+    )))
+    with pytest.raises(RuntimeError, match="not explicitly allowlisted"):
+        migration._assert_safe_target(bind)
+
+
+@pytest.mark.parametrize("schema_defect", ["columns", "enum_types"])
+def test_unexpected_v1_shape_is_refused_before_destructive_ddl(
+    monkeypatch, schema_defect: str,
+) -> None:
+    migration = _migration()
+    monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1")
+    monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+    monkeypatch.setenv("LIFEMANAGER_DESTRUCTIVE_DB_ALLOWLIST", "lifemanager_v2_test")
+
+    class RevisionResult:
+        def scalar_one(self):
+            return migration.down_revision
+
+    class EnumResult:
+        def scalars(self):
+            values = {"unexpected_type"} if schema_defect == "enum_types" else {"workspacerole"}
+            return values
+
+    execute_count = 0
+
+    def execute(statement):
+        nonlocal execute_count
+        execute_count += 1
+        return RevisionResult() if execute_count == 1 else EnumResult()
+
+    bind = SimpleNamespace(
+        engine=SimpleNamespace(url=__import__("sqlalchemy").engine.make_url(
+            "postgresql+psycopg://redacted@127.0.0.1/lifemanager_v2_test"
+        )),
+        execute=execute,
+    )
+    inspector = SimpleNamespace(
+        get_table_names=lambda schema: list(migration.V1_TABLES),
+        get_columns=lambda table, schema: [
+            {"name": column}
+            for column in (
+                set(migration.SENTINEL_COLUMNS[table]) - ({next(iter(migration.SENTINEL_COLUMNS[table]))} if schema_defect == "columns" else set())
+            )
+        ],
+    )
+    monkeypatch.setattr(migration.sa, "inspect", lambda target: inspector)
+
+    expected = "sentinel columns" if schema_defect == "columns" else "enum-type set"
+    with pytest.raises(RuntimeError, match=expected):
         migration._assert_safe_target(bind)

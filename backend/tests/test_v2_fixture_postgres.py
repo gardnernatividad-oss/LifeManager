@@ -20,7 +20,8 @@ def _local_test_url() -> str:
     return url
 
 
-def test_canonical_dataset_satisfies_postgresql_constraints() -> None:
+@pytest.mark.parametrize("isolated_run", [1, 2])
+def test_canonical_dataset_satisfies_postgresql_constraints(isolated_run: int) -> None:
     engine = sa.create_engine(_local_test_url())
     try:
         with Session(engine) as db, db.begin():
@@ -29,5 +30,6 @@ def test_canonical_dataset_satisfies_postgresql_constraints() -> None:
             assert len(dataset.activities) == 4
             db.connection().exec_driver_sql("SET CONSTRAINTS ALL IMMEDIATE")
             db.rollback()
+            assert isolated_run in {1, 2}
     finally:
         engine.dispose()

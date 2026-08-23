@@ -49,6 +49,18 @@ def test_catalog_and_generation_shapes_are_constrained() -> None:
     assert "uq_categories_workspace_normalized_name" in names(Category.__table__, UniqueConstraint)
     assert "ck_generation_batches_recurrence_shape" in names(GenerationBatch.__table__, CheckConstraint)
     assert "ck_generation_batches_timezone_shape" in names(GenerationBatch.__table__, CheckConstraint)
+    generation_shape = next(
+        constraint for constraint in GenerationBatch.__table__.constraints
+        if constraint.name == "ck_generation_batches_recurrence_shape"
+    )
+    reminder_shape = next(
+        constraint for constraint in ReminderPreference.__table__.constraints
+        if constraint.name == "ck_reminder_preferences_recurrence_shape"
+    )
+    assert "weekdays IS NOT NULL" in str(generation_shape.sqltext)
+    assert "month_days IS NOT NULL" in str(generation_shape.sqltext)
+    assert "weekdays IS NOT NULL" in str(reminder_shape.sqltext)
+    assert "month_days IS NOT NULL" in str(reminder_shape.sqltext)
 
 
 def test_progress_weight_participant_and_reminder_constraints_exist() -> None:
