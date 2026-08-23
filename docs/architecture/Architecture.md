@@ -244,7 +244,9 @@ Los workspaces adicionales podrán utilizarse para familias, equipos, grupos u o
 
 ---
 
-## 8. Roles de workspace
+## 8. Roles de workspace históricos V1
+
+> Esta sección describe la arquitectura inicial/V1. V2 usa únicamente Propietario y Miembro como roles visibles; `GLOBAL_ADMIN` es un rol de plataforma separado. Para V2 prevalecen Permissions.md y ADR-011.
 
 La arquitectura contempla inicialmente los siguientes roles:
 
@@ -444,7 +446,9 @@ docs/database/NamingConventions.md
 
 ---
 
-## 12. API
+## 12. API histórica V1
+
+> Los ejemplos `/api/v1` siguientes pertenecen a la concepción inicial. El target V2 usa `/api/v2` y se define en `docs/api/V2-Contract-Status.md`.
 
 Inicialmente, el backend expondrá una API REST.
 
@@ -466,7 +470,7 @@ La versión inicial de la API será:
 v1
 ```
 
-El prefijo definitivo se configurará cuando se implemente la estructura de rutas.
+El prefijo V1 quedó implementado como `/api/v1`; no define el contrato V2.
 
 ---
 

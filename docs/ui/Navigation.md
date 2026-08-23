@@ -6,7 +6,7 @@ El runtime V1.0.0 expone Inicio, Revisión, Planificación, Seguimiento, Reporte
 
 ## Objetivo V2 aprobado
 
-La navegación mantiene las áreas principales y añade Calendario/Actividades y capacidades colaborativas. El detalle exacto de rutas se definirá con los contratos frontend V2.
+La navegación mantiene las áreas principales y añade Calendario/Actividades y capacidades colaborativas. Las rutas siguen el modelo aprobado en `docs/architecture/V2-Architecture-Baseline.md`: vistas globales fuera de scope y vistas dependientes bajo `/w/:workspaceId/...`.
 
 ### Vistas globales
 
@@ -25,6 +25,13 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 - Administración pertinente de miembros/Workspace dentro de Configuración.
 
 Mi calendario usa sus propios controles internos para colaboración y comparación.
+
+### Patrones de ruta
+
+- globales: `/inicio`, `/revision`, `/calendario`, `/configuracion/*`, `/administracion/*`;
+- Workspace: `/w/:workspaceId/tareas`, `/pendientes`, `/proyectos`, `/tablas/*`, `/reportes/*` y `/calendario/*` bajo ese prefijo;
+- detalle: Pendiente, Proyecto y Etapa incorporan sus UUID en rutas anidadas;
+- autenticación preserva un destino interno seguro y valida nuevamente sesión/membership al restaurar.
 
 ## Detalles y overlays
 

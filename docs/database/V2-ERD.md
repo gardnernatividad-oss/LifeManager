@@ -4,6 +4,8 @@
 
 Diseño aprobado documentalmente por ADR-008; todavía no implementado. El ERD del runtime V1 continúa en `ERD.md`.
 
+El diagrama contiene exactamente las 25 entidades aprobadas: User, UserAccountStateEvent, AccountActionToken, Workspace, WorkspaceMember, WorkspaceInvitation, Category, MasterTask, ActivityMaster, GenerationBatch, Task, PendingItem, PendingItemHistory, Project, ProjectLeaderHistory, ProjectStage, ProjectStageHistory, Activity, ActivityParticipant, ActivityReminder, UserReviewMetadata, ReminderPreference, Notification, PushSubscription y NotificationDelivery. Mermaid las representa en `UPPER_SNAKE_CASE`; los nombres de tabla y columnas definitivos están en `V2-Target-Data-Model.md`.
+
 ```mermaid
 erDiagram
     USER ||--o{ USER_ACCOUNT_STATE_EVENT : cambia_estado

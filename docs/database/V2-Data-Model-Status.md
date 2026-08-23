@@ -26,7 +26,7 @@ Diseñado y aprobado documentalmente; no implementado.
 ## Restricciones de transición e implementación
 
 - No se editará el historial Alembic existente.
-- Los datos V1 actuales son descartables para desarrollo, pero ningún reset está autorizado en la etapa documental.
+- Los datos V1 actuales son descartables y la estrategia de reset V2 está aprobada únicamente antes del uso real; esta etapa documental no autoriza ejecutarla.
 - La transición se implementará mediante una revisión Alembic nueva después de `d3e4f5a6b7c8`; este documento no autoriza crearla ni ejecutarla.
 - Después de publicar V2, los datos reales deberán preservarse mediante migraciones seguras.
 

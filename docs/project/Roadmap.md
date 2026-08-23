@@ -18,13 +18,14 @@ El roadmap conservará exactamente estas columnas:
 | Phase 1 — V2 Preparation | Stage 1.4 | Design of the V2 logical and physical data model | Completado |
 | Phase 1 — V2 Preparation | Stage 1.5 | Constraints, relationships, indexes, data integrity and V1→V2 transition plan | Completado |
 | Phase 1 — V2 Preparation | Stage 1.6 | Review and update architecture and technical decisions | Completado |
+| Phase 1 — V2 Preparation | Stage 1.8 | Finalize target Architecture, Database and API documentation | Completado |
 
 `Estado` solo puede contener:
 
 - Completado
 - Pendiente
 
-Stages 1.4–1.6 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md` y ADR-008–012. La siguiente etapa implementará el model layer V2 y sus pruebas de metadata antes de crear la migración de reset.
+Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. La siguiente etapa de implementación construirá el model layer V2 y sus pruebas de metadata antes de crear la migración de reset.
 
 ## Referencia histórica
 

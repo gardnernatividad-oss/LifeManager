@@ -22,7 +22,7 @@ La interfaz es Spanish-first. No hay selector de idioma en V2. Las fechas se mue
 
 Se utilizarán: Inicio, Revisión, Planificación, Seguimiento, Tareas, Pendientes, Proyectos, Etapa, Actividad, Actividades, Calendario, Mi calendario, Reportes, Tablas, Configuración, Categorías, Propietario, Miembro, Líder, Responsable, Organizador y Participantes.
 
-En la interfaz no se utilizarán `Tasks`, `Activity`, `Project Lead`, `OWNER`, `MEMBER`, `Tareas maestras`, `Paso` ni `Paso de proyecto`. Los nombres internos existentes como `MasterTask`, `ProjectStep` o `WorkspaceRole.OWNER` pueden mantenerse en documentación técnica y código mientras se distingan del lenguaje presentado al usuario.
+En la interfaz no se utilizarán `Tasks`, `Activity`, `Project Lead`, `OWNER`, `MEMBER`, `Tareas maestras`, `Paso` ni `Paso de proyecto`. Los identificadores técnicos V2 son `MasterTask`, `ActivityMaster` y `ProjectStage`; la interfaz presenta Tarea, Actividad y Etapa. `ProjectStep` y `WorkspaceRole.OWNER` pertenecen al runtime/historial V1 y no definen el target físico V2.
 
 ## 3. Workspaces y alcance de vistas
 
@@ -42,7 +42,7 @@ Agregan información del usuario a través de los Workspaces pertinentes y no mu
 
 Planificación, Seguimiento, Reportes y Tablas utilizan el Workspace seleccionado cuando el recurso pertenece a un Workspace. Mi calendario administra su contexto colaborativo mediante controles internos propios, no mediante el selector global.
 
-La matriz exacta de permisos por rol y operación se definirá en la arquitectura de autorización V2. Toda autorización seguirá siendo server-side y todo recurso deberá conservar aislamiento de Workspace.
+La arquitectura de autorización está definida en `docs/architecture/Permissions.md`, ADR-011 y `V2-Architecture-Baseline.md`. Cada vertical concreta su matriz de acciones sin alterar la regla server-side ni el aislamiento de Workspace.
 
 ## 4. Tareas
 
