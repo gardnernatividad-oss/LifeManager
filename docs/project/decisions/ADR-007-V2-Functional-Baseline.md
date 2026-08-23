@@ -50,10 +50,14 @@ La documentación necesita distinguir la implementación actual del objetivo apr
 
 ## No decidido por esta ADR
 
-- Esquema físico V2.
+- El esquema físico V2 fue decidido posteriormente por ADR-008; no forma parte de esta ADR funcional.
 - Contratos API concretos.
 - Estrategia de reset/migración.
 - Matriz de permisos detallada.
 - Proveedor o mecanismo final de push.
 - Adopción obligatoria de RLS.
 - Roadmap detallado: se incorporará cuando se disponga del baseline aprobado completo.
+
+## Decisión técnica posterior
+
+ADR-008 y `docs/database/V2-Target-Data-Model.md` traducen esta línea base al modelo lógico/físico V2 sin modificar sus reglas funcionales.

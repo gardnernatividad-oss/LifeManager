@@ -1,6 +1,6 @@
 # Base de datos de LifeManager
 
-> **ALCANCE V1/HISTÓRICO.** Este documento conserva fundamentos y evolución de la base V1. El esquema físico V1 vigente está en `V1-Target-Data-Model.md`. El objetivo funcional V2 está en `docs/requirements/Functional-V2.md`, pero su modelo físico aún no se ha aprobado; no deben inferirse tablas V2 de este documento.
+> **ALCANCE V1/HISTÓRICO.** Este documento conserva fundamentos y evolución de la base V1. El esquema físico V1 vigente está en `V1-Target-Data-Model.md`. El diseño V2 aprobado documentalmente —todavía no implementado— está en `V2-Target-Data-Model.md`, `V2-ERD.md` y ADR-008; no deben inferirse tablas V2 del contenido histórico de este documento.
 
 > **Nota de alcance:** este documento contiene fundamentos e implementación histórica. El modelo funcional V1 fue redefinido por ADR-005 y `docs/requirements/Functional.md`. Las menciones a `TaskSeries` persistente, Proyectos que agrupan Tareas, cancelación y formularios diarios no son el nuevo objetivo y requieren revisión antes de crear migraciones.
 

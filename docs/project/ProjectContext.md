@@ -13,6 +13,7 @@ LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está docum
 | Runtime y comportamiento V1 actual | Código en el tag `v1.0.0`, `docs/requirements/Functional.md`, ADR-005 y ADR-006 |
 | Modelo físico V1 actual | `docs/database/V1-Target-Data-Model.md` y `docs/database/ERD.md` |
 | Objetivo funcional V2 aprobado | `docs/requirements/Functional-V2.md` y ADR-007 |
+| Modelo lógico/físico V2 aprobado, no implementado | `docs/database/V2-Target-Data-Model.md`, `docs/database/V2-ERD.md` y ADR-008 |
 | Futuro no aprobado | `docs/requirements/FutureIdeas.md`, cuando se documente expresamente como idea |
 
 En caso de contradicción sobre V2, prevalecen `Functional-V2.md` y ADR-007. Ningún documento V2 implica que el runtime actual ya tenga esa capacidad.

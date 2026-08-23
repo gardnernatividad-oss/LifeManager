@@ -2,13 +2,15 @@
 
 ## Estado
 
-Pendiente de diseño técnico.
+Diseñado y aprobado documentalmente; no implementado.
 
-`docs/requirements/Functional-V2.md` y ADR-007 definen el objetivo funcional, pero no fijan tablas, columnas, enums, FKs, índices ni migraciones V2. El esquema V1 actual permanece documentado en `V1-Target-Data-Model.md` y `ERD.md`.
+`docs/requirements/Functional-V2.md` y ADR-007 definen el objetivo funcional. `V2-Target-Data-Model.md`, `V2-ERD.md` y ADR-008 fijan el diseño lógico/físico para implementación futura. El esquema V1 actual permanece documentado en `V1-Target-Data-Model.md` y `ERD.md`.
 
-## Capacidades que el diseño deberá resolver
+## Capacidades resueltas por el diseño
 
+- Estados exclusivos de cuenta, administración global, auditoría y tokens de acción seguros.
 - Workspaces compartidos, membresías y roles globales separados.
+- Invitaciones, transferencia de propiedad y lifecycle histórico de membresía.
 - Responsables en Tareas, Pendientes y Etapas.
 - Unicidad de Tarea por catálogo, fecha y Responsable.
 - Catálogo y ocurrencias de Actividades.
@@ -17,14 +19,15 @@ Pendiente de diseño técnico.
 - Privacidad de calendario consolidado por Workspace compartido.
 - Historia cronológica de Pendientes y Etapas.
 - Notificaciones, preferencias y trazabilidad necesaria.
+- Suscripciones Web Push y estado de entrega.
 - Inmutabilidad histórica y reclasificación dinámica aprobada.
 - Retiro de miembros sin reescribir el pasado.
 
-## Restricciones de transición
+## Restricciones de transición e implementación
 
 - No se editará el historial Alembic existente.
 - Los datos V1 actuales son descartables para desarrollo, pero ningún reset está autorizado en la etapa documental.
-- Antes de implementar se aprobarán modelo físico, estrategia de transición, aislamiento, autorización y pruebas.
+- Antes de implementar se traducirá el diseño a modelos/migraciones revisados y pruebas PostgreSQL; este documento no autoriza ejecutarlos.
 - Después de publicar V2, los datos reales deberán preservarse mediante migraciones seguras.
 
-Este archivo evita que el modelo V1 o documentos históricos se utilicen accidentalmente como diseño físico V2; no anticipa una solución.
+Este archivo evita que el modelo V1 o documentos históricos se utilicen accidentalmente como diseño físico V2.
