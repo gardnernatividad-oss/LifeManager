@@ -8,7 +8,7 @@ from app.schemas.v2_identity import (
     AdminAccountSummary,
     AdminRegistrationList,
     RegistrationRequestCreate,
-    RegistrationRequestRead,
+    RegistrationRequestAcknowledgement,
     RejectAccountRequest,
 )
 from app.services.v2_identity import (
@@ -34,12 +34,6 @@ def _service_error(error: Exception) -> V2APIError:
             code="ACCOUNT_NOT_FOUND",
             message="No se encontró la cuenta.",
         )
-    if isinstance(error, RegistrationRequestConflictError):
-        return V2APIError(
-            status_code=status.HTTP_409_CONFLICT,
-            code="REGISTRATION_REQUEST_CONFLICT",
-            message="No se pudo procesar la solicitud de registro.",
-        )
     if isinstance(error, PersonalWorkspaceConflictError):
         return V2APIError(
             status_code=status.HTTP_409_CONFLICT,
@@ -55,25 +49,24 @@ def _service_error(error: Exception) -> V2APIError:
 
 @router.post(
     "/auth/registration-requests",
-    response_model=RegistrationRequestRead,
-    status_code=status.HTTP_201_CREATED,
+    response_model=RegistrationRequestAcknowledgement,
+    status_code=status.HTTP_202_ACCEPTED,
     tags=["V2 Authentication"],
 )
 def request_registration(
     registration_in: RegistrationRequestCreate,
     db: SessionDependency,
-) -> RegistrationRequestRead:
+) -> RegistrationRequestAcknowledgement:
     try:
-        user = create_registration_request(db, registration_in=registration_in)
+        create_registration_request(db, registration_in=registration_in)
         db.commit()
-        db.refresh(user)
-    except RegistrationRequestConflictError as error:
+    except RegistrationRequestConflictError:
         db.rollback()
-        raise _service_error(error) from error
+        return RegistrationRequestAcknowledgement()
     except Exception:
         db.rollback()
         raise
-    return RegistrationRequestRead.model_validate(user)
+    return RegistrationRequestAcknowledgement()
 
 
 @router.get(

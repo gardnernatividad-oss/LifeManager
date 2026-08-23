@@ -15,8 +15,10 @@ from app.models.enums import AccountStatus, GlobalRole
 from app.schemas.v2_identity import RegistrationRequestCreate
 from app.services.v2_identity import (
     AccountStateConflictError,
+    AdminAccountNotFoundError,
     approve_registration_request,
     create_registration_request,
+    get_admin_account,
     is_account_usable,
     reject_registration_request,
     transition_account_state,
@@ -88,7 +90,14 @@ def test_registration_is_pending_hashed_audited_and_has_no_workspace() -> None:
         ("account_status", "ACTIVE"),
         ("owner_user_id", str(uuid.uuid4())),
         ("is_verified", True),
+        ("email_verified_at", NOW.isoformat()),
+        ("approved_by_user_id", str(uuid.uuid4())),
         ("actor_user_id", str(uuid.uuid4())),
+        ("workspace_id", str(uuid.uuid4())),
+        ("membership_role", "OWNER"),
+        ("created_by_user_id", str(uuid.uuid4())),
+        ("id", str(uuid.uuid4())),
+        ("scope", {"global_role": "GLOBAL_ADMIN"}),
     ],
 )
 def test_registration_rejects_privileged_mass_assignment(field: str, value: object) -> None:
@@ -148,6 +157,40 @@ def test_state_machine_allows_only_explicit_transitions_and_appends_event() -> N
         )
 
 
+@pytest.mark.parametrize(
+    "status",
+    [
+        AccountStatus.PENDING_EMAIL_VERIFICATION,
+        AccountStatus.ACTIVE,
+        AccountStatus.REJECTED,
+        AccountStatus.DISABLED,
+    ],
+)
+def test_approval_rejects_every_state_except_pending_approval(
+    status: AccountStatus,
+) -> None:
+    db = MagicMock()
+    target = _user(status=status)
+    admin = _user(status=AccountStatus.ACTIVE, global_role=GlobalRole.GLOBAL_ADMIN)
+    db.scalar.return_value = target
+    with pytest.raises(AccountStateConflictError):
+        approve_registration_request(db, user_id=target.id, actor=admin)
+    assert target.account_status == status
+    db.add.assert_not_called()
+    db.flush.assert_not_called()
+
+
+def test_admin_detail_is_scoped_to_pending_approval() -> None:
+    db = MagicMock()
+    db.scalar.return_value = None
+    with pytest.raises(AdminAccountNotFoundError):
+        get_admin_account(db, user_id=uuid.uuid4())
+    statement = db.scalar.call_args.args[0]
+    sql = str(statement)
+    assert "users.id" in sql
+    assert "users.account_status" in sql
+
+
 def test_approval_provisions_personal_workspace_membership_and_event() -> None:
     db = MagicMock()
     target = _user(status=AccountStatus.PENDING_APPROVAL)
@@ -193,6 +236,36 @@ def test_rejection_has_no_workspace_and_is_audited() -> None:
     assert any(isinstance(value, UserAccountStateEvent) for value in added)
     assert not any(isinstance(value, (Workspace, WorkspaceMember)) for value in added)
     assert db.flush.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        AccountStatus.PENDING_EMAIL_VERIFICATION,
+        AccountStatus.ACTIVE,
+        AccountStatus.REJECTED,
+        AccountStatus.DISABLED,
+    ],
+)
+def test_rejection_rejects_every_state_except_pending_approval(
+    status: AccountStatus,
+) -> None:
+    db = MagicMock()
+    target = _user(status=status)
+    admin = _user(status=AccountStatus.ACTIVE, global_role=GlobalRole.GLOBAL_ADMIN)
+    db.scalar.return_value = target
+
+    with pytest.raises(AccountStateConflictError):
+        reject_registration_request(
+            db,
+            user_id=target.id,
+            actor=admin,
+            reason=None,
+        )
+
+    assert target.account_status == status
+    db.add.assert_not_called()
+    db.flush.assert_not_called()
 
 
 def test_global_admin_dependency_is_persisted_role_and_no_membership_bypass() -> None:

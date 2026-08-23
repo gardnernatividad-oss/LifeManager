@@ -8,7 +8,7 @@ from app.schemas.v2_identity import (
     AdminAccountSummary,
     AdminRegistrationList,
     RegistrationRequestCreate,
-    RegistrationRequestRead,
+    RegistrationRequestAcknowledgement,
     RejectAccountRequest,
 )
 
@@ -16,6 +16,6 @@ __all__ = [
     "AdminAccountSummary",
     "AdminRegistrationList",
     "RegistrationRequestCreate",
-    "RegistrationRequestRead",
+    "RegistrationRequestAcknowledgement",
     "RejectAccountRequest",
 ]

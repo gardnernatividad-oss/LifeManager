@@ -161,7 +161,12 @@ def list_pending_registration_requests(db: Session) -> list[User]:
 
 
 def get_admin_account(db: Session, *, user_id: uuid.UUID) -> User:
-    user = db.scalar(select(User).where(User.id == user_id))
+    user = db.scalar(
+        select(User).where(
+            User.id == user_id,
+            User.account_status == AccountStatus.PENDING_APPROVAL,
+        )
+    )
     if user is None:
         raise AdminAccountNotFoundError("Account not found")
     return user

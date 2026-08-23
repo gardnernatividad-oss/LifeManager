@@ -253,7 +253,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 | ACT-001 | Tokens | Guess/replay verification/reset | HIGH | digest model | entropy, TTL, purpose, single-use lock | 2.5–2.6 | concurrency/replay |
 | AUTHZ-001 | Workspace | IDOR con UUID foreign | CRITICAL | FKs estructurales | membership + scoped SQL + 404 masking | Workspace/verticales | matriz cross-user |
 | AUTHZ-002 | Cuenta | Mass assignment de actor/role/scope | CRITICAL | modelo restringe algunos valores | DTO forbid + server-derived fields | 2.11/verticales | forged-field tests |
-| ADMIN-001 | Plataforma | Forjar GLOBAL_ADMIN | CRITICAL | check/unique DB; dependency/DTO Stage 2.3 | completar bootstrap operativo y gates | 2.3–2.4/2.13 | ordinary→admin denial |
+| ADMIN-001 | Plataforma | Forjar GLOBAL_ADMIN | CRITICAL | check/unique DB; dependency/DTO y pruebas negativas Stage 2.3–2.4 | completar bootstrap operativo y gates | 2.13 | ordinary→admin denial; disabled admin denial; sin membership implícita |
 | ADMIN-002 | Privacidad | Admin lee contenido privado | HIGH | separación física | prohibición explícita y tests | 2.12/Workspaces | admin privacy matrix |
 | WS-001 | Propiedad | Hijack/remoción de owner | HIGH | trigger diferible | locks + transfer action | Workspace stage | race/rollback tests |
 | WS-002 | Invitación | Aceptar invitación ajena/replay | HIGH | digest/lifecycle model | recipient binding, single-use, locks | Workspace stage | multiuser/concurrency |

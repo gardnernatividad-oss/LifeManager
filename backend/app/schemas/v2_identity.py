@@ -1,11 +1,12 @@
 import uuid
 
 from datetime import datetime
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models.enums import AccountStatus, GlobalRole
+from app.models.enums import AccountStatus
 
 
 def _clean_name(value: str) -> str:
@@ -41,12 +42,10 @@ class RegistrationRequestCreate(BaseModel):
     _validate_timezone = field_validator("timezone")(_timezone)
 
 
-class RegistrationRequestRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class RegistrationRequestAcknowledgement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    id: uuid.UUID
-    account_status: AccountStatus
-    created_at: datetime
+    accepted: Literal[True] = True
 
 
 class AdminAccountSummary(BaseModel):
@@ -58,12 +57,8 @@ class AdminAccountSummary(BaseModel):
     last_name: str
     timezone: str
     account_status: AccountStatus
-    global_role: GlobalRole | None
     email_verified_at: datetime | None
-    status_changed_at: datetime
-    lock_version: int
     created_at: datetime
-    updated_at: datetime
 
 
 class AdminRegistrationList(BaseModel):

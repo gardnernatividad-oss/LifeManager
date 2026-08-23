@@ -55,6 +55,8 @@ La convención completa está en [`V2-Architecture-Baseline.md`](V2-Architecture
 
 ## Estado de implementación de identidad
 
-Stage 2.3 implementa una dependencia `GLOBAL_ADMIN` separada que exige cuenta `ACTIVE` y `users.global_role='GLOBAL_ADMIN'`. No consulta ni fabrica roles desde el body y no sustituye la resolución ordinaria de `workspace_members`. Las pruebas demuestran que un administrador global sin membership ACTIVE no adquiere acceso a un Personal Workspace ajeno.
+Stage 2.4 valida una dependencia `GLOBAL_ADMIN` separada que exige cuenta `ACTIVE` y `users.global_role='GLOBAL_ADMIN'` persistido. No consulta ni fabrica roles desde el body y no sustituye la resolución ordinaria de `workspace_members`. Las pruebas demuestran que una persona administradora global sin membership ACTIVE no adquiere acceso ni membership en un Personal Workspace ajeno. Aprobar o rechazar exige una solicitud `PENDING_APPROVAL`; una cuenta pendiente de verificación, activa, rechazada o deshabilitada recibe un conflicto seguro.
+
+La aprobación bloquea la cuenta objetivo y aprovisiona en una sola transacción el estado `ACTIVE`, su evento, el Personal Workspace y la membership ACTIVE del owner. El rol global no se copia al Workspace y las consultas de la cola administrativa no cargan contenido privado.
 
 La sesión todavía reutiliza temporalmente la validación Bearer V1; cookies/CSRF y revocación pertenecen a Stage 2.8. No debe interpretarse esta compatibilidad como el contrato de sesión final.
