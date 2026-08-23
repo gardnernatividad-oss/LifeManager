@@ -1,6 +1,6 @@
 # Arquitectura de LifeManager
 
-> **Alcance V1 vigente:** LifeManager expone exclusivamente el Personal Workspace creado automáticamente para cada usuario. La capacidad multi-workspace, roles y colaboración descrita en secciones históricas es arquitectura futura para V2, no funcionalidad V1. La fuente funcional autoritativa es `docs/requirements/Functional.md` y la decisión vigente es ADR-005.
+> **Línea base y objetivo:** el runtime V1.0.0 expone exclusivamente el Personal Workspace creado automáticamente. El objetivo funcional multi-Workspace V2 está aprobado en `docs/requirements/Functional-V2.md` y ADR-007, pero su arquitectura técnica aún no está implementada. Las secciones históricas no sustituyen esas fuentes.
 
 ## 1. Propósito
 
@@ -584,7 +584,9 @@ En caso de contradicción:
 
 ---
 
-## 18. Estado de implementación
+## 18. Estado de implementación histórica
+
+> Esta sección conserva una fotografía temprana y está desactualizada. El estado real V1.0.0 debe verificarse en el código etiquetado `v1.0.0`; el objetivo V2 está en `Functional-V2.md`.
 
 ### Implementado
 

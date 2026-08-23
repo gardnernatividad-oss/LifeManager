@@ -1,8 +1,10 @@
 # Especificación funcional de LifeManager V1 — Personal Workspace
 
+> **LÍNEA BASE V1 ACTUAL.** Este documento describe el producto V1.0.0 implementado. No es la especificación V2. El objetivo aprobado V2.0.0 está en `docs/requirements/Functional-V2.md` y ADR-007.
+
 ## 1. Autoridad y estado
 
-Este documento es la fuente funcional autoritativa para LifeManager V1. Describe el diseño objetivo aprobado; no afirma que la implementación actual ya lo cumpla. Si una especificación anterior contradice este documento, prevalece este documento y ADR-005.
+Este documento es la fuente funcional de la línea base V1.0.0. Si una especificación anterior contradice el comportamiento V1, prevalecen este documento, ADR-005, ADR-006 y el código etiquetado `v1.0.0`. Para V2 prevalecen `Functional-V2.md` y ADR-007.
 
 LifeManager V1 es un sistema personal de planificación, revisión, seguimiento y reportes. Opera exclusivamente dentro del Workspace `Personal` creado automáticamente para cada usuario.
 
@@ -175,4 +177,6 @@ Calendario, Actividades, Workspaces adicionales/familiares, colaboración, invit
 
 ## 17. Estado de implementación
 
-La aplicación existente contiene módulos y contratos anteriores (entre otros, TaskSeries persistente, Daily Form, configuración ampliada, múltiples workspaces y estado Cancelled). Son implementación heredada pendiente de refactor. Este documento especifica el objetivo; la migración técnica deberá preservar datos y mantener una secuencia segura.
+V1.0.0 está implementado y publicado. El runtime activo corresponde al Personal Workspace, sin TaskSeries persistente, Daily Form/Workflow, estado Cancelled ni selector multi-Workspace. Permanecen archivos frontend heredados no alcanzables desde el router, que no forman parte del comportamiento V1 vigente.
+
+V2 ampliará esta línea base de acuerdo con `Functional-V2.md`; esas capacidades todavía no deben describirse como implementadas.

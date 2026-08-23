@@ -1,28 +1,37 @@
-# Principios de interfaz de LifeManager V1
+# Principios de interfaz de LifeManager
 
-## Densidad y composición
+## Alcance
 
-- Interfaz compacta y densa en información.
-- Tablas y listas antes que tarjetas sobredimensionadas.
-- Desktop aprovecha el ancho horizontal; móvil apila o redistribuye sin crear espacios excesivos.
-- Las métricas de Inicio no son clicables y no funcionan como navegación.
+Estos principios aplican al objetivo V2 y conservan las convenciones útiles de V1. La interfaz es Spanish-first, muestra fechas `dd/mm/yyyy` y comienza la semana en lunes.
+
+## Mobile-first y densidad
+
+- Móvil vertical es un objetivo primario.
+- Se priorizan filas/tarjetas compactas y campos esenciales.
+- Avance se representa con barras cuando aporte claridad.
+- La información secundaria se mueve a páginas internas de detalle.
+- Desktop puede usar tablas más completas.
+- Los filtros son compactos y no dominan la pantalla.
+
+## Navegación y creación
+
+- `>` abre detalle en el área blanca, con flecha de retorno.
+- No se expande contenido complejo debajo de filas.
+- `+ Nueva` abre normalmente un modal compacto para creación simple.
+- Comparación de Calendario usa página interna separada.
+- Campana/notificaciones usa overlay o panel.
 
 ## Controles
 
-- Dropdowns para estados, categorías, maestros y opciones acotadas.
-- Inputs de fecha para rangos; evitar grupos grandes de botones o chips.
-- Acciones discretas: lápiz para corrección, papelera para borrado y `>` para detalle.
-- Guardar explícito en Revisión y Seguimiento por lote.
-- Excepción: Revisión > Tareas muestra simultáneamente No realizado y Completado en cada fila.
+- Los estados y errores se comunican con texto, no solo color.
+- Los controles deshabilitados mantienen legibilidad, se atenúan, suprimen hover/animación y conservan el cursor normal.
+- No se utiliza cursor `not-allowed` como convención visual.
+- Los selectores se reservan para opciones acotadas; no concatenan nombre y Categoría en el selector de Tarea/Actividad.
 
-## Accesibilidad
+## Calendario
 
-- Encabezados y tablas semánticos.
-- Labels explícitos en filtros y formularios.
-- Estado y validación comunicados con texto, no solo color.
-- Foco visible y controles accesibles por teclado.
-- Reflow móvil sin scroll horizontal innecesario.
-
-## Idioma
-
-La interfaz V1 es española y todos los archivos se guardan como UTF-8. Los términos del dominio siguen `docs/project/Glossary.md`.
+- Desktop abre semanal.
+- Móvil abre diario.
+- Comparación es diaria.
+- Solo disponibilidad usa bloques neutrales sin repetir Libre/Ocupado.
+- Mostrar detalles no altera nombres añadiendo `[Workspace]`.

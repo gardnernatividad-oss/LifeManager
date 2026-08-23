@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado.
+Aceptado como línea base V1. Para el objetivo V2 prevalece ADR-007.
 
 ## Fecha
 

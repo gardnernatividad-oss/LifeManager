@@ -1,5 +1,7 @@
 # ERD objetivo de LifeManager V1 — Personal Workspace
 
+> **ERD V1 ACTUAL.** No representa responsables, Workspaces compartidos, Actividades, historia ni otros requisitos V2. El ERD V2 aún no ha sido diseñado.
+
 Este diagrama representa el modelo físico aprobado en `docs/database/V1-Target-Data-Model.md`. El ERD anterior permanece únicamente dentro de `docs/database/Legacy-V1-Target-Data-Model.md`.
 
 ```mermaid

@@ -1,5 +1,7 @@
 # Modelo físico objetivo de LifeManager V1 — Personal Workspace
 
+> **MODELO V1 ACTUAL.** Se conserva como referencia del esquema publicado en V1.0.0. No es un diseño físico V2. El objetivo funcional V2 está en `docs/requirements/Functional-V2.md`; su modelo físico se diseñará en una etapa posterior.
+
 ## 1. Estado y autoridad
 
 Este documento define el modelo físico objetivo aprobado para V1. Implementa `docs/requirements/Functional.md` y ADR-005; las decisiones físicas principales se registran en ADR-006. No describe necesariamente la base existente y no autoriza editar migraciones históricas.

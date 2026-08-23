@@ -1,29 +1,34 @@
-# Pantallas objetivo de LifeManager V1
+# Inventario de pantallas de LifeManager
 
-Este inventario resume el diseño objetivo. Los campos y reglas completas están en `docs/requirements/Functional.md`.
+## V1 actual
 
-| Área | Pantalla | Función principal |
+Las pantallas implementadas son Login, Registro, Inicio, Revisión, Planificación/Seguimiento/Reportes de Tareas, Pendientes y Proyectos, Tablas de Tareas/Categorías y Configuración. El frontend actual opera sobre el Personal Workspace implícito.
+
+## Objetivo V2 aprobado
+
+| Alcance | Pantalla | Propósito |
 |---|---|---|
-| Inicio | Inicio | Resumen operativo compacto y actualización manual. |
-| Revisión | Revisión diaria | Edición por lote de Tareas, Pendientes y Pasos que requieren atención. |
-| Planificación | Tareas | Crear ocurrencias, creación masiva y borrar Programadas. |
-| Planificación | Pendientes | Mantener Vigencia, Categoría, nombre y fecha planificada. |
-| Planificación | Proyectos / detalle | Mantener Proyecto y estructura ponderada de Pasos. |
-| Seguimiento | Tareas | Registro histórico, filtros y corrección controlada de resultados. |
-| Seguimiento | Pendientes | Control completo, avance y comentario con Guardar. |
-| Seguimiento | Proyectos / detalle | Resumen, comentario general y seguimiento de Pasos. |
-| Reportes | Tareas | Análisis por período, Categoría y Tarea maestra. |
-| Reportes | Pendientes | Análisis de avance y Cumplimiento. |
-| Reportes | Proyectos | Avance ponderado y Cumplimiento de Pasos. |
-| Tablas | Tareas | Tareas maestras específicas del Personal Workspace. |
-| Tablas | Categorías | Categorías específicas del Personal Workspace. |
-| Configuración | Perfil y zona horaria | Nombre, apellido, email y selector amigable de zona. |
+| Global | Inicio | Resumen conciso del día entre Workspaces. |
+| Global | Revisión | Guardado independiente de Tareas, Pendientes y Etapas asignadas. |
+| Global | Mi calendario | Actividades del usuario entre todos los Workspaces. |
+| Workspace | Planificación · Tareas | Programar ocurrencias y generación finita. |
+| Workspace | Planificación · Pendientes | Crear, asignar y mantener planificación. |
+| Workspace | Planificación · Proyectos | Mantener Proyecto, Líder y Etapas. |
+| Workspace | Seguimiento · Tareas | Registro y correcciones aprobadas. |
+| Workspace | Seguimiento · Pendientes | Avance, comentario e historia. |
+| Workspace | Seguimiento · Proyectos | Avance e historia de Proyecto/Etapas. |
+| Workspace | Reportes | Periodo, Responsable y Categoría; métricas por refinar. |
+| Workspace | Tablas · Tareas | Catálogo visible como Tareas. |
+| Workspace | Tablas · Actividades | Catálogo de Actividades Activas/Inactivas. |
+| Workspace | Tablas · Categorías | Clasificación reutilizable. |
+| Cuenta/Workspace | Configuración | Perfil, recordatorios, membresías, privacidad, seguridad y versión. |
+| Overlay | Notificaciones | Membresía, asignaciones, Actividades y recordatorios relevantes; no incluye comentarios ni es página completa. |
 
-## Convenciones de interacción
+## Detalles internos
 
-- Tablas/listas compactas antes que tarjetas grandes.
-- Filtros mediante dropdowns y fechas.
-- Paginación histórica: 25 por defecto, opciones 25/50/100.
-- Lápiz para correcciones, papelera para borrado elegible y `>` para detalle de Proyecto.
-- Revisión no guarda por fila: una sola acción **Guardar revisión** persiste el lote.
-- En Revisión > Tareas, Completado y No realizado aparecen simultáneamente; nunca se usa dropdown.
+- Pendiente: vista general → `>` → detalle con historia.
+- Proyecto: vista general → `>` → detalle y lista de Etapas.
+- Etapa: lista dentro del Proyecto → `>` → detalle e historia.
+- Comparación de Calendario: página interna diaria separada.
+
+Móvil usa composición vertical compacta y mueve información secundaria a detalles. Desktop puede mostrar tablas más ricas sin convertir el scroll horizontal en la estrategia móvil principal.

@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado.
+Aceptado como modelo físico V1. No define el esquema V2; para su objetivo funcional prevalece ADR-007.
 
 ## Fecha
 

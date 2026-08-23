@@ -1,47 +1,57 @@
 # Contexto de LifeManager
 
-## Producto objetivo
+## Estado del producto
 
-LifeManager V1 es una PWA personal para planificar, revisar, seguir y analizar Tareas, Pendientes y Proyectos dentro del Personal Workspace del usuario.
+LifeManager V1.0.0 es la implementación publicada y la línea base técnica. El tag anotado `v1.0.0` resuelve al commit `fafa8844f83763c837aa423d0773cd6d5782752c`.
 
-La especificación autoritativa es `docs/requirements/Functional.md`; la decisión vigente es ADR-005.
+LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está documentado en `docs/requirements/Functional-V2.md` y ADR-007; todavía no está implementado.
 
-## Alcance V1
+## Fuentes de autoridad
 
-- Registro/login y perfil.
-- Creación automática de un único Workspace `Personal` y membresía OWNER.
-- Tablas maestras de Categorías y Tareas.
-- Planificación, Revisión, Seguimiento y Reportes separados.
-- Tareas fechadas, Pendientes porcentuales y Proyectos con Pasos ponderados.
-- Inicio operativo compacto.
-- Configuración limitada a perfil y zona horaria.
-- PWA responsive en español.
+| Alcance | Fuente |
+|---|---|
+| Runtime y comportamiento V1 actual | Código en el tag `v1.0.0`, `docs/requirements/Functional.md`, ADR-005 y ADR-006 |
+| Modelo físico V1 actual | `docs/database/V1-Target-Data-Model.md` y `docs/database/ERD.md` |
+| Objetivo funcional V2 aprobado | `docs/requirements/Functional-V2.md` y ADR-007 |
+| Futuro no aprobado | `docs/requirements/FutureIdeas.md`, cuando se documente expresamente como idea |
 
-## Arquitectura técnica
+En caso de contradicción sobre V2, prevalecen `Functional-V2.md` y ADR-007. Ningún documento V2 implica que el runtime actual ya tenga esa capacidad.
 
-- Backend: FastAPI, SQLAlchemy 2.x, Alembic y PostgreSQL.
-- Frontend: React, TypeScript, Vite, TanStack Query, Axios, React Hook Form y Zod.
-- Autenticación mediante Bearer JWT.
-- UUID en entidades y aislamiento de recursos por `workspace_id`.
+## V1 actual
 
-El backend conserva una arquitectura multi-workspace capaz de evolucionar hacia V2. V1 no expone esa capacidad en la interfaz.
+- PWA personal en español con autenticación Bearer JWT.
+- Un Personal Workspace creado automáticamente por usuario.
+- Categorías y catálogo de Tareas.
+- Planificación, Revisión, Seguimiento y Reportes para Tareas, Pendientes y Proyectos con componentes internos `ProjectStep` (Etapas en la terminología V2).
+- Inicio operativo y Configuración de perfil/zona horaria.
+- Backend FastAPI, SQLAlchemy 2.x, Alembic y PostgreSQL.
+- Frontend React, TypeScript, Vite y TanStack Query.
 
-## Estado actual frente al objetivo
+V1 no expone colaboración, responsables, Calendario/Actividades, notificaciones, historia cronológica de Pendientes/Etapas ni administración global.
 
-La aplicación existente implementa una base funcional amplia, pero refleja decisiones previas: TaskSeries persistente, Daily Form/Workflow, estados y settings ampliados, múltiples workspaces seleccionables y módulos frontend reorganizados de otra manera. Estos componentes no prueban el diseño objetivo y deberán refactorizarse incrementalmente.
+## V2 aprobado
 
-No se deben editar migraciones históricas. Los cambios de datos requieren migraciones nuevas, backfill explícito, compatibilidad temporal cuando sea necesaria y pruebas de aislamiento/historial.
+- Personal Workspace y Workspaces compartidos.
+- Roles globales separados de roles de Workspace.
+- Responsables para Tareas, Pendientes y Etapas.
+- Vistas globales Inicio, Revisión y Mi calendario.
+- Actividades, Calendario consolidado y privacidad para comparación.
+- Historia cronológica de Pendientes y Etapas.
+- Centro de notificaciones como overlay para eventos relevantes de membresía, asignación, Actividades y recordatorios; sin avisos por comentarios.
+- Registro restringido con anti-bot, verificación de correo, aprobación global y requisitos de seguridad reforzados.
+- UX mobile-first con páginas internas de detalle.
+
+## Transición
+
+Los datos V1 existentes son de prueba/no esenciales. Puede diseñarse un reset controlado para V2, pero no se ha autorizado ni ejecutado. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, toda evolución deberá preservar datos de producción.
+
+La siguiente etapa aprobada es Phase 1 — V2 Preparation, Stage 1.3 — Inventory of V1 components that are reusable, modifiable, or replaceable. La arquitectura y el modelo físico V2 se diseñarán después de clasificar primero los componentes V1.
 
 ## Principios
 
-- Claridad semántica antes que reutilización accidental.
-- Historial preservado.
-- Datos maestros inmutables después de uso.
-- Estados derivados cuando corresponda.
-- Separación entre Planificación, Revisión, Seguimiento y Reportes.
-- Interfaz compacta, accesible y responsive.
-- No presentar una función heredada como parte de V1 si contradice la especificación.
-
-## Fuera de alcance
-
-Calendario/Actividades, colaboración, invitaciones, workspaces adicionales, notificaciones, recordatorios, Notes, Goals, Finance, integraciones, administración avanzada, hábitos independientes y recurrencia perpetua.
+- Distinguir implementación actual de objetivo futuro.
+- Autorizar siempre en servidor y aislar por Workspace.
+- Mantener historia operativa salvo excepciones explícitas.
+- Usar terminología española aprobada en la interfaz.
+- Diseñar primero para móvil vertical sin degradar desktop.
+- Tratar seguridad como requisito transversal, no como etapa opcional final.

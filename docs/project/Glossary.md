@@ -1,73 +1,125 @@
-# Glosario de LifeManager V1
+# Glosario de LifeManager
+
+## Alcance
+
+Las definiciones indican el lenguaje visible aprobado para V2. Los nombres técnicos V1 entre paréntesis describen implementación y no deben mostrarse normalmente en la interfaz.
 
 ## Personal Workspace
 
-Único Workspace de usuario expuesto en V1, creado automáticamente con nombre `Personal`. Es el límite de aislamiento de todos sus datos.
+Workspace creado automáticamente para cada usuario. V1 expone únicamente este Workspace; V2 añade Workspaces compartidos.
 
-## Tarea maestra
+## Workspace compartido
 
-Definición estandarizada de una acción en Tablas > Tareas, con nombre y Categoría. No es una ocurrencia y no tiene fecha.
+Espacio colaborativo con miembros y permisos. Sus roles de producto se expresan como Propietario y Miembro. No debe confundirse con un rol global de plataforma.
+
+## Propietario
+
+Rol de producto con control del Workspace. El enum técnico V1 correspondiente puede ser `OWNER`.
+
+## Miembro
+
+Persona que participa en un Workspace compartido con permisos determinados por la futura matriz de autorización V2.
+
+## Tarea de catálogo
+
+Definición estandarizada presentada en `Tablas → Tareas`. Internamente V1 la denomina `MasterTask`, pero la interfaz no usa “Tarea maestra”. Contiene nombre, Categoría y en V2 Vigencia.
 
 ## Tarea
 
-Ocurrencia de una Tarea maestra asignada a una fecha de calendario, sin hora. Sus estados son Programada, Pendiente, Completada y No Realizada.
+Ocurrencia del catálogo asignada a una fecha y, en V2, posiblemente a un Responsable. Sus estados de producto son Programada, Pendiente, Completada y No Realizada.
 
-## Creación masiva de Tareas
+## Responsable
 
-Ayudante que calcula fechas dentro de un rango finito y crea Tareas independientes. No es una serie persistente ni un motor recurrente.
+Persona a quien corresponde una Tarea, Pendiente o Etapa. No aplica a Actividad.
 
 ## Pendiente
 
-Asunto independiente de mediano/largo plazo, con nombre libre, fecha planificada y avance porcentual. No debe confundirse con el estado Pendiente de una Tarea.
+Asunto de seguimiento prolongado con Vigencia, Categoría, Responsable, fecha planificada, Avance e historia cronológica.
 
 ## Proyecto
 
-Objetivo independiente compuesto por Pasos de proyecto. No agrupa Tareas normales ni Pendientes.
+Objetivo con información general, Líder y una colección ponderada de Etapas.
 
-## Paso de proyecto
+## Líder
 
-Trabajo de texto libre que existe únicamente dentro de un Proyecto y posee fecha planificada, peso y seguimiento propio. No se denomina Tarea.
+Persona que lidera un Proyecto. Su autoridad exacta se definirá en la matriz de permisos V2.
+
+## Etapa
+
+Unidad ponderada dentro de un Proyecto, con Responsable, fecha, Avance y seguimiento. El modelo interno V1 se llama `ProjectStep`; “Paso” no es terminología visible V2.
+
+## Actividad de catálogo
+
+Definición reutilizable presentada en `Tablas → Actividades`, con nombre, Categoría y Vigencia.
 
 ## Actividad
 
-Bloque con hora inicial/final reservado para Calendario V2. No es una Tarea.
+Bloque de tiempo de Calendario. Puede tener Organizador y Participantes, pero no Responsable.
+
+## Organizador
+
+Persona que crea una Actividad y puede modificarla o cancelarla para todos.
+
+## Participante
+
+Miembro añadido a una Actividad. La Actividad aparece automáticamente en su calendario; no existe aceptación/rechazo.
+
+## Mi calendario
+
+Vista global del calendario consolidado del usuario a través de todos sus Workspaces.
 
 ## Categoría
 
-Clasificación maestra perteneciente al Personal Workspace. Una vez usada queda inmutable para proteger reportes históricos.
+Clasificación perteneciente a un Workspace. En V2, las ocurrencias basadas en catálogo se reportan usando la Categoría actual del catálogo, incluso históricamente.
 
 ## Planificación
 
-Área donde se define y mantiene lo que el usuario pretende hacer.
+Área dependiente de Workspace donde se define lo que se pretende hacer.
 
 ## Revisión
 
-Flujo diario por lote que muestra únicamente elementos que requieren atención hoy. No reemplaza Seguimiento.
+Flujo global que permite guardar de manera independiente Tareas, Pendientes y Etapas asignadas que requieren acción.
 
 ## Seguimiento
 
-Registro completo actual e histórico que permite actualizaciones y correcciones controladas.
+Registro completo donde se mantiene Avance, Comentario e historia según el dominio.
 
 ## Inicio
 
-Página inicial de resumen operativo. No es un hub analítico ni contiene accesos rápidos.
+Vista global y concisa del día entre Workspaces.
 
 ## Reportes
 
-Área visual y estadística separada para Tareas, Pendientes y Proyectos. No permite mantener el registro histórico.
+Análisis por periodo, Responsable y Categoría cuando corresponda. Sus métricas V2 se afinarán con uso real.
 
 ## Tablas
 
-Área de datos maestros del Personal Workspace: Tareas maestras y Categorías.
+Área de catálogos por Workspace: Tareas, Actividades y Categorías.
 
 ## Vigencia
 
-Condición Activo/Inactivo de Pendientes y Proyectos. Es distinta del Estado derivado por avance.
+Condición Activa/Inactiva de un catálogo o entidad. Es distinta del Estado derivado por Avance.
+
+## Avance
+
+Porcentaje de evolución de un Pendiente o una Etapa. No aplica como progreso manual de una Tarea puntual.
 
 ## Cumplimiento
 
-Clasificación estándar respecto de la fecha planificada: En plazo/Atrasado antes de finalizar y A tiempo/Con adelanto/Con retraso después.
+Clasificación respecto de la fecha planificada, como En plazo, Atrasado, A tiempo, Con adelanto o Con retraso.
 
 ## Detalle
 
-Explicación cuantitativa del Cumplimiento, expresada en días. No combina estado ni se usa como texto para cálculos estadísticos.
+Explicación cuantitativa del Cumplimiento, normalmente expresada en días.
+
+## Recordatorio diario
+
+Resumen matutino diario de la información pertinente del usuario.
+
+## Revisión diaria
+
+Recordatorio vespertino que conduce al flujo Revisión.
+
+## Centro de notificaciones
+
+Panel interno de campana. Es distinto de push y no es una página completa.
