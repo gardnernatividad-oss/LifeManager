@@ -11,12 +11,13 @@ Este documento complementa `Functional-V2.md`; si existe contradicción, prevale
 - Contraseñas de al menos ocho caracteres con mayúscula, minúscula y símbolo.
 - Rate limiting, protección contra fuerza bruta y anti-bot/Cloudflare Turnstile.
 - Recuperación de contraseña con respuestas neutrales que no revelan la existencia de cuentas.
-- Autenticación y sesiones evaluadas mediante threat model antes de elegir persistencia de tokens.
+- Sesión V2 mediante JWT corto en cookie HttpOnly/Secure, restaurada por `/me`, sin secretos en localStorage; CSRF double-submit para métodos unsafe.
 - Autorización server-side con aislamiento de usuario y Workspace.
 - Validación server-side, protección de mass assignment y consultas parametrizadas.
 - Prevención de XSS e inyección de contenido; respuestas API mínimas.
 - Secretos ausentes de bundles, source, logs y respuestas.
 - CORS, CSP, security headers y HTTPS/TLS revisados para producción.
+- Origins CORS exactos con credentials; GLOBAL_ADMIN no bypassa contenido privado de Workspaces.
 - SAST, SCA, dependencias y cadena de suministro auditados.
 - Seguridad de Neon, Render, Cloudflare y GitHub incluida en el gate.
 - RLS evaluado como defensa adicional, no asumido como obligatorio sin análisis.
@@ -42,3 +43,7 @@ Este documento complementa `Functional-V2.md`; si existe contradicción, prevale
 - Migraciones verificadas en entornos no productivos antes de despliegue.
 - Observabilidad sin exponer secretos ni datos sensibles.
 - Dependencias e infraestructura actualizadas mediante cambios revisados y reproducibles.
+- PostgreSQL real obligatorio para constraints, locks, triggers, concurrencia y migraciones; mocks no sustituyen integración crítica.
+- HTTP real obligatorio para cookie/CSRF/CORS, IDOR, privacidad y journeys multiusuario críticos.
+- `/health` comprueba liveness sin DB y `/ready` comprueba PostgreSQL con timeout sin revelar configuración.
+- Frontend valida TypeScript, ESLint, tests y build; backend valida suite, compilación, migraciones e integración antes de deploy.

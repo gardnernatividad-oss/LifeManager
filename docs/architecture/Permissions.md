@@ -32,6 +32,14 @@ ADR-008 define estas garantías de datos, todavía no implementadas:
 - una transferencia bloquea Workspace y membresías implicadas antes de cambiar propietario;
 - la privacidad de calendario se almacena en la membresía y autoriza la vista consolidada de la persona frente a ese Workspace.
 
-## Pendiente de diseño
+## Arquitectura de enforcement V2
 
-La matriz completa de operaciones permitidas a Propietario/Miembro y los flujos API concretos siguen pendientes. Las invariantes anteriores son requisitos mínimos y no conceden permisos por omisión.
+- `CurrentUser` autentica y exige cuenta ACTIVE; `GlobalAdmin`, `ActiveWorkspaceMembership` y `WorkspaceOwner` son dependencies reutilizables.
+- Los services siempre consultan recursos por `id + workspace_id`, aplican permisos funcionales y validan que responsables/participantes sean miembros ACTIVE.
+- Las FKs compuestas preservan mismo Workspace y la base de datos es la frontera final; frontend solo adapta UX.
+- Un miembro válido no puede distinguir mediante el API un UUID inexistente de uno perteneciente a otro Workspace: ambos producen 404.
+- La falta de membresía al Workspace produce 403; una sesión ausente/inválida produce 401.
+- `GLOBAL_ADMIN` protege rutas de plataforma, pero no concede acceso implícito a contenido privado ni reemplaza membership.
+- `AVAILABILITY_ONLY` devuelve intervalos sin objetos/detalles de Activity; `HIDE` no devuelve datos subyacentes.
+
+La convención completa está en [`V2-Architecture-Baseline.md`](V2-Architecture-Baseline.md) y ADR-011. La matriz detallada por operación se incorporará con cada contrato vertical; ningún permiso se concede por omisión.

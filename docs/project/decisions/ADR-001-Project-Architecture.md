@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado.
+Aceptado como arquitectura inicial/histórica. Para implementación V2 queda reemplazado por ADR-009–012 y `docs/architecture/V2-Architecture-Baseline.md`.
 
 ## Fecha
 

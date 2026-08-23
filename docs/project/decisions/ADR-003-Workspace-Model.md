@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado como base técnica. ADR-005 limita el runtime V1 al Personal Workspace; ADR-007 aprueba el objetivo funcional multi-Workspace V2, cuya autorización detallada aún debe diseñarse.
+Aceptado como base técnica histórica. ADR-005 limita el runtime V1 al Personal Workspace. Para el modelo, scope y autorización V2 prevalecen ADR-008, ADR-011, `Permissions.md` y `V2-Architecture-Baseline.md`.
 
 > La estructura técnica `Workspace`/`WorkspaceMember` y el aislamiento se conservan. V1 expone exactamente un Personal Workspace por usuario. V2 incorpora Workspaces compartidos según `Functional-V2.md`; esta ADR no define por sí sola sus permisos o flujos.
 

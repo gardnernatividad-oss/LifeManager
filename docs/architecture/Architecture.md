@@ -1,6 +1,6 @@
 # Arquitectura de LifeManager
 
-> **Línea base y objetivo:** el runtime V1.0.0 expone exclusivamente el Personal Workspace creado automáticamente. El objetivo funcional multi-Workspace V2 está aprobado en `docs/requirements/Functional-V2.md` y ADR-007, pero su arquitectura técnica aún no está implementada. Las secciones históricas no sustituyen esas fuentes.
+> **ALCANCE HISTÓRICO/V1:** este documento conserva la arquitectura general inicial. El runtime V1.0.0 expone exclusivamente el Personal Workspace creado automáticamente. La arquitectura técnica V2 aprobada —todavía no implementada— está en [`V2-Architecture-Baseline.md`](V2-Architecture-Baseline.md) y ADR-009–012. Ante contradicción sobre V2 prevalecen esos documentos, ADR-007/008 y `Functional-V2.md`.
 
 ## 1. Propósito
 
