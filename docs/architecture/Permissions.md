@@ -52,3 +52,9 @@ La convención completa está en [`V2-Architecture-Baseline.md`](V2-Architecture
 - GLOBAL_ADMIN no puede consultar contenido privado sin una membership ordinaria que lo autorice.
 - Las proyecciones `AVAILABILITY_ONLY` y `HIDE` se aplican antes de serializar, nunca ocultando en frontend datos ya enviados.
 - La matriz de amenazas y pruebas negativas obligatorias se encuentra en [`V2-Threat-Model.md`](../security/V2-Threat-Model.md).
+
+## Estado de implementación de identidad
+
+Stage 2.3 implementa una dependencia `GLOBAL_ADMIN` separada que exige cuenta `ACTIVE` y `users.global_role='GLOBAL_ADMIN'`. No consulta ni fabrica roles desde el body y no sustituye la resolución ordinaria de `workspace_members`. Las pruebas demuestran que un administrador global sin membership ACTIVE no adquiere acceso a un Personal Workspace ajeno.
+
+La sesión todavía reutiliza temporalmente la validación Bearer V1; cookies/CSRF y revocación pertenecen a Stage 2.8. No debe interpretarse esta compatibilidad como el contrato de sesión final.

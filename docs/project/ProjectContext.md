@@ -55,7 +55,7 @@ V1 no expone colaboración, responsables, Calendario/Actividades, notificaciones
 
 Los datos V1 existentes son de prueba/no esenciales. El reset controlado V1→V2 fue implementado y validado exclusivamente sobre bases locales/test desechables; no se ejecutó contra producción ni una base compartida. Las migraciones históricas y el historial Git no se editan. Tras publicar V2 y comenzar uso real, los resets destructivos dejan de ser aceptables y toda evolución deberá preservar datos de producción.
 
-Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7c8d9`, constraints PostgreSQL, recurrencia, fixtures y el gate técnico. Phase 2 ya completó el threat model y la auditoría técnica de secretos/exposición. La credencial PostgreSQL histórica identificada requiere evidencia manual de no reutilización o rotación antes del gate 2.13. Continúan identidad, sesión, anti-abuse, validación y pruebas antes de iniciar verticales funcionales.
+Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7c8d9`, constraints PostgreSQL, recurrencia, fixtures y el gate técnico. Phase 2 completó threat model, auditoría de exposición y la foundation de estados de cuenta/administración global de Stage 2.3. Registro crea una cuenta pendiente; solo aprobación global posterior a verificación aprovisiona el Personal Workspace. La credencial PostgreSQL histórica requiere evidencia manual de no reutilización o rotación antes del gate 2.13. Siguen pendientes verificación, recovery, password policy, sesión cookie/CSRF, anti-abuse y hardening.
 
 ## Principios
 

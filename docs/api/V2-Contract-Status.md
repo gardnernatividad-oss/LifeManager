@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Diseñado; todavía no implementado.** Este documento es autoritativo para las convenciones transversales del API V2. Los endpoints y DTOs específicos se documentan al implementar cada vertical, sin contradecir estas reglas.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.3 implementa únicamente solicitud de registro y administración de aprobación/rechazo; sesión final, verificación, recovery y verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -70,6 +70,20 @@ GET  /api/v2/admin/account-requests
 POST /api/v2/admin/account-requests/{user_id}/approve
 POST /api/v2/admin/account-requests/{user_id}/reject
 ```
+
+Implementado en Stage 2.3:
+
+```text
+POST /api/v2/auth/registration-requests
+GET  /api/v2/admin/account-requests
+GET  /api/v2/admin/account-requests/{user_id}
+POST /api/v2/admin/account-requests/{user_id}/approve
+POST /api/v2/admin/account-requests/{user_id}/reject
+```
+
+La solicitud acepta solo email, password, nombres y zona IANA; crea `PENDING_EMAIL_VERIFICATION`, sin rol global ni Workspace. Stage 2.5 realizará la transición interna a `PENDING_APPROVAL`. La aprobación exige una cuenta ACTIVE con `GLOBAL_ADMIN` persistido y, en una transacción, activa la cuenta, crea su Personal Workspace, membership ACTIVE del owner y evento de estado. Rechazar no crea Workspace. No existe endpoint público para omitir verificación.
+
+No hay bootstrap automático de `GLOBAL_ADMIN`: la promoción inicial queda diferida a un procedimiento operativo explícito y auditado, sin credenciales ni identidad hard-coded. Registro recibirá rate limit en Stage 2.9 y Turnstile en Stage 2.10; ambos se insertarán antes de llamar al orchestration service actual.
 
 Los nombres finales de actions pueden concretarse sin cambiar la familia. Registro/recovery responden de forma neutral donde revelar existencia sea riesgoso. Verificación/reset reciben el token utilizable una sola vez; DB conserva solo digest.
 

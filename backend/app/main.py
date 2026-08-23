@@ -1,7 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.router import api_router
+from app.api.v2.errors import (
+    V2APIError,
+    error_payload,
+    v2_api_error_handler,
+    v2_unexpected_error_handler,
+)
+from app.api.v2.router import api_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -18,7 +26,36 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-app.include_router(api_router, prefix="/api/v1")
+app.add_exception_handler(V2APIError, v2_api_error_handler)
+app.add_exception_handler(Exception, v2_unexpected_error_handler)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request,
+    error: RequestValidationError,
+):
+    if not request.url.path.startswith("/api/v2/"):
+        return await request_validation_exception_handler(request, error)
+    details = [
+        {
+            "field": ".".join(str(part) for part in item["loc"] if part != "body"),
+            "code": item["type"],
+            "message": item["msg"],
+        }
+        for item in error.errors()
+    ]
+    payload = error_payload(
+        code="VALIDATION_ERROR",
+        message="La solicitud contiene datos inválidos.",
+    )
+    payload["error"]["details"] = details
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=422, content=payload)
+
+
+app.include_router(api_router, prefix="/api/v2")
 
 
 @app.get("/", tags=["General"])
