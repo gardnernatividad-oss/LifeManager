@@ -7,9 +7,19 @@ from app.api.v2.errors import V2APIError
 from app.schemas.v2_identity import (
     AdminAccountSummary,
     AdminRegistrationList,
+    EmailVerificationRequest,
+    EmailVerificationResendRequest,
+    EmailVerificationResponse,
     RegistrationRequestCreate,
     RegistrationRequestAcknowledgement,
     RejectAccountRequest,
+)
+from app.services.email_delivery import VerificationEmail, email_delivery
+from app.services.email_verification_service import (
+    InvalidEmailVerificationTokenError,
+    create_registration_with_verification,
+    resend_email_verification,
+    verify_email_token,
 )
 from app.services.v2_identity import (
     AccountStateConflictError,
@@ -17,7 +27,6 @@ from app.services.v2_identity import (
     PersonalWorkspaceConflictError,
     RegistrationRequestConflictError,
     approve_registration_request,
-    create_registration_request,
     get_admin_account,
     list_pending_registration_requests,
     reject_registration_request,
@@ -57,8 +66,12 @@ def request_registration(
     registration_in: RegistrationRequestCreate,
     db: SessionDependency,
 ) -> RegistrationRequestAcknowledgement:
+    issued = None
     try:
-        create_registration_request(db, registration_in=registration_in)
+        issued = create_registration_with_verification(
+            db,
+            registration_in=registration_in,
+        )
         db.commit()
     except RegistrationRequestConflictError:
         db.rollback()
@@ -66,6 +79,64 @@ def request_registration(
     except Exception:
         db.rollback()
         raise
+    if issued is not None:
+        email_delivery.send_verification_email(
+            VerificationEmail(
+                recipient=issued.recipient,
+                raw_token=issued.raw_token,
+            )
+        )
+    return RegistrationRequestAcknowledgement()
+
+
+@router.post(
+    "/auth/email-verifications",
+    response_model=EmailVerificationResponse,
+    tags=["V2 Authentication"],
+)
+def verify_email(
+    verification_in: EmailVerificationRequest,
+    db: SessionDependency,
+) -> EmailVerificationResponse:
+    try:
+        verify_email_token(db, raw_token=verification_in.token)
+        db.commit()
+    except InvalidEmailVerificationTokenError as error:
+        db.rollback()
+        raise V2APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="INVALID_EMAIL_VERIFICATION_TOKEN",
+            message="El enlace de verificación no es válido.",
+        ) from error
+    except Exception:
+        db.rollback()
+        raise
+    return EmailVerificationResponse()
+
+
+@router.post(
+    "/auth/email-verifications/resend",
+    response_model=RegistrationRequestAcknowledgement,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["V2 Authentication"],
+)
+def resend_verification(
+    resend_in: EmailVerificationResendRequest,
+    db: SessionDependency,
+) -> RegistrationRequestAcknowledgement:
+    try:
+        issued = resend_email_verification(db, email=str(resend_in.email))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    if issued is not None:
+        email_delivery.send_verification_email(
+            VerificationEmail(
+                recipient=issued.recipient,
+                raw_token=issued.raw_token,
+            )
+        )
     return RegistrationRequestAcknowledgement()
 
 

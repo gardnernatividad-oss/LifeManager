@@ -48,6 +48,30 @@ class RegistrationRequestAcknowledgement(BaseModel):
     accepted: Literal[True] = True
 
 
+class EmailVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=512)
+
+
+class EmailVerificationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verified: Literal[True] = True
+    pending_approval: Literal[True] = True
+
+
+class EmailVerificationResendRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def clean_email(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
+
 class AdminAccountSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

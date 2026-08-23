@@ -291,6 +291,8 @@ Backend cifra secretos de subscription, soporta múltiples dispositivos, envía 
 
 En V2 inicial, el orchestration service devuelve una instrucción de entrega sin secreto persistente adicional; el router confirma primero la transacción y después llama al adapter síncrono. Si el proveedor falla, el token ya seguro permanece y la respuesta permite reintento neutral que revoca/reemplaza el token anterior. No se envía un enlace que apunte a datos sin commit ni se revierte dominio por un fallo remoto. Al existir job infrastructure, puede encolarse mediante un registro persistente dedicado aprobado posteriormente. Nunca se guarda el token utilizable ni se loguea la URL completa.
 
+Stage 2.5 materializa esta frontera con una interfaz provider-neutral y un adapter sin entrega externa como default seguro. La selección de proveedor gratuito, credenciales y `PUBLIC_FRONTEND_BASE_URL` sigue siendo configuración operativa pendiente; ninguna base localhost queda embebida. El link builder recibe la base explícitamente y añade únicamente el token. Un cambio futuro de email deberá revocar todos los action tokens del email anterior antes de emitir uno nuevo.
+
 ## 20. Configuración y secretos
 
 Backend environment secrets: `DATABASE_URL`, `SECRET_KEY`, clave de cifrado push, VAPID private key, email API secret, scheduler HMAC secret, Turnstile secret y origins. Viven en Render/secret manager y `.env` local ignorado.

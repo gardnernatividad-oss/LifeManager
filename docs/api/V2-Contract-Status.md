@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.4 completa estructuralmente la solicitud restringida de registro y la administración de aprobación/rechazo; sesión final, verificación, recovery y verticales continúan pendientes.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.5 implementa la verificación de correo y el reenvío neutral sobre el registro/aprobación de Stage 2.4; sesión final, recovery y otras verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -81,11 +81,22 @@ POST /api/v2/admin/account-requests/{user_id}/approve
 POST /api/v2/admin/account-requests/{user_id}/reject
 ```
 
+Implementado y validado en Stage 2.5:
+
+```text
+POST /api/v2/auth/email-verifications
+POST /api/v2/auth/email-verifications/resend
+```
+
 La solicitud acepta solo email, password, nombres y zona IANA; normaliza el email y responde siempre con un acuse neutral `202 {"accepted": true}` tanto para una solicitud nueva como para un email ya registrado. Crea `PENDING_EMAIL_VERIFICATION`, sin rol global, verificación, aprobación, Workspace ni membership. Stage 2.5 realizará mediante un servicio interno la transición auditada a `PENDING_APPROVAL`; no existe endpoint público para omitirla. La aprobación solo admite `PENDING_APPROVAL` y exige una cuenta ACTIVE con `GLOBAL_ADMIN` persistido. En una única transacción activa la cuenta, registra el evento, crea exactamente un Workspace `Personal` de tipo `PERSONAL` y la membership ACTIVE de su owner. Rechazar registra `REJECTED` sin crear Workspace.
 
 La cola y el detalle de `/admin/account-requests` exponen únicamente cuentas `PENDING_APPROVAL` y una proyección administrativa mínima: identidad, timezone, estado, verificación y fecha de registro. No exponen hash, rol global, versiones internas, contenido de Workspace ni histories. Los duplicados concurrentes quedan limitados por `uq_users_email`; aprobaciones concurrentes se serializan con row lock y las constraints garantizan un único Personal Workspace/membership.
 
 La neutralidad del cuerpo y estado HTTP reduce enumeración, pero las diferencias temporales entre email nuevo y existente requieren rate limiting y revisión anti-enumeración en Stages 2.9/2.11. Stage 2.10 insertará Turnstile en la ruta, antes de llamar a `create_registration_request`; no se añade un campo ficticio al DTO. La autenticación administrativa sigue encapsulada en dependencies reutilizables y temporalmente transporta Bearer hasta que Stage 2.8 sustituya la sesión sin reescribir los services.
+
+Cada registro persiste atómicamente un token `EMAIL_VERIFICATION` de 32 bytes aleatorios como digest SHA-256, nunca como token utilizable. Expira a las 24 horas, tiene purpose obligatorio y es de un solo uso. Verificarlo consume el token, invalida otros tokens activos y transiciona exclusivamente a `PENDING_APPROVAL`; no crea Workspace. El reenvío responde siempre `202 {"accepted": true}`, emite solo para cuentas elegibles y revoca cualquier token anterior antes de crear el nuevo.
+
+La entrega usa una interfaz provider-neutral. El adapter predeterminado no envía externamente y existe un recorder aislado para desarrollo/tests. Proveedor, credencial y base URL pública quedan para configuración operativa posterior; la construcción de URL recibe la base explícitamente, contiene solo el token y nunca debe registrarse. Tokens consumidos, revocados o expirados podrán eliminarse mediante mantenimiento futuro; la auditoría de lifecycle permanece en `user_account_state_events`.
 
 No hay bootstrap automático de `GLOBAL_ADMIN`: la promoción inicial queda diferida a un procedimiento operativo explícito y auditado, sin credenciales ni identidad hard-coded. Registro recibirá rate limit en Stage 2.9 y Turnstile en Stage 2.10; ambos se insertarán antes de llamar al orchestration service actual.
 

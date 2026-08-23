@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.api.v2.dependencies import get_current_account, get_db
 from app.main import app
 from app.models.enums import AccountStatus, GlobalRole
+from app.services.email_verification_service import IssuedEmailVerification
 from app.services.v2_identity import (
     AccountStateConflictError,
     AdminAccountNotFoundError,
@@ -64,7 +65,11 @@ def teardown_function() -> None:
 
 def test_registration_returns_neutral_acknowledgement_and_owns_transaction() -> None:
     db = MagicMock()
-    pending = _account(status=AccountStatus.PENDING_EMAIL_VERIFICATION)
+    issued = IssuedEmailVerification(
+        recipient="person@example.com",
+        raw_token="A" * 43,
+        expires_at=NOW,
+    )
     payload = {
         "email": "person@example.com",
         "password": "plain password",
@@ -72,9 +77,11 @@ def test_registration_returns_neutral_acknowledgement_and_owns_transaction() -> 
         "last_name": "Lovelace",
     }
     with patch(
-        "app.api.v2.identity.create_registration_request",
-        return_value=pending,
-    ) as service, _client(db) as client:
+        "app.api.v2.identity.create_registration_with_verification",
+        return_value=issued,
+    ) as service, patch(
+        "app.api.v2.identity.email_delivery.send_verification_email"
+    ) as delivery, _client(db) as client:
         response = client.post("/api/v2/auth/registration-requests", json=payload)
 
     assert response.status_code == 202
@@ -85,6 +92,9 @@ def test_registration_returns_neutral_acknowledgement_and_owns_transaction() -> 
     db.commit.assert_called_once_with()
     db.refresh.assert_not_called()
     db.rollback.assert_not_called()
+    delivery.assert_called_once()
+    assert delivery.call_args.args[0].recipient == "person@example.com"
+    assert delivery.call_args.args[0].raw_token == "A" * 43
 
 
 def test_duplicate_registration_returns_same_neutral_acknowledgement() -> None:
@@ -98,7 +108,7 @@ def test_duplicate_registration_returns_same_neutral_acknowledgement() -> None:
     from app.services.v2_identity import RegistrationRequestConflictError
 
     with patch(
-        "app.api.v2.identity.create_registration_request",
+        "app.api.v2.identity.create_registration_with_verification",
         side_effect=RegistrationRequestConflictError("duplicate"),
     ), _client(db) as client:
         response = client.post("/api/v2/auth/registration-requests", json=payload)
@@ -121,7 +131,7 @@ def test_registration_rejects_mass_assignment_before_service() -> None:
         "owner_user_id": str(uuid.uuid4()),
         "is_verified": True,
     }
-    with patch("app.api.v2.identity.create_registration_request") as service, _client(db) as client:
+    with patch("app.api.v2.identity.create_registration_with_verification") as service, _client(db) as client:
         response = client.post("/api/v2/auth/registration-requests", json=payload)
 
     assert response.status_code == 422

@@ -7,6 +7,9 @@ are intentionally not imported from the package root.
 from app.schemas.v2_identity import (
     AdminAccountSummary,
     AdminRegistrationList,
+    EmailVerificationRequest,
+    EmailVerificationResendRequest,
+    EmailVerificationResponse,
     RegistrationRequestCreate,
     RegistrationRequestAcknowledgement,
     RejectAccountRequest,
@@ -15,6 +18,9 @@ from app.schemas.v2_identity import (
 __all__ = [
     "AdminAccountSummary",
     "AdminRegistrationList",
+    "EmailVerificationRequest",
+    "EmailVerificationResendRequest",
+    "EmailVerificationResponse",
     "RegistrationRequestCreate",
     "RegistrationRequestAcknowledgement",
     "RejectAccountRequest",
