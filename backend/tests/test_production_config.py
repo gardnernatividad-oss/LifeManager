@@ -71,7 +71,10 @@ def test_provider_database_urls_use_the_installed_psycopg_driver(
     assert session._database_url().startswith("postgresql+psycopg://")
 
 
-def test_missing_database_or_short_secret_fails_configuration() -> None:
+def test_missing_database_or_short_secret_fails_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(ValidationError):
         Settings(_env_file=None, SECRET_KEY=SECRET)
     with pytest.raises(ValidationError):
@@ -79,4 +82,21 @@ def test_missing_database_or_short_secret_fails_configuration() -> None:
             _env_file=None,
             DATABASE_URL="postgresql://user:password@db.example/lifemanager",
             SECRET_KEY="too-short",
+        )
+
+
+def test_rate_limit_security_configuration_is_validated() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DATABASE_URL="postgresql://user:password@db.example/lifemanager",
+            SECRET_KEY=SECRET,
+            RATE_LIMIT_HMAC_KEY="too-short",
+        )
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DATABASE_URL="postgresql://user:password@db.example/lifemanager",
+            SECRET_KEY=SECRET,
+            RATE_LIMIT_TRUSTED_PROXY_CIDRS=["not-a-network"],
         )

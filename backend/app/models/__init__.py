@@ -4,7 +4,7 @@ from app.models.v2_models import (
     ActivityReminder, Category, GenerationBatch, MasterTask, Notification,
     NotificationDelivery, PendingItem, PendingItemHistory, Project,
     ProjectLeaderHistory, ProjectStage, ProjectStageHistory, PushSubscription,
-    ReminderPreference, Task, User, UserAccountStateEvent, UserReviewMetadata,
+    RateLimitBucket, ReminderPreference, Task, User, UserAccountStateEvent, UserReviewMetadata,
     Workspace, WorkspaceInvitation, WorkspaceMember,
 )
 
@@ -13,7 +13,7 @@ __all__ = [
     "ActivityReminder", "Category", "GenerationBatch", "MasterTask",
     "Notification", "NotificationDelivery", "PendingItem", "PendingItemHistory",
     "Project", "ProjectLeaderHistory", "ProjectStage", "ProjectStageHistory",
-    "PushSubscription", "ReminderPreference", "Task", "User",
+    "PushSubscription", "RateLimitBucket", "ReminderPreference", "Task", "User",
     "UserAccountStateEvent", "UserReviewMetadata", "Workspace",
     "WorkspaceInvitation", "WorkspaceMember",
 ]

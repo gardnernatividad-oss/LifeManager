@@ -8,8 +8,8 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean, CheckConstraint, Date, DateTime, ForeignKey, ForeignKeyConstraint,
-    Index, Integer, LargeBinary, Numeric, SmallInteger, String, Text, Time,
-    UniqueConstraint, desc, text,
+    Index, Integer, LargeBinary, Numeric, PrimaryKeyConstraint, SmallInteger,
+    String, Text, Time, UniqueConstraint, desc, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -597,3 +597,50 @@ class NotificationDelivery(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), onupdate=text("now()"), nullable=False)
     notification: Mapped[Notification] = relationship(back_populates="deliveries")
     push_subscription: Mapped[PushSubscription] = relationship(back_populates="deliveries")
+
+
+class RateLimitBucket(Base):
+    __tablename__ = "rate_limit_buckets"
+    __table_args__ = (
+        PrimaryKeyConstraint(
+            "action",
+            "dimension",
+            "key_digest",
+            "window_start",
+            name="pk_rate_limit_buckets",
+        ),
+        CheckConstraint(
+            "length(btrim(action)) > 0",
+            name="ck_rate_limit_buckets_action_nonblank",
+        ),
+        CheckConstraint(
+            "length(btrim(dimension)) > 0",
+            name="ck_rate_limit_buckets_dimension_nonblank",
+        ),
+        CheckConstraint(
+            "octet_length(key_digest) = 32",
+            name="ck_rate_limit_buckets_digest_length",
+        ),
+        CheckConstraint(
+            "attempt_count >= 1",
+            name="ck_rate_limit_buckets_attempt_count_positive",
+        ),
+        CheckConstraint(
+            "expires_at > window_start",
+            name="ck_rate_limit_buckets_expiry_after_window",
+        ),
+        Index("ix_rate_limit_buckets_expires_at", "expires_at"),
+    )
+
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    dimension: Mapped[str] = mapped_column(String(16), nullable=False)
+    key_digest: Mapped[bytes] = mapped_column(LargeBinary(32), nullable=False)
+    window_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

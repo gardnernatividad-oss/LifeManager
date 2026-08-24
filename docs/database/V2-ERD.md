@@ -2,12 +2,25 @@
 
 ## Estado
 
-Diseño aprobado documentalmente por ADR-008; todavía no implementado. El ERD del runtime V1 continúa en `ERD.md`.
+El diseño de dominio aprobado por ADR-008 está implementado. Stage 2.9 añade
+la tabla técnica de rate limiting sin alterar las relaciones de negocio. El
+ERD histórico del runtime V1 continúa en `ERD.md`.
 
-El diagrama contiene exactamente las 25 entidades aprobadas: User, UserAccountStateEvent, AccountActionToken, Workspace, WorkspaceMember, WorkspaceInvitation, Category, MasterTask, ActivityMaster, GenerationBatch, Task, PendingItem, PendingItemHistory, Project, ProjectLeaderHistory, ProjectStage, ProjectStageHistory, Activity, ActivityParticipant, ActivityReminder, UserReviewMetadata, ReminderPreference, Notification, PushSubscription y NotificationDelivery. Mermaid las representa en `UPPER_SNAKE_CASE`; los nombres de tabla y columnas definitivos están en `V2-Target-Data-Model.md`.
+El diagrama contiene las 25 entidades de dominio aprobadas y la tabla técnica
+independiente RateLimitBucket. Mermaid las representa en `UPPER_SNAKE_CASE`;
+los nombres de tabla y columnas definitivos están en
+`V2-Target-Data-Model.md`.
 
 ```mermaid
 erDiagram
+    RATE_LIMIT_BUCKET {
+        varchar action PK
+        varchar dimension PK
+        bytea key_digest PK
+        timestamptz window_start PK
+        integer attempt_count
+        timestamptz expires_at
+    }
     USER ||--o{ USER_ACCOUNT_STATE_EVENT : cambia_estado
     USER ||--o{ ACCOUNT_ACTION_TOKEN : recibe
     USER ||--o{ WORKSPACE : posee
@@ -260,6 +273,10 @@ erDiagram
 ```
 
 ## Lectura del diagrama
+
+- `RATE_LIMIT_BUCKET` es una tabla técnica independiente añadida en Stage 2.9;
+  no tiene FKs de negocio y conserva solo claves HMAC pseudónimas y ventanas
+  efímeras compartidas.
 
 - Las líneas hacia WorkspaceMember representan FKs compuestas por Workspace+User aunque el diagrama simplifique las columnas.
 - GenerationBatch es procedencia inmutable, no una serie editable.

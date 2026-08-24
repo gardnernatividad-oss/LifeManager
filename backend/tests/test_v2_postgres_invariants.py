@@ -137,6 +137,11 @@ def test_frozen_migration_schema_matches_current_v2_metadata(connection) -> None
         } | {
             item["name"] for item in inspector.get_foreign_keys(table_name, schema="public")
         }
+        primary_key_name = inspector.get_pk_constraint(
+            table_name, schema="public"
+        ).get("name")
+        if primary_key_name:
+            database_names.add(primary_key_name)
         assert model_names <= database_names
         assert {index.name for index in table.indexes} == {
             item["name"] for item in inspector.get_indexes(table_name, schema="public")

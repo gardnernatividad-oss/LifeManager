@@ -461,3 +461,11 @@ No hay bloqueos de producto para implementar la transición. Antes de escribir l
 - si PostgreSQL disponible admite y justifica `btree_gist`; el plan base no depende de él.
 
 Ninguno de estos puntos deja abierta la estrategia de reset, el modelo o sus invariantes.
+
+## 21. Extensión preservadora de Stage 2.9
+
+La revisión `c3d172b18308`, con parent `e4f5a6b7c8d9`, crea exclusivamente
+`rate_limit_buckets`. Es la primera extensión preservadora posterior al
+bootstrap V2: no repite ni modifica el reset destructivo, y su downgrade solo
+retira el índice y la tabla técnica propios. La cadena debe continuar desde
+este head sin editar revisiones anteriores.

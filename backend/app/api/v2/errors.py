@@ -9,6 +9,7 @@ class V2APIError(Exception):
     status_code: int
     code: str
     message: str
+    headers: dict[str, str] | None = None
 
 
 def error_payload(*, code: str, message: str) -> dict[str, object]:
@@ -29,6 +30,7 @@ async def v2_api_error_handler(
     return JSONResponse(
         status_code=error.status_code,
         content=error_payload(code=error.code, message=error.message),
+        headers=error.headers,
     )
 
 

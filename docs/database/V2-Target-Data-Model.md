@@ -514,3 +514,17 @@ RLS puede evaluarse después como defensa en profundidad; este modelo no depende
 - RLS obligatorio.
 
 Estas decisiones no cambian el modelo lógico principal o pertenecen a etapas posteriores.
+
+## 24. Persistencia técnica de rate limiting
+
+Stage 2.9 agrega `rate_limit_buckets` fuera del catálogo de entidades de
+negocio. Usa una PK compuesta por `action VARCHAR(32)`, `dimension VARCHAR(16)`,
+`key_digest BYTEA(32)` y `window_start TIMESTAMPTZ`; añade
+`attempt_count INTEGER NOT NULL DEFAULT 1`, `expires_at TIMESTAMPTZ NOT NULL` e
+índice por expiración. Checks exigen textos no vacíos, digest de 32 bytes,
+contador positivo y expiración posterior al inicio.
+
+No almacena identificadores sensibles en claro. La aplicación genera claves
+pseudónimas con HMAC-SHA256 y una subclave separada derivada del secreto de
+sesión, o con `RATE_LIMIT_HMAC_KEY` explícita. Las filas expiran y pueden
+eliminarse oportunísticamente; no son fuente de auditoría permanente.

@@ -2,7 +2,7 @@ import uuid
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from app.api.v2.dependencies import GlobalAdmin, SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
@@ -52,9 +52,44 @@ from app.services.password_recovery_service import (
     reset_password,
 )
 from app.services.session_service import InvalidCredentialsError, authenticate_session
+from app.services.rate_limit_service import (
+    RateLimitAction,
+    RateLimitExceeded,
+    RateLimitStorageError,
+    enforce_rate_limit,
+)
 
 
 router = APIRouter()
+
+
+def _enforce_rate_limit(
+    *,
+    action: RateLimitAction,
+    request: Request,
+    email: str | None = None,
+    actor_id: uuid.UUID | None = None,
+) -> None:
+    try:
+        enforce_rate_limit(
+            action=action,
+            request=request,
+            email=email,
+            actor_id=actor_id,
+        )
+    except RateLimitExceeded as error:
+        raise V2APIError(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMITED",
+            message="Demasiados intentos. Inténtalo nuevamente más tarde.",
+            headers={"Retry-After": str(error.retry_after)},
+        ) from error
+    except RateLimitStorageError as error:
+        raise V2APIError(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SECURITY_CONTROL_UNAVAILABLE",
+            message="No se pudo validar la solicitud de forma segura.",
+        ) from error
 
 
 def _set_session_cookies(response: Response, *, user: User) -> None:
@@ -132,9 +167,15 @@ def _service_error(error: Exception) -> V2APIError:
 )
 def login(
     credentials: LoginRequest,
+    request: Request,
     response: Response,
     db: SessionDependency,
 ) -> AuthenticatedAccountRead:
+    _enforce_rate_limit(
+        action=RateLimitAction.LOGIN,
+        request=request,
+        email=str(credentials.email),
+    )
     try:
         user = authenticate_session(
             db,
@@ -183,8 +224,14 @@ def logout(response: Response) -> None:
 )
 def request_registration(
     registration_in: RegistrationRequestCreate,
+    request: Request,
     db: SessionDependency,
 ) -> RegistrationRequestAcknowledgement:
+    _enforce_rate_limit(
+        action=RateLimitAction.REGISTRATION,
+        request=request,
+        email=str(registration_in.email),
+    )
     issued = None
     try:
         issued = create_registration_with_verification(
@@ -215,8 +262,13 @@ def request_registration(
 )
 def verify_email(
     verification_in: EmailVerificationRequest,
+    request: Request,
     db: SessionDependency,
 ) -> EmailVerificationResponse:
+    _enforce_rate_limit(
+        action=RateLimitAction.VERIFICATION_SUBMIT,
+        request=request,
+    )
     try:
         verify_email_token(db, raw_token=verification_in.token)
         db.commit()
@@ -241,8 +293,14 @@ def verify_email(
 )
 def resend_verification(
     resend_in: EmailVerificationResendRequest,
+    request: Request,
     db: SessionDependency,
 ) -> RegistrationRequestAcknowledgement:
+    _enforce_rate_limit(
+        action=RateLimitAction.VERIFICATION_RESEND,
+        request=request,
+        email=str(resend_in.email),
+    )
     try:
         issued = resend_email_verification(db, email=str(resend_in.email))
         db.commit()
@@ -267,8 +325,14 @@ def resend_verification(
 )
 def request_password_reset(
     recovery_in: PasswordRecoveryRequest,
+    request: Request,
     db: SessionDependency,
 ) -> RegistrationRequestAcknowledgement:
+    _enforce_rate_limit(
+        action=RateLimitAction.PASSWORD_RECOVERY,
+        request=request,
+        email=str(recovery_in.email),
+    )
     try:
         issued = request_password_recovery(db, email=str(recovery_in.email))
         db.commit()
@@ -295,8 +359,13 @@ def request_password_reset(
 )
 def perform_password_reset(
     reset_in: PasswordResetRequest,
+    request: Request,
     db: SessionDependency,
 ) -> PasswordResetResponse:
+    _enforce_rate_limit(
+        action=RateLimitAction.PASSWORD_RESET,
+        request=request,
+    )
     try:
         reset_password(
             db,
@@ -357,9 +426,15 @@ def account_request_summary(
 )
 def approve_account_request(
     user_id: uuid.UUID,
+    request: Request,
     db: SessionDependency,
     admin: GlobalAdmin,
 ) -> AdminAccountSummary:
+    _enforce_rate_limit(
+        action=RateLimitAction.ADMIN_APPROVE,
+        request=request,
+        actor_id=admin.id,
+    )
     try:
         user = approve_registration_request(db, user_id=user_id, actor=admin)
         db.commit()
@@ -385,9 +460,15 @@ def approve_account_request(
 def reject_account_request(
     user_id: uuid.UUID,
     rejection_in: RejectAccountRequest,
+    request: Request,
     db: SessionDependency,
     admin: GlobalAdmin,
 ) -> AdminAccountSummary:
+    _enforce_rate_limit(
+        action=RateLimitAction.ADMIN_REJECT,
+        request=request,
+        actor_id=admin.id,
+    )
     try:
         user = reject_registration_request(
             db,

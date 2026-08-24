@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; otras verticales continúan pendientes.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Otras verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -99,7 +99,7 @@ La solicitud acepta solo email, password, nombres y zona IANA; normaliza el emai
 
 La cola y el detalle de `/admin/account-requests` exponen únicamente cuentas `PENDING_APPROVAL` y una proyección administrativa mínima: identidad, timezone, estado, verificación y fecha de registro. No exponen hash, rol global, versiones internas, contenido de Workspace ni histories. Los duplicados concurrentes quedan limitados por `uq_users_email`; aprobaciones concurrentes se serializan con row lock y las constraints garantizan un único Personal Workspace/membership.
 
-La neutralidad del cuerpo y estado HTTP reduce enumeración, pero las diferencias temporales entre email nuevo y existente requieren rate limiting y revisión anti-enumeración en Stages 2.9/2.11. Stage 2.10 insertará Turnstile en la ruta, antes de llamar a `create_registration_request`; no se añade un campo ficticio al DTO. La autenticación administrativa sigue encapsulada en dependencies reutilizables y Stage 2.8 la transporta mediante la sesión cookie sin reescribir los services.
+La neutralidad del cuerpo y estado HTTP reduce enumeración; Stage 2.9 añade rate limiting antes del trabajo de dominio y Stage 2.11 conserva la revisión temporal anti-enumeración. Stage 2.10 insertará Turnstile en la ruta, antes de llamar a `create_registration_request`; no se añade un campo ficticio al DTO. La autenticación administrativa sigue encapsulada en dependencies reutilizables y Stage 2.8 la transporta mediante la sesión cookie sin reescribir los services.
 
 Cada registro persiste atómicamente un token `EMAIL_VERIFICATION` de 32 bytes aleatorios como digest SHA-256, nunca como token utilizable. Expira a las 24 horas, tiene purpose obligatorio y es de un solo uso. Verificarlo consume el token, invalida otros tokens activos y transiciona exclusivamente a `PENDING_APPROVAL`; no crea Workspace. El reenvío responde siempre `202 {"accepted": true}`, emite solo para cuentas elegibles y revoca cualquier token anterior antes de crear el nuevo.
 
@@ -107,9 +107,9 @@ La entrega usa una interfaz provider-neutral. El adapter predeterminado no enví
 
 La recuperación acepta solo email y responde siempre `202 {"accepted": true}` sin revelar existencia ni estado. Únicamente una cuenta `ACTIVE` recibe realmente un token `PASSWORD_RESET`; `DISABLED` y estados pendientes/rechazados no son elegibles y el reset nunca cambia estado, rol ni Workspace. Cada solicitud revoca tokens reset anteriores y emite uno de 256 bits, digest SHA-256 y TTL de una hora. El reset acepta solo token y nueva contraseña, consume el token bajo lock, actualiza exclusivamente el hash Argon2 e invalida otros tokens reset activos.
 
-Stage 2.7 aplica una única política a registro y reset: 8–128 caracteres exactos, al menos una letra mayúscula Unicode, una minúscula Unicode y un símbolo no alfanumérico/no whitespace. No exige dígito, no recorta ni normaliza el secreto y rechaza el exceso antes de Argon2. Un reset que falla la política no consulta ni consume el token, por lo que puede reintentarse. Stage 2.8 conectó el hook: cambiar el hash invalida las sesiones anteriores mediante su huella HMAC. Stage 2.9 deberá limitar recovery/reset por IP, email normalizado/endpoint y, para intentos de token, bucket derivado sin persistir el token crudo. Turnstile para recovery se evaluará en Stage 2.10 según evidencia de abuso.
+Stage 2.7 aplica una única política a registro y reset: 8–128 caracteres exactos, al menos una letra mayúscula Unicode, una minúscula Unicode y un símbolo no alfanumérico/no whitespace. No exige dígito, no recorta ni normaliza el secreto y rechaza el exceso antes de Argon2. Un reset que falla la política no consulta ni consume el token, por lo que puede reintentarse. Stage 2.8 conectó el hook: cambiar el hash invalida las sesiones anteriores mediante su huella HMAC. Stage 2.9 limita recovery/reset por IP y recovery por email normalizado sin persistir token ni identidad en claro. Turnstile para recovery se evaluará en Stage 2.10 según evidencia de abuso.
 
-No hay bootstrap automático de `GLOBAL_ADMIN`: la promoción inicial queda diferida a un procedimiento operativo explícito y auditado, sin credenciales ni identidad hard-coded. Registro recibirá rate limit en Stage 2.9 y Turnstile en Stage 2.10; ambos se insertarán antes de llamar al orchestration service actual.
+No hay bootstrap automático de `GLOBAL_ADMIN`: la promoción inicial queda diferida a un procedimiento operativo explícito y auditado, sin credenciales ni identidad hard-coded. Registro ya aplica rate limit antes del orchestration service; Turnstile se añadirá en Stage 2.10 en el mismo límite previo.
 
 Los nombres finales de actions pueden concretarse sin cambiar la familia. Registro/recovery responden de forma neutral donde revelar existencia sea riesgoso. Verificación/reset reciben el token utilizable una sola vez; DB conserva solo digest.
 
@@ -149,6 +149,21 @@ Para 422, `details` puede ser una lista de `{field, code, message}` con paths de
 | 500 | error inesperado con mensaje genérico y request ID |
 
 No se devuelven stack traces, SQL, constraint names, tokens, secretos, hosts ni detalles que revelen recursos cross-Workspace.
+
+### 5.1 Rate limiting de identidad
+
+Stage 2.9 protege login, registro, verificación, reenvío, recovery, reset y
+mutaciones administrativas mediante ventanas fijas compartidas en PostgreSQL.
+Un exceso devuelve `429 RATE_LIMITED`, mensaje español seguro y `Retry-After`
+entero calculado con la mayor espera de los buckets excedidos. Una falla del
+almacenamiento compartido devuelve `503 SECURITY_CONTROL_UNAVAILABLE` antes de
+ejecutar trabajo de identidad.
+
+Los límites aprobados son: login IP 20/15 min, email 8/15 min e IP+email 5/15
+min; registro IP 5/h y email 3/día; reenvío IP 10/h y email 3/h; submit de
+verificación IP 20/15 min; recovery IP 10/h y email 3/h; reset IP 20/15 min;
+approve/reject por actor admin 30/min. No se persisten tokens, IP ni emails en
+claro. Las respuestas neutrales de registro/recovery no cambian.
 
 ## 6. Paginación, filtros y orden
 

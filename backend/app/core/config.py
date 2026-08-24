@@ -1,7 +1,7 @@
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +26,21 @@ class Settings(BaseSettings):
     SESSION_EXPIRE_MINUTES: int = 480
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     SESSION_COOKIE_SECURE: bool | None = None
+    RATE_LIMIT_HMAC_KEY: str | None = Field(default=None, min_length=32)
+    RATE_LIMIT_TRUSTED_PROXY_CIDRS: list[str] = Field(default_factory=list)
+    RATE_LIMIT_FORWARDED_HEADER: Literal[
+        "x-forwarded-for", "x-real-ip", "cf-connecting-ip"
+    ] = "x-forwarded-for"
     TASK_BULK_MAX_OCCURRENCES: int = 1000
+
+    @field_validator("RATE_LIMIT_TRUSTED_PROXY_CIDRS")
+    @classmethod
+    def validate_trusted_proxy_cidrs(cls, values: list[str]) -> list[str]:
+        from ipaddress import ip_network
+
+        for value in values:
+            ip_network(value, strict=False)
+        return values
 
     @model_validator(mode="after")
     def require_database_configuration(self) -> "Settings":

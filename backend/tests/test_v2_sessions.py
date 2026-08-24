@@ -52,7 +52,7 @@ def client(db: MagicMock):
         yield db
 
     app.dependency_overrides[get_db] = override_db
-    with TestClient(app) as test_client:
+    with patch("app.api.v2.identity._enforce_rate_limit"), TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
 

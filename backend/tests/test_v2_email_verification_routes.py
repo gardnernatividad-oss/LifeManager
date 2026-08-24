@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v2.dependencies import get_db
@@ -16,6 +17,12 @@ from app.services.email_verification_service import (
 
 NOW = datetime(2026, 8, 23, 12, 0, tzinfo=timezone.utc)
 RAW_TOKEN = "A" * 43
+
+
+@pytest.fixture(autouse=True)
+def _bypass_rate_limit_for_existing_route_tests():
+    with patch("app.api.v2.identity._enforce_rate_limit"):
+        yield
 
 
 def _client(db: MagicMock, *, raise_server_exceptions: bool = True) -> TestClient:

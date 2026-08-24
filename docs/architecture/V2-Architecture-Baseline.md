@@ -394,7 +394,23 @@ Durante desarrollo se usa `2.0.0-dev.N` o metadata de commit generada por CI sin
 
 Riesgo residual explícito: una cookie JWT corta no ofrece revocación por dispositivo. Se acepta para V2 inicial S/0 con account lookup por request; si cambian requisitos de duración/revocación, se diseña Session persistida antes de ampliar expiración.
 
-## 29. Decisiones y límites
+## 29. Rate limiting distribuido de identidad
+
+Stage 2.9 usa ventanas fijas en PostgreSQL y UPSERT atómico para que todos los
+workers compartan contadores. Cada enforcement abre una sesión/transacción
+independiente: el intento queda contabilizado incluso si la transacción de la
+ruta revierte. La aplicación confía por defecto solo en el peer TCP; procesa
+el header reenviado configurado únicamente cuando el peer inmediato pertenece
+a `RATE_LIMIT_TRUSTED_PROXY_CIDRS`. IP, email normalizado, combinación y actor
+admin se convierten en digest HMAC; no se guardan valores crudos.
+
+Fallos del almacén producen fail-closed antes del trabajo costoso. OPTIONS,
+fallos CSRF previos y autorización admin fallida no consumen buckets. El
+contador no se reinicia tras login correcto: toda tentativa dentro de la
+ventana cuenta y no existe bloqueo permanente. Turnstile, defensa de botnets
+distribuidas y límites en edge permanecen para Stage 2.10/hardening.
+
+## 30. Decisiones y límites
 
 ADRs vinculadas:
 

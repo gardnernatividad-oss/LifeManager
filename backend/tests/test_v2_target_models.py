@@ -17,6 +17,7 @@ EXPECTED_TABLES = {
     "project_stage_history", "activities", "activity_participants",
     "activity_reminders", "user_review_metadata", "reminder_preferences",
     "notifications", "push_subscriptions", "notification_deliveries",
+    "rate_limit_buckets",
 }
 
 

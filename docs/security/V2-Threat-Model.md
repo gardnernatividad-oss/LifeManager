@@ -233,6 +233,25 @@ Requieren throttling compuesto:
 
 Caps server-side: recurrence expected count/range; IDs por batch; page_size; rangos de report/calendar; ProjectStages; histories/feed; notification fan-out y job claim size. Límites concretos se calibran con carga, se configuran y retornan errores claros; no son reglas permanentes del dominio.
 
+### Control implementado en Stage 2.9
+
+Las rutas públicas de identidad y las mutaciones administrativas aprobadas
+usan ventanas fijas PostgreSQL con incremento atómico. Las dimensiones son IP,
+email normalizado, IP+email y actor admin según la superficie; se persisten
+solo digests HMAC con separación por acción/dimensión. La subclave puede ser
+explícita o derivarse criptográficamente de `SECRET_KEY`; nunca se reutiliza el
+secreto directamente como clave almacenada.
+
+El peer directo es la fuente IP predeterminada. Headers reenviados solo se
+aceptan tras validar que el peer inmediato pertenece a CIDRs proxy explícitos;
+cadenas malformadas vuelven al peer. Los buckets se escriben en una transacción
+independiente y el control falla cerrado si PostgreSQL no está disponible.
+Filas vencidas se limpian oportunísticamente mediante su índice de expiración.
+No hay bloqueo permanente ni reset al autenticar correctamente.
+
+Turnstile sigue en Stage 2.10. Botnets distribuidas, límites de edge y
+calibración con telemetría/carga son riesgos residuales deliberados.
+
 ## 19. Supply chain y cloud
 
 - Backend está completamente pinneado; frontend tiene lockfile v3, pero manifiesto usa rangos `^`. Instalar en CI con `npm ci` y hashes/constraints equivalentes para Python.
