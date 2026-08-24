@@ -1,4 +1,5 @@
 import uuid
+import unicodedata
 
 from datetime import datetime
 from typing import Literal
@@ -11,13 +12,21 @@ from app.core.password_policy import validate_password_policy
 
 
 def _clean_name(value: str) -> str:
+    _reject_control_characters(value)
     cleaned = " ".join(value.split())
     if not cleaned:
         raise ValueError("name must not be blank")
     return cleaned
 
 
+def _reject_control_characters(value: str) -> str:
+    if any(unicodedata.category(character) == "Cc" for character in value):
+        raise ValueError("value must not contain control characters")
+    return value
+
+
 def _timezone(value: str) -> str:
+    _reject_control_characters(value)
     cleaned = value.strip()
     try:
         return ZoneInfo(cleaned).key
@@ -28,7 +37,7 @@ def _timezone(value: str) -> str:
 class RegistrationRequestCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=255)
     password: str
     first_name: str = Field(max_length=100)
     last_name: str = Field(max_length=100)
@@ -54,7 +63,7 @@ class RegistrationRequestAcknowledgement(BaseModel):
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=1, max_length=128)
 
     @field_validator("email", mode="before")
@@ -67,7 +76,7 @@ class AuthenticatedAccountRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    email: EmailStr
+    email: EmailStr = Field(max_length=255)
     first_name: str
     last_name: str
     timezone: str
@@ -90,7 +99,7 @@ class EmailVerificationResponse(BaseModel):
 class EmailVerificationResendRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=255)
     turnstile_token: str | None = Field(default=None, min_length=1, max_length=2048)
 
     @field_validator("email", mode="before")
@@ -102,7 +111,7 @@ class EmailVerificationResendRequest(BaseModel):
 class PasswordRecoveryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=255)
     turnstile_token: str | None = Field(default=None, min_length=1, max_length=2048)
 
     @field_validator("email", mode="before")
@@ -158,5 +167,6 @@ class RejectAccountRequest(BaseModel):
     def clean_reason(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        _reject_control_characters(value)
         cleaned = " ".join(value.split())
         return cleaned or None

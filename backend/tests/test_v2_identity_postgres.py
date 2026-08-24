@@ -168,6 +168,29 @@ def test_registration_normalization_duplicate_and_initial_absences(db: Session) 
         _new_registration(db, email=" CASE.USER@example.COM ")
 
 
+def test_registration_sql_metacharacters_are_persisted_and_queried_as_data(
+    db: Session,
+) -> None:
+    email = f"o'hara-{uuid.uuid4()}@example.com"
+    hostile_name = "<script>alert('x')</script>'; DROP TABLE users;--"
+    user = create_registration_request(
+        db,
+        registration_in=RegistrationRequestCreate(
+            email=email,
+            password="FixturePassword!",
+            first_name=hostile_name,
+            last_name="Literal",
+        ),
+    )
+    db.flush()
+
+    stored = db.scalar(sa.select(User).where(User.email == email))
+    assert stored is not None
+    assert stored.id == user.id
+    assert stored.first_name == hostile_name
+    assert db.scalar(sa.select(sa.func.count()).select_from(User)) >= 1
+
+
 @pytest.mark.parametrize(
     "existing_status",
     [

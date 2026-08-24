@@ -12,6 +12,7 @@ from app.core.session_security import csrf_matches_session, decode_session_token
 
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+MAX_CSRF_TOKEN_LENGTH = 512
 PUBLIC_UNAUTHENTICATED_PATHS = {
     "/api/v2/auth/registration-requests",
     "/api/v2/auth/email-verifications",
@@ -43,6 +44,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             origin not in settings.CORS_ALLOWED_ORIGINS
             or not csrf_cookie
             or not csrf_header
+            or len(csrf_cookie) > MAX_CSRF_TOKEN_LENGTH
+            or len(csrf_header) > MAX_CSRF_TOKEN_LENGTH
             or not hmac.compare_digest(csrf_cookie, csrf_header)
             or claims is None
             or not csrf_matches_session(claims, csrf_cookie)

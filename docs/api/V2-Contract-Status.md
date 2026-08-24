@@ -310,6 +310,8 @@ Siempre provienen de contexto confiable, no de body arbitrario:
 
 Assignment IDs sí pueden aparecer cuando el producto permite elegir Responsable/Líder/Participante, pero service valida membership ACTIVE y mismo Workspace bajo lock.
 
+Stage 2.11 verificó las siete DTOs de escritura activas de identidad: todas rechazan extras. Email, nombres, timezone, passwords y tokens tienen límites autoritativos antes de hashing, JWT, Turnstile o consultas. El envelope 422 nunca incluye el valor `input`; los cuerpos malformados/form/text fallan sin reflejar datos. Las respuestas activas son allowlists y una regresión OpenAPI impide publicar hashes, digests o session internals. El detalle de controles y diferimientos está en `docs/security/V2-Input-and-Output-Security.md`.
+
 ## 14. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.

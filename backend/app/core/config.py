@@ -6,13 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str | None = None
+    DATABASE_URL: str | None = Field(default=None, repr=False)
     DB_HOST: str | None = None
     DB_PORT: int | None = None
     DB_NAME: str | None = None
     DB_USER: str | None = None
-    DB_PASSWORD: str | None = None
-    SECRET_KEY: str = Field(min_length=32)
+    DB_PASSWORD: str | None = Field(default=None, repr=False)
+    SECRET_KEY: str = Field(min_length=32, repr=False)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: Literal["HS256"] = "HS256"
     SQL_ECHO: bool = False
@@ -26,13 +26,13 @@ class Settings(BaseSettings):
     SESSION_EXPIRE_MINUTES: int = 480
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     SESSION_COOKIE_SECURE: bool | None = None
-    RATE_LIMIT_HMAC_KEY: str | None = Field(default=None, min_length=32)
+    RATE_LIMIT_HMAC_KEY: str | None = Field(default=None, min_length=32, repr=False)
     RATE_LIMIT_TRUSTED_PROXY_CIDRS: list[str] = Field(default_factory=list)
     RATE_LIMIT_FORWARDED_HEADER: Literal[
         "x-forwarded-for", "x-real-ip", "cf-connecting-ip"
     ] = "x-forwarded-for"
     TURNSTILE_ENABLED: bool = False
-    TURNSTILE_SECRET_KEY: str | None = Field(default=None, min_length=1)
+    TURNSTILE_SECRET_KEY: str | None = Field(default=None, min_length=1, repr=False)
     TURNSTILE_TIMEOUT_SECONDS: float = Field(default=5.0, ge=1.0, le=10.0)
     TASK_BULK_MAX_OCCURRENCES: int = 1000
 

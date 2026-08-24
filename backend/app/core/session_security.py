@@ -11,6 +11,9 @@ import jwt
 from app.core.config import settings
 
 
+MAX_SESSION_TOKEN_LENGTH = 4096
+
+
 @dataclass(frozen=True)
 class SessionClaims:
     user_id: uuid.UUID
@@ -62,7 +65,7 @@ def create_session_token(
 
 
 def decode_session_token(token: str | None) -> SessionClaims | None:
-    if not token:
+    if not token or len(token) > MAX_SESSION_TOKEN_LENGTH:
         return None
     try:
         payload = jwt.decode(
