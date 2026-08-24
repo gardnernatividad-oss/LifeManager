@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums import AccountStatus
+from app.core.password_policy import validate_password_policy
 
 
 def _clean_name(value: str) -> str:
@@ -40,6 +41,7 @@ class RegistrationRequestCreate(BaseModel):
 
     _clean_names = field_validator("first_name", "last_name")(_clean_name)
     _validate_timezone = field_validator("timezone")(_timezone)
+    _validate_password = field_validator("password")(validate_password_policy)
 
 
 class RegistrationRequestAcknowledgement(BaseModel):
@@ -88,6 +90,10 @@ class PasswordResetRequest(BaseModel):
 
     token: str = Field(min_length=1, max_length=512)
     new_password: str
+
+    _validate_new_password = field_validator("new_password")(
+        validate_password_policy
+    )
 
 
 class PasswordResetResponse(BaseModel):

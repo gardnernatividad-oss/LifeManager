@@ -79,17 +79,82 @@ def test_valid_reset_commits_once_and_returns_minimal_response() -> None:
     with patch("app.api.v2.identity.reset_password") as service, _client(db) as client:
         response = client.post(
             "/api/v2/auth/password-resets",
-            json={"token": RAW_TOKEN, "new_password": "new password"},
+            json={"token": RAW_TOKEN, "new_password": "NewPassword!"},
         )
     assert response.status_code == 200
     assert response.json() == {"password_reset": True}
     service.assert_called_once_with(
         db,
         raw_token=RAW_TOKEN,
-        new_password="new password",
+        new_password="NewPassword!",
     )
     db.commit.assert_called_once_with()
     db.rollback.assert_not_called()
+
+
+def test_registration_and_reset_share_password_policy_and_redact_input() -> None:
+    invalid_passwords = (
+        "Short1!",
+        "lowercase!",
+        "UPPERCASE!",
+        "NoSymbols1",
+        "A" * 129 + "a!",
+    )
+    for password in invalid_passwords:
+        db = MagicMock()
+        with patch(
+            "app.api.v2.identity.create_registration_with_verification"
+        ) as registration, patch(
+            "app.api.v2.identity.reset_password"
+        ) as reset, _client(db) as client:
+            registration_response = client.post(
+                "/api/v2/auth/registration-requests",
+                json={
+                    "email": "person@example.com",
+                    "password": password,
+                    "first_name": "Ada",
+                    "last_name": "Lovelace",
+                },
+            )
+            reset_response = client.post(
+                "/api/v2/auth/password-resets",
+                json={"token": RAW_TOKEN, "new_password": password},
+            )
+        assert registration_response.status_code == 422
+        assert reset_response.status_code == 422
+        assert password not in registration_response.text
+        assert password not in reset_response.text
+        registration.assert_not_called()
+        reset.assert_not_called()
+        db.commit.assert_not_called()
+
+
+def test_password_credential_hash_fields_are_forbidden() -> None:
+    for field in ("hashed_password", "password_hash", "password_digest"):
+        db = MagicMock()
+        with _client(db) as client:
+            registration = client.post(
+                "/api/v2/auth/registration-requests",
+                json={
+                    "email": "person@example.com",
+                    "password": "ValidPassword!",
+                    "first_name": "Ada",
+                    "last_name": "Lovelace",
+                    field: "hostile-value",
+                },
+            )
+            reset = client.post(
+                "/api/v2/auth/password-resets",
+                json={
+                    "token": RAW_TOKEN,
+                    "new_password": "NewPassword!",
+                    field: "hostile-value",
+                },
+            )
+        assert registration.status_code == 422
+        assert reset.status_code == 422
+        assert "hostile-value" not in registration.text
+        assert "hostile-value" not in reset.text
 
 
 def test_invalid_reset_variants_share_safe_error() -> None:
@@ -101,12 +166,12 @@ def test_invalid_reset_variants_share_safe_error() -> None:
         ), _client(db) as client:
             response = client.post(
                 "/api/v2/auth/password-resets",
-                json={"token": RAW_TOKEN, "new_password": "new password"},
+                json={"token": RAW_TOKEN, "new_password": "NewPassword!"},
             )
         assert response.status_code == 400
         assert response.json()["error"]["code"] == "INVALID_PASSWORD_RESET_TOKEN"
         assert private_reason not in response.text
-        assert "new password" not in response.text
+        assert "NewPassword!" not in response.text
         db.rollback.assert_called_once_with()
         db.commit.assert_not_called()
 
@@ -135,7 +200,7 @@ def test_recovery_and_reset_reject_mass_assignment() -> None:
                 "/api/v2/auth/password-resets",
                 json={
                     "token": RAW_TOKEN,
-                    "new_password": "new password",
+                    "new_password": "NewPassword!",
                     field: value,
                 },
             )
@@ -148,11 +213,11 @@ def test_empty_and_oversized_reset_token_fail_safely() -> None:
     with _client(db) as client:
         empty = client.post(
             "/api/v2/auth/password-resets",
-            json={"token": "", "new_password": "new password"},
+            json={"token": "", "new_password": "NewPassword!"},
         )
         oversized = client.post(
             "/api/v2/auth/password-resets",
-            json={"token": "R" * 513, "new_password": "new password"},
+            json={"token": "R" * 513, "new_password": "NewPassword!"},
         )
     assert empty.status_code == 422
     assert oversized.status_code == 422
@@ -170,7 +235,7 @@ def test_unexpected_recovery_and_reset_failures_rollback_safely() -> None:
         (
             "/api/v2/auth/password-resets",
             "app.api.v2.identity.reset_password",
-            {"token": RAW_TOKEN, "new_password": "new password"},
+            {"token": RAW_TOKEN, "new_password": "NewPassword!"},
         ),
     ):
         db = MagicMock()
@@ -202,4 +267,3 @@ def test_openapi_exposes_only_public_password_recovery_fields() -> None:
     }
     assert "token_digest" not in str(schemas)
     assert "hashed_password" not in str(schemas)
-

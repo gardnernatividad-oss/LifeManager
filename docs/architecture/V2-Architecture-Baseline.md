@@ -295,6 +295,8 @@ Stage 2.5 materializa esta frontera con una interfaz provider-neutral y un adapt
 
 Stage 2.6 amplía la misma interfaz para password reset y reutiliza `AccountActionToken` con purpose aislado. El reset no crea un evento de estado porque no cambia `account_status`; un security-event log persistente requerirá diseño posterior. El servicio invoca un hook de invalidación de sesión actualmente no-op: Stage 2.8 debe reemplazarlo por la revocación aprobada sin alterar la transacción de password/token. Hasta entonces, Bearer JWT ya emitidos no se invalidan inmediatamente y conservan su expiración existente.
 
+Stage 2.7 establece `app.core.password_policy` como frontera única para todo password nuevo: longitud 8–128, mayúscula/minúscula mediante semántica Unicode de Python y símbolo no alfanumérico/no whitespace. El valor se valida exactamente como fue enviado y no se recorta. `pwdlib` usa Argon2id v19 con defaults recomendados (`m=65536`, `t=3`, `p=4`) y sal aleatoria; no se usa pepper porque su custodia/rotación agrega un punto de pérdida total sin infraestructura de claves que lo justifique. `verify_and_update_password` es el punto futuro para rehash tras autenticación exitosa; su persistencia pertenece a Stage 2.8. No se impone historial, rotación periódica, dígito ni lista externa de contraseñas comprometidas. El screening común/HIBP queda como hardening futuro sujeto a privacidad, costo y operación.
+
 ## 20. Configuración y secretos
 
 Backend environment secrets: `DATABASE_URL`, `SECRET_KEY`, clave de cifrado push, VAPID private key, email API secret, scheduler HMAC secret, Turnstile secret y origins. Viven en Render/secret manager y `.env` local ignorado.

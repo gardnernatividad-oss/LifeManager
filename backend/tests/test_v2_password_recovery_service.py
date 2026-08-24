@@ -23,6 +23,7 @@ from app.services.password_recovery_service import (
     request_password_recovery,
     reset_password,
 )
+from app.core.password_policy import PasswordPolicyError
 
 
 NOW = datetime(2026, 8, 24, 12, 0, tzinfo=timezone.utc)
@@ -139,13 +140,13 @@ def test_reset_hashes_password_consumes_token_and_calls_session_hook() -> None:
         result = reset_password(
             db,
             raw_token=RAW_TOKEN,
-            new_password="new password",
+            new_password="NewPassword!",
             now=NOW,
             session_invalidation_hook=hook,
         )
 
     assert result is user
-    hasher.assert_called_once_with("new password")
+    hasher.assert_called_once_with("NewPassword!")
     assert user.hashed_password == "new-hash"
     assert user.account_status == AccountStatus.ACTIVE
     assert token.consumed_at == NOW
@@ -154,6 +155,20 @@ def test_reset_hashes_password_consumes_token_and_calls_session_hook() -> None:
     db.flush.assert_called_once_with()
     db.commit.assert_not_called()
     db.rollback.assert_not_called()
+
+
+def test_invalid_new_password_is_rejected_before_token_lookup_or_mutation() -> None:
+    db = MagicMock()
+    with pytest.raises(PasswordPolicyError):
+        reset_password(
+            db,
+            raw_token=RAW_TOKEN,
+            new_password="weak",
+            now=NOW,
+        )
+    db.execute.assert_not_called()
+    db.scalar.assert_not_called()
+    db.flush.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -180,7 +195,7 @@ def test_expired_consumed_revoked_or_wrong_purpose_is_neutral(
         reset_password(
             db,
             raw_token=RAW_TOKEN,
-            new_password="new password",
+            new_password="NewPassword!",
             now=NOW,
         )
     assert user.hashed_password == "old-hash"
@@ -196,7 +211,7 @@ def test_malformed_or_unknown_reset_token_is_neutral(raw_token: str) -> None:
     if raw_token == "N" * 43:
         db.execute.return_value.one_or_none.return_value = None
     with pytest.raises(InvalidPasswordResetTokenError):
-        reset_password(db, raw_token=raw_token, new_password="new password", now=NOW)
+        reset_password(db, raw_token=raw_token, new_password="NewPassword!", now=NOW)
     db.scalar.assert_not_called()
     db.flush.assert_not_called()
 
@@ -222,7 +237,7 @@ def test_ineligible_account_cannot_reset_or_change_state(
     )
     db.scalar.side_effect = [token, user]
     with pytest.raises(InvalidPasswordResetTokenError):
-        reset_password(db, raw_token=RAW_TOKEN, new_password="new password", now=NOW)
+        reset_password(db, raw_token=RAW_TOKEN, new_password="NewPassword!", now=NOW)
     assert user.account_status == status
     assert user.hashed_password == "old-hash"
 

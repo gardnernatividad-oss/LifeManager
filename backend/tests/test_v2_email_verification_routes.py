@@ -49,7 +49,7 @@ def test_registration_token_issuance_failure_rolls_back_without_delivery() -> No
     db = MagicMock()
     payload = {
         "email": "person@example.com",
-        "password": "plain password",
+        "password": "ValidPassword!",
         "first_name": "Ada",
         "last_name": "Lovelace",
     }

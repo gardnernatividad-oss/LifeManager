@@ -76,7 +76,7 @@ def db(engine):
 def _registration() -> RegistrationRequestCreate:
     return RegistrationRequestCreate(
         email=f"verification-{uuid.uuid4()}@example.com",
-        password="fixture password",
+        password="FixturePassword!",
         first_name="Pending",
         last_name="Person",
     )

@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
+from app.core.password_policy import validate_password_policy
 from app.models import AccountActionToken, User
 from app.models.enums import AccountActionTokenType, AccountStatus
 from app.services.account_action_token_service import (
@@ -156,6 +157,7 @@ def reset_password(
     now: datetime | None = None,
     session_invalidation_hook: SessionInvalidationHook = _no_session_invalidation,
 ) -> User:
+    validate_password_policy(new_password)
     reset_at = now or _now()
     if not is_well_formed_action_token(raw_token):
         raise InvalidPasswordResetTokenError("Invalid password reset token")
@@ -201,4 +203,3 @@ def reset_password(
     session_invalidation_hook(db, user)
     db.flush()
     return user
-

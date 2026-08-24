@@ -91,7 +91,7 @@ def _approvable_registration(db: Session) -> User:
         db,
         registration_in=RegistrationRequestCreate(
             email=f"registration-{uuid.uuid4()}@example.com",
-            password="fixture password",
+            password="FixturePassword!",
             first_name="Pending",
             last_name="Person",
         ),
@@ -117,7 +117,7 @@ def _new_registration(db: Session, *, email: str | None = None) -> User:
         db,
         registration_in=RegistrationRequestCreate(
             email=email or f"registration-{uuid.uuid4()}@example.com",
-            password="fixture password",
+            password="FixturePassword!",
             first_name="Pending",
             last_name="Person",
         ),
@@ -140,7 +140,7 @@ def test_registration_normalization_duplicate_and_initial_absences(db: Session) 
     db.flush()
 
     assert user.email == "case.user@example.com"
-    assert user.hashed_password != "fixture password"
+    assert user.hashed_password != "FixturePassword!"
     assert user.account_status == AccountStatus.PENDING_EMAIL_VERIFICATION
     assert user.global_role is None
     assert user.email_verified_at is None

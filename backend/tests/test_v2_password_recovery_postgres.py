@@ -12,6 +12,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
+from app.core.password_policy import PasswordPolicyError
 from app.models import AccountActionToken, User, UserAccountStateEvent, Workspace
 from app.models.enums import AccountActionTokenType, AccountStatus
 from app.services.email_delivery import PasswordResetEmail, RecordingEmailDelivery
@@ -66,7 +67,7 @@ def db(engine):
         connection.close()
 
 
-def _active_user(db: Session, *, password: str = "old password") -> User:
+def _active_user(db: Session, *, password: str = "OldPassword!") -> User:
     now = datetime.now(timezone.utc)
     user = User(
         id=uuid.uuid4(),
@@ -119,12 +120,12 @@ def test_complete_password_recovery_lifecycle(db: Session) -> None:
     reset_password(
         db,
         raw_token=issued.raw_token,
-        new_password="new password",
+        new_password="NewPassword!",
     )
     db.flush()
     assert user.hashed_password != original_hash
-    assert not verify_password("old password", user.hashed_password)
-    assert verify_password("new password", user.hashed_password)
+    assert not verify_password("OldPassword!", user.hashed_password)
+    assert verify_password("NewPassword!", user.hashed_password)
     assert user.account_status == original_status == AccountStatus.ACTIVE
     assert token.consumed_at is not None
     assert _workspace_count(db, user.id) == 0
@@ -137,8 +138,46 @@ def test_complete_password_recovery_lifecycle(db: Session) -> None:
         reset_password(
             db,
             raw_token=issued.raw_token,
-            new_password="another password",
+            new_password="AnotherPassword!",
         )
+
+
+def test_invalid_policy_preserves_hash_and_token_for_valid_retry(db: Session) -> None:
+    user = _active_user(db)
+    original_hash = user.hashed_password
+    original_status = user.account_status
+    issued = request_password_recovery(db, email=user.email)
+    assert issued is not None
+    token = db.scalar(
+        sa.select(AccountActionToken).where(
+            AccountActionToken.token_digest == digest_action_token(issued.raw_token)
+        )
+    )
+    assert token is not None
+
+    with pytest.raises(PasswordPolicyError):
+        reset_password(db, raw_token=issued.raw_token, new_password="weak")
+    db.flush()
+    assert user.hashed_password == original_hash
+    assert user.account_status == original_status
+    assert token.consumed_at is None
+    assert token.revoked_at is None
+
+    reset_password(
+        db,
+        raw_token=issued.raw_token,
+        new_password="RetryPassword!",
+    )
+    assert verify_password("RetryPassword!", user.hashed_password)
+    assert token.consumed_at is not None
+
+
+def test_identical_passwords_have_distinct_argon2_hashes(db: Session) -> None:
+    first = _active_user(db, password="SharedPassword!")
+    second = _active_user(db, password="SharedPassword!")
+    assert first.hashed_password != second.hashed_password
+    assert verify_password("SharedPassword!", first.hashed_password)
+    assert verify_password("SharedPassword!", second.hashed_password)
 
 
 def test_reissue_revokes_old_token_and_new_token_resets(db: Session) -> None:
@@ -156,9 +195,9 @@ def test_reissue_revokes_old_token_and_new_token_resets(db: Session) -> None:
     assert first_token is not None
     assert first_token.revoked_at is not None
     with pytest.raises(InvalidPasswordResetTokenError):
-        reset_password(db, raw_token=first.raw_token, new_password="new password")
-    reset_password(db, raw_token=second.raw_token, new_password="new password")
-    assert verify_password("new password", user.hashed_password)
+        reset_password(db, raw_token=first.raw_token, new_password="NewPassword!")
+    reset_password(db, raw_token=second.raw_token, new_password="NewPassword!")
+    assert verify_password("NewPassword!", user.hashed_password)
 
 
 def test_token_purposes_are_bidirectionally_isolated(db: Session) -> None:
@@ -186,7 +225,7 @@ def test_token_purposes_are_bidirectionally_isolated(db: Session) -> None:
         reset_password(
             db,
             raw_token=verification.raw_token,
-            new_password="new password",
+            new_password="NewPassword!",
         )
 
 
@@ -204,14 +243,14 @@ def test_expired_and_revoked_tokens_are_rejected(db: Session) -> None:
         reset_password(
             db,
             raw_token=issued.raw_token,
-            new_password="new password",
+            new_password="NewPassword!",
             now=token.expires_at,
         )
 
     token.revoked_at = datetime.now(timezone.utc)
     db.flush()
     with pytest.raises(InvalidPasswordResetTokenError):
-        reset_password(db, raw_token=issued.raw_token, new_password="new password")
+        reset_password(db, raw_token=issued.raw_token, new_password="NewPassword!")
 
 
 def test_token_update_failure_rolls_back_password_and_consumption(db: Session) -> None:
@@ -237,7 +276,7 @@ def test_token_update_failure_rolls_back_password_and_consumption(db: Session) -
             reset_password(
                 db,
                 raw_token=issued.raw_token,
-                new_password="new password",
+                new_password="NewPassword!",
             )
     finally:
         event.remove(AccountActionToken, "before_update", fail_consumption)
@@ -280,8 +319,8 @@ def test_two_concurrent_resets_allow_exactly_one(engine) -> None:
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
-            pool.submit(reset_once, "first password"),
-            pool.submit(reset_once, "second password"),
+            pool.submit(reset_once, "FirstPassword!"),
+            pool.submit(reset_once, "SecondPassword!"),
         ]
         results = sorted(future.result() for future in futures)
     assert results == ["invalid", "reset"]

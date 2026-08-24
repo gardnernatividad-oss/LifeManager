@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.6 implementa recuperación y reset de contraseña sobre la identidad, verificación y aprobación de Stages 2.3–2.5; sesión final y otras verticales continúan pendientes.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.7 centraliza la política y hashing de contraseñas sobre la identidad, verificación, aprobación y recovery de Stages 2.3–2.6; sesión final y otras verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -107,7 +107,7 @@ La entrega usa una interfaz provider-neutral. El adapter predeterminado no enví
 
 La recuperación acepta solo email y responde siempre `202 {"accepted": true}` sin revelar existencia ni estado. Únicamente una cuenta `ACTIVE` recibe realmente un token `PASSWORD_RESET`; `DISABLED` y estados pendientes/rechazados no son elegibles y el reset nunca cambia estado, rol ni Workspace. Cada solicitud revoca tokens reset anteriores y emite uno de 256 bits, digest SHA-256 y TTL de una hora. El reset acepta solo token y nueva contraseña, consume el token bajo lock, actualiza exclusivamente el hash Argon2 e invalida otros tokens reset activos.
 
-La política final de contraseña permanece en Stage 2.7; Stage 2.6 reutiliza la frontera actual sin introducir reglas temporales divergentes ni password history. La invalidación real de sesiones existentes permanece en Stage 2.8 mediante el hook explícito del servicio. Stage 2.9 deberá limitar recovery/reset por IP, email normalizado/endpoint y, para intentos de token, bucket derivado sin persistir el token crudo. Turnstile para recovery se evaluará en Stage 2.10 según evidencia de abuso.
+Stage 2.7 aplica una única política a registro y reset: 8–128 caracteres exactos, al menos una letra mayúscula Unicode, una minúscula Unicode y un símbolo no alfanumérico/no whitespace. No exige dígito, no recorta ni normaliza el secreto y rechaza el exceso antes de Argon2. Un reset que falla la política no consulta ni consume el token, por lo que puede reintentarse. La invalidación real de sesiones existentes permanece en Stage 2.8 mediante el hook explícito del servicio. Stage 2.9 deberá limitar recovery/reset por IP, email normalizado/endpoint y, para intentos de token, bucket derivado sin persistir el token crudo. Turnstile para recovery se evaluará en Stage 2.10 según evidencia de abuso.
 
 No hay bootstrap automático de `GLOBAL_ADMIN`: la promoción inicial queda diferida a un procedimiento operativo explícito y auditado, sin credenciales ni identidad hard-coded. Registro recibirá rate limit en Stage 2.9 y Turnstile en Stage 2.10; ambos se insertarán antes de llamar al orchestration service actual.
 

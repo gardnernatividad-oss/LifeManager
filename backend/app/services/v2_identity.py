@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
+from app.core.password_policy import validate_password_policy
 from app.models import User, UserAccountStateEvent, Workspace, WorkspaceMember
 from app.models.enums import (
     AccountStatus,
@@ -115,6 +116,7 @@ def create_registration_request(
     *,
     registration_in: RegistrationRequestCreate,
 ) -> User:
+    validate_password_policy(registration_in.password)
     normalized_email = str(registration_in.email).strip().lower()
     if db.scalar(select(User.id).where(User.email == normalized_email)) is not None:
         raise RegistrationRequestConflictError("Registration request cannot be created")

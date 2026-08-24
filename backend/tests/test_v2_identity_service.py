@@ -57,7 +57,7 @@ def test_registration_is_pending_hashed_audited_and_has_no_workspace() -> None:
     db.scalar.return_value = None
     registration = RegistrationRequestCreate(
         email="  New.User@Example.com ",
-        password="plain password",
+        password="ValidPassword!",
         first_name=" Ada ",
         last_name=" Lovelace ",
     )
@@ -71,7 +71,7 @@ def test_registration_is_pending_hashed_audited_and_has_no_workspace() -> None:
     assert user.global_role is None
     assert user.email_verified_at is None
     assert not is_account_usable(user)
-    hasher.assert_called_once_with("plain password")
+    hasher.assert_called_once_with("ValidPassword!")
     added = [call.args[0] for call in db.add.call_args_list]
     assert isinstance(added[0], User)
     assert isinstance(added[1], UserAccountStateEvent)
@@ -103,7 +103,7 @@ def test_registration_is_pending_hashed_audited_and_has_no_workspace() -> None:
 def test_registration_rejects_privileged_mass_assignment(field: str, value: object) -> None:
     payload = {
         "email": "person@example.com",
-        "password": "plain password",
+        "password": "ValidPassword!",
         "first_name": "Ada",
         "last_name": "Lovelace",
         field: value,
@@ -117,7 +117,7 @@ def test_duplicate_registration_is_neutral_and_does_not_hash_or_write() -> None:
     db.scalar.return_value = uuid.uuid4()
     registration = RegistrationRequestCreate(
         email="existing@example.com",
-        password="plain password",
+        password="ValidPassword!",
         first_name="Ada",
         last_name="Lovelace",
     )

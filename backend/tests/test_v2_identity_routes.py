@@ -72,7 +72,7 @@ def test_registration_returns_neutral_acknowledgement_and_owns_transaction() -> 
     )
     payload = {
         "email": "person@example.com",
-        "password": "plain password",
+        "password": "ValidPassword!",
         "first_name": "Ada",
         "last_name": "Lovelace",
     }
@@ -88,7 +88,7 @@ def test_registration_returns_neutral_acknowledgement_and_owns_transaction() -> 
     assert response.json() == {"accepted": True}
     assert "password" not in response.text
     assert "PENDING" not in response.text
-    assert service.call_args.kwargs["registration_in"].password == "plain password"
+    assert service.call_args.kwargs["registration_in"].password == "ValidPassword!"
     db.commit.assert_called_once_with()
     db.refresh.assert_not_called()
     db.rollback.assert_not_called()
@@ -101,7 +101,7 @@ def test_duplicate_registration_returns_same_neutral_acknowledgement() -> None:
     db = MagicMock()
     payload = {
         "email": "person@example.com",
-        "password": "plain password",
+        "password": "ValidPassword!",
         "first_name": "Ada",
         "last_name": "Lovelace",
     }
@@ -123,7 +123,7 @@ def test_registration_rejects_mass_assignment_before_service() -> None:
     db = MagicMock()
     payload = {
         "email": "person@example.com",
-        "password": "plain password",
+        "password": "ValidPassword!",
         "first_name": "Ada",
         "last_name": "Lovelace",
         "global_role": "GLOBAL_ADMIN",
@@ -341,6 +341,20 @@ def test_rejection_requires_global_admin_and_conflict_rolls_back() -> None:
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "ACCOUNT_STATE_CONFLICT"
     db.rollback.assert_called_once_with()
+    db.commit.assert_not_called()
+
+
+def test_admin_rejection_rejects_credential_hash_mass_assignment() -> None:
+    db = MagicMock()
+    admin = _account(global_role=GlobalRole.GLOBAL_ADMIN)
+    for field in ("hashed_password", "password_hash", "password_digest"):
+        with _client(db, account=admin) as client:
+            response = client.post(
+                f"/api/v2/admin/account-requests/{uuid.uuid4()}/reject",
+                json={"reason": "Not approved", field: "hostile-value"},
+            )
+        assert response.status_code == 422
+        assert "hostile-value" not in response.text
     db.commit.assert_not_called()
 
 

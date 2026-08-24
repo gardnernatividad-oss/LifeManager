@@ -1,6 +1,11 @@
 import unittest
 
-from app.core.security import hash_password, verify_password
+from app.core.security import (
+    hash_password,
+    password_hash_needs_rehash,
+    verify_and_update_password,
+    verify_password,
+)
 
 
 class PasswordSecurityTests(unittest.TestCase):
@@ -32,6 +37,19 @@ class PasswordSecurityTests(unittest.TestCase):
 
     def test_invalid_hash_returns_false(self) -> None:
         self.assertFalse(verify_password("password", "not-a-valid-password-hash"))
+
+    def test_invalid_hash_rehash_checks_fail_safely(self) -> None:
+        self.assertFalse(password_hash_needs_rehash("not-a-valid-password-hash"))
+        self.assertEqual(
+            verify_and_update_password("password", "not-a-valid-password-hash"),
+            (False, None),
+        )
+
+    def test_current_hash_verifies_without_upgrade(self) -> None:
+        password = "ValidPassword!"
+        hashed = hash_password(password)
+        self.assertFalse(password_hash_needs_rehash(hashed))
+        self.assertEqual(verify_and_update_password(password, hashed), (True, None))
 
 
 if __name__ == "__main__":

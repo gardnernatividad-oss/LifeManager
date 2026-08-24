@@ -246,7 +246,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 
 | ID | Activo | Amenaza / camino | Riesgo | Control actual | Control V2 requerido | Etapa | Verificación |
 |---|---|---|---|---|---|---|---|
-| AUTH-001 | Cuenta | Stuffing/brute force en login | HIGH | Argon2 V1 | neutralidad, rate limit, Turnstile/backoff | 2.7–2.10 | HTTP multi-IP/cuenta |
+| AUTH-001 | Cuenta | Stuffing/brute force en login | HIGH | Stage 2.7: política central 8–128, Argon2id recomendado, verificación segura y rehash boundary | neutralidad login, rate limit, Turnstile/backoff | 2.8–2.10 | corpus, timing y HTTP multi-IP/cuenta |
 | AUTH-002 | Sesión | Robo JWT desde localStorage por XSS | HIGH | limpieza 401/logout V1 | cookie HttpOnly/Secure + CSP | 2.8, 2.12 | browser/XSS/cookie flags |
 | AUTH-003 | Sesión | CSRF sobre cookie V2 | HIGH | no aplica a Bearer V1 | double-submit, Origin exacto | 2.8 | CORS/CSRF HTTP real |
 | AUTH-004 | Cuenta | Sesión stale tras disable/password change | HIGH | `/me` V1 parcial | revalidación/epoch/revocación | 2.3, 2.8 | disable-session regression |
@@ -312,7 +312,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 - **2.4:** registro/aprobación y anti-mass-assignment.
 - **2.5:** verificación email y tokens single-use.
 - **2.6:** recovery/reset neutral y revocación.
-- **2.7:** policy y hashing.
+- **2.7:** policy central Unicode-safe, límite anti-DoS, Argon2id, rehash boundary y credential redaction completados.
 - **2.8:** cookies, CSRF, sesión/revocación.
 - **2.9:** rate limiting y fuerza bruta.
 - **2.10:** Turnstile.
