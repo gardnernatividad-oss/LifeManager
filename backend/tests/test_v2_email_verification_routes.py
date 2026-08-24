@@ -192,7 +192,10 @@ def test_openapi_exposes_raw_token_only_in_verification_request() -> None:
     } <= set(openapi["paths"])
     schemas = openapi["components"]["schemas"]
     assert set(schemas["EmailVerificationRequest"]["properties"]) == {"token"}
-    assert set(schemas["EmailVerificationResendRequest"]["properties"]) == {"email"}
+    assert set(schemas["EmailVerificationResendRequest"]["properties"]) == {
+        "email",
+        "turnstile_token",
+    }
     assert set(schemas["EmailVerificationResponse"]["properties"]) == {
         "verified",
         "pending_approval",

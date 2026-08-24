@@ -30,7 +30,7 @@ describe("V2 cookie auth API", () => {
 
   it("uses the restricted V2 registration request", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { accepted: true } });
-    const payload = { email: "ada@example.com", password: "ValidPassword!", first_name: "Ada", last_name: "Lovelace" };
+    const payload = { email: "ada@example.com", password: "ValidPassword!", first_name: "Ada", last_name: "Lovelace", turnstile_token: "ephemeral-response" };
     await registerUser(payload);
     expect(apiClient.post).toHaveBeenCalledWith(
       "http://localhost:3000/api/v2/auth/registration-requests",

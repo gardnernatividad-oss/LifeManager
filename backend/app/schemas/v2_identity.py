@@ -33,6 +33,7 @@ class RegistrationRequestCreate(BaseModel):
     first_name: str = Field(max_length=100)
     last_name: str = Field(max_length=100)
     timezone: str = Field(default="America/Lima", max_length=100)
+    turnstile_token: str | None = Field(default=None, min_length=1, max_length=2048)
 
     @field_validator("email", mode="before")
     @classmethod
@@ -90,6 +91,7 @@ class EmailVerificationResendRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
+    turnstile_token: str | None = Field(default=None, min_length=1, max_length=2048)
 
     @field_validator("email", mode="before")
     @classmethod
@@ -101,6 +103,7 @@ class PasswordRecoveryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
+    turnstile_token: str | None = Field(default=None, min_length=1, max_length=2048)
 
     @field_validator("email", mode="before")
     @classmethod

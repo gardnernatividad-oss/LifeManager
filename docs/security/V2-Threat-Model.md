@@ -249,8 +249,13 @@ independiente y el control falla cerrado si PostgreSQL no está disponible.
 Filas vencidas se limpian oportunísticamente mediante su índice de expiración.
 No hay bloqueo permanente ni reset al autenticar correctamente.
 
-Turnstile sigue en Stage 2.10. Botnets distribuidas, límites de edge y
-calibración con telemetría/carga son riesgos residuales deliberados.
+Stage 2.10 añade Turnstile server-side a registro, recovery y reenvío después
+del rate limit y antes de side effects. El adapter usa timeout de cinco segundos,
+sin retry, IP resuelta por la política de proxies y fail-closed. Token/secret y
+provider response no se persisten ni registran. Login y submits con token
+criptográfico quedan deliberadamente fuera para evitar fricción innecesaria.
+Botnets distribuidas, límites de edge y calibración con telemetría/carga son
+riesgos residuales deliberados.
 
 ## 19. Supply chain y cloud
 
@@ -334,7 +339,7 @@ calibración con telemetría/carga son riesgos residuales deliberados.
 - **2.7:** policy central Unicode-safe, límite anti-DoS, Argon2id, rehash boundary y credential redaction completados.
 - **2.8:** cookie HttpOnly, CSRF/Origin, login/me/logout e invalidación por credencial completados.
 - **2.9:** rate limiting y fuerza bruta.
-- **2.10:** Turnstile.
+- **2.10:** Turnstile completado en registro, recovery y reenvío de verificación.
 - **2.11:** validación, envelope, logging/redaction.
 - **2.12:** suite de seguridad HTTP/DB/browser y scans.
 - **2.13:** gate de identidad/seguridad.

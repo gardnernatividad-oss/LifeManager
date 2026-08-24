@@ -264,7 +264,10 @@ def test_openapi_exposes_only_public_password_recovery_fields() -> None:
         "/api/v2/auth/password-resets",
     } <= set(openapi["paths"])
     schemas = openapi["components"]["schemas"]
-    assert set(schemas["PasswordRecoveryRequest"]["properties"]) == {"email"}
+    assert set(schemas["PasswordRecoveryRequest"]["properties"]) == {
+        "email",
+        "turnstile_token",
+    }
     assert set(schemas["PasswordResetRequest"]["properties"]) == {
         "token",
         "new_password",

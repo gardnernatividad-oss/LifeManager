@@ -410,7 +410,34 @@ contador no se reinicia tras login correcto: toda tentativa dentro de la
 ventana cuenta y no existe bloqueo permanente. Turnstile, defensa de botnets
 distribuidas y límites en edge permanecen para Stage 2.10/hardening.
 
-## 30. Decisiones y límites
+## 30. Turnstile y frontera anti-bot
+
+Stage 2.10 exige Turnstile en registro, solicitud de recuperación y reenvío de
+verificación. El orden es schema → rate limit → Turnstile → trabajo de dominio;
+el rate limiter evita llamadas al provider para requests ya bloqueadas. Login
+permanece sin CAPTCHA por los límites IP/email/IP+email y Argon2 dummy; los
+submits de verificación y reset permanecen sin CAPTCHA porque usan secretos de
+256 bits, single-use y rate limit IP. Un challenge adaptativo de login puede
+evaluarse posteriormente sin introducir risk scoring ahora.
+
+`AntiBotVerifier` separa la aplicación del adapter Cloudflare. La verificación
+siteverify corre en el threadpool de las rutas síncronas mediante HTTP estándar,
+timeout de cinco segundos y sin retry automático. Usa la IP producida por el
+resolver confiable de Stage 2.9. Challenge inválido devuelve error anti-bot;
+configuración, red o respuesta malformada fallan cerrado antes de persistencia,
+token o email.
+
+`TURNSTILE_SECRET_KEY` es backend-only. `VITE_TURNSTILE_SITE_KEY` es pública y
+solo habilita el widget oficial. El response token es efímero, no se persiste,
+no se registra y no entra al dominio. Local/test puede deshabilitar el control
+explícitamente; una configuración con cookies Secure exige Turnstile habilitado
+y secreto presente. La configuración productiva real de Cloudflare sigue
+siendo operación de despliegue, no está instalada en el repositorio.
+
+CSP futuro deberá permitir el script/frame de
+`https://challenges.cloudflare.com` siguiendo la guía vigente del provider.
+
+## 31. Decisiones y límites
 
 ADRs vinculadas:
 
@@ -419,4 +446,4 @@ ADRs vinculadas:
 - ADR-011: scope API y autorización Workspace;
 - ADR-012: Notification, cron, reminders, push y email boundaries.
 
-No decidido por esta arquitectura porque no afecta el inicio de implementación: proveedor concreto de email, librería Web Push, valores de expiración/rate limits/retención, dominio productivo final y plataforma CI concreta. Se resuelven mediante configuración o stages operativos, sin pedir decisiones de producto salvo impacto visible/costo.
+No decidido por esta arquitectura porque no afecta el inicio de implementación: proveedor concreto de email, librería Web Push, valores de expiración/retención, dominio productivo final y plataforma CI concreta. Se resuelven mediante configuración o stages operativos, sin pedir decisiones de producto salvo impacto visible/costo.

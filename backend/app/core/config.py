@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_FORWARDED_HEADER: Literal[
         "x-forwarded-for", "x-real-ip", "cf-connecting-ip"
     ] = "x-forwarded-for"
+    TURNSTILE_ENABLED: bool = False
+    TURNSTILE_SECRET_KEY: str | None = Field(default=None, min_length=1)
+    TURNSTILE_TIMEOUT_SECONDS: float = Field(default=5.0, ge=1.0, le=10.0)
     TASK_BULK_MAX_OCCURRENCES: int = 1000
 
     @field_validator("RATE_LIMIT_TRUSTED_PROXY_CIDRS")
@@ -65,19 +68,30 @@ class Settings(BaseSettings):
             )
         if self.SESSION_COOKIE_SAMESITE == "none" and not self.session_cookie_secure:
             raise ValueError("SameSite=None requires a Secure session cookie")
+        local_hosts = {"localhost", "127.0.0.1", "::1"}
+        if self.database_host not in local_hosts and not self.session_cookie_secure:
+            raise ValueError("Remote database configuration requires Secure session cookies")
+        if self.database_host not in local_hosts and not self.TURNSTILE_ENABLED:
+            raise ValueError("Turnstile must be enabled for secure production configuration")
+        if self.TURNSTILE_ENABLED and not self.TURNSTILE_SECRET_KEY:
+            raise ValueError("TURNSTILE_SECRET_KEY is required when Turnstile is enabled")
         return self
 
     @property
-    def session_cookie_secure(self) -> bool:
-        if self.SESSION_COOKIE_SECURE is not None:
-            return self.SESSION_COOKIE_SECURE
+    def database_host(self) -> str:
         if self.DATABASE_URL:
             host = urlparse(
                 self.DATABASE_URL.replace("postgresql+psycopg", "postgresql", 1)
             ).hostname
         else:
             host = self.DB_HOST
-        return (host or "").lower() not in {"localhost", "127.0.0.1", "::1"}
+        return (host or "").lower()
+
+    @property
+    def session_cookie_secure(self) -> bool:
+        if self.SESSION_COOKIE_SECURE is not None:
+            return self.SESSION_COOKIE_SECURE
+        return self.database_host not in {"localhost", "127.0.0.1", "::1"}
 
     model_config = SettingsConfigDict(
         env_file=".env",

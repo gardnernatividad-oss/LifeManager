@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, Response, status
 from app.api.v2.dependencies import GlobalAdmin, SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
 from app.core.config import settings
+from app.core.client_ip import resolve_client_ip
 from app.core.session_security import create_session_token, new_csrf_token
 from app.models.user import User
 from app.schemas.v2_identity import (
@@ -58,6 +59,11 @@ from app.services.rate_limit_service import (
     RateLimitStorageError,
     enforce_rate_limit,
 )
+from app.services.anti_bot_service import (
+    AntiBotProviderUnavailable,
+    AntiBotVerificationFailed,
+    verify_anti_bot_token,
+)
 
 
 router = APIRouter()
@@ -85,6 +91,26 @@ def _enforce_rate_limit(
             headers={"Retry-After": str(error.retry_after)},
         ) from error
     except RateLimitStorageError as error:
+        raise V2APIError(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="SECURITY_CONTROL_UNAVAILABLE",
+            message="No se pudo validar la solicitud de forma segura.",
+        ) from error
+
+
+def _verify_anti_bot(*, token: str | None, request: Request) -> None:
+    try:
+        verify_anti_bot_token(
+            token=token,
+            remote_ip=resolve_client_ip(request),
+        )
+    except AntiBotVerificationFailed as error:
+        raise V2APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="ANTI_BOT_VERIFICATION_FAILED",
+            message="No se pudo validar la verificación anti-bot.",
+        ) from error
+    except AntiBotProviderUnavailable as error:
         raise V2APIError(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             code="SECURITY_CONTROL_UNAVAILABLE",
@@ -232,6 +258,7 @@ def request_registration(
         request=request,
         email=str(registration_in.email),
     )
+    _verify_anti_bot(token=registration_in.turnstile_token, request=request)
     issued = None
     try:
         issued = create_registration_with_verification(
@@ -301,6 +328,7 @@ def resend_verification(
         request=request,
         email=str(resend_in.email),
     )
+    _verify_anti_bot(token=resend_in.turnstile_token, request=request)
     try:
         issued = resend_email_verification(db, email=str(resend_in.email))
         db.commit()
@@ -333,6 +361,7 @@ def request_password_reset(
         request=request,
         email=str(recovery_in.email),
     )
+    _verify_anti_bot(token=recovery_in.turnstile_token, request=request)
     try:
         issued = request_password_recovery(db, email=str(recovery_in.email))
         db.commit()

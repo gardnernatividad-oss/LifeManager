@@ -1,10 +1,12 @@
 import axios from "axios";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { registerUser } from "../../api/authApi";
+import { TurnstileWidget } from "../../components/common/TurnstileWidget";
+import { env } from "../../utils/env";
 
 const registrationSchema = z.object({
   first_name: z.string().trim().min(1, "Ingresa tu nombre."),
@@ -22,6 +24,12 @@ type RegistrationValues = z.infer<typeof registrationSchema>;
 export function RegistrationPage() {
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const handleTurnstileToken = useCallback(
+    (token: string | null) => setTurnstileToken(token),
+    [],
+  );
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegistrationValues>({
     resolver: zodResolver(registrationSchema),
     defaultValues: { first_name: "", last_name: "", email: "", password: "", password_confirmation: "" },
@@ -35,9 +43,12 @@ export function RegistrationPage() {
         password: values.password,
         first_name: values.first_name.trim(),
         last_name: values.last_name.trim(),
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
       });
       navigate("/login", { replace: true, state: { registrationSuccess: true } });
     } catch (error) {
+      setTurnstileToken(null);
+      setTurnstileReset((value) => value + 1);
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         setSubmitError("Ya existe una cuenta con ese correo electrónico.");
       } else if (axios.isAxiosError(error) && error.response?.status === 422) {
@@ -61,7 +72,8 @@ export function RegistrationPage() {
       <div className="form-field"><label htmlFor="registration-email">Correo electrónico</label><input id="registration-email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} {...register("email")} />{errors.email ? <span className="field-error">{errors.email.message}</span> : null}</div>
       <div className="form-field"><label htmlFor="registration-password">Contraseña</label><input id="registration-password" type="password" autoComplete="new-password" aria-invalid={Boolean(errors.password)} {...register("password")} />{errors.password ? <span className="field-error">{errors.password.message}</span> : null}</div>
       <div className="form-field"><label htmlFor="registration-confirmation">Confirmar contraseña</label><input id="registration-confirmation" type="password" autoComplete="new-password" aria-invalid={Boolean(errors.password_confirmation)} {...register("password_confirmation")} />{errors.password_confirmation ? <span className="field-error">{errors.password_confirmation.message}</span> : null}</div>
-      <button className="primary-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Creando…" : "Crear cuenta"}</button>
+      <TurnstileWidget siteKey={env.turnstileSiteKey} resetSignal={turnstileReset} onTokenChange={handleTurnstileToken} />
+      <button className="primary-button" type="submit" disabled={isSubmitting || Boolean(env.turnstileSiteKey && !turnstileToken)}>{isSubmitting ? "Creando…" : "Crear cuenta"}</button>
     </form>
   </section>;
 }

@@ -30,6 +30,7 @@ export interface RegistrationPayload {
   password: string;
   first_name: string;
   last_name: string;
+  turnstile_token?: string;
 }
 
 export interface ProfileUpdatePayload {

@@ -382,6 +382,7 @@ def test_openapi_contains_only_explicit_v2_identity_fields() -> None:
         "first_name",
         "last_name",
         "timezone",
+        "turnstile_token",
     }
     serialized = str(schemas)
     assert "hashed_password" not in serialized

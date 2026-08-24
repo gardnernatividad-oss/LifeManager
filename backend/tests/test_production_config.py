@@ -14,6 +14,8 @@ def test_production_database_url_and_safe_sql_logging_default() -> None:
         _env_file=None,
         DATABASE_URL="postgresql://user:password@db.example/lifemanager",
         SECRET_KEY=SECRET,
+        TURNSTILE_ENABLED=True,
+        TURNSTILE_SECRET_KEY="test-turnstile-secret",
     )
 
     assert settings.DATABASE_URL == "postgresql://user:password@db.example/lifemanager"
@@ -91,6 +93,8 @@ def test_rate_limit_security_configuration_is_validated() -> None:
             _env_file=None,
             DATABASE_URL="postgresql://user:password@db.example/lifemanager",
             SECRET_KEY=SECRET,
+            TURNSTILE_ENABLED=True,
+            TURNSTILE_SECRET_KEY="test-turnstile-secret",
             RATE_LIMIT_HMAC_KEY="too-short",
         )
     with pytest.raises(ValidationError):
@@ -98,5 +102,35 @@ def test_rate_limit_security_configuration_is_validated() -> None:
             _env_file=None,
             DATABASE_URL="postgresql://user:password@db.example/lifemanager",
             SECRET_KEY=SECRET,
+            TURNSTILE_ENABLED=True,
+            TURNSTILE_SECRET_KEY="test-turnstile-secret",
             RATE_LIMIT_TRUSTED_PROXY_CIDRS=["not-a-network"],
         )
+
+
+def test_turnstile_is_required_for_secure_production_configuration() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DATABASE_URL="postgresql://user:password@db.example/lifemanager",
+            SECRET_KEY=SECRET,
+        )
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DATABASE_URL="postgresql://user:password@db.example/lifemanager",
+            SECRET_KEY=SECRET,
+            TURNSTILE_ENABLED=True,
+        )
+
+    local = Settings(
+        _env_file=None,
+        DB_HOST="localhost",
+        DB_PORT=5432,
+        DB_NAME="lifemanager_test",
+        DB_USER="postgres",
+        DB_PASSWORD="password",
+        SECRET_KEY=SECRET,
+        TURNSTILE_ENABLED=False,
+    )
+    assert local.TURNSTILE_ENABLED is False
