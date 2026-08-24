@@ -341,7 +341,7 @@ riesgos residuales deliberados.
 - **2.9:** rate limiting y fuerza bruta.
 - **2.10:** Turnstile completado en registro, recovery y reenvío de verificación.
 - **2.11:** completado: DTO forbid, mass-assignment matrix, límites/controles Unicode, SQL/XSS audit, respuestas allowlisted, envelope/redacción y seguridad de repr; CSP y observabilidad estructurada siguen diferidos.
-- **2.12:** suite de seguridad HTTP/DB/browser y scans.
+- **2.12:** completado: matriz ofensiva HTTP/DB/browser para autenticación, autorización, tokens, sesión, CSRF/CORS, rate limit/Turnstile, injection/XSS, exposición y concurrencia; evidencia en `V2-Identity-Security-Validation.md`.
 - **2.13:** gate de identidad/seguridad.
 - Stages posteriores de Workspace/verticales implementan autorización funcional; Calendar y Notifications implementan privacidad/jobs; hardening final cubre CSP, CI/cloud, backups y supply chain.
 

@@ -115,6 +115,20 @@ describe("AuthenticatedLayout V1", () => {
     expect(screen.getByRole("heading", { name: "Destino de inicio de sesión" })).toBeInTheDocument();
   });
 
+  it("renders hostile account text without creating executable HTML", () => {
+    const hostileName = '<img src=x onerror="globalThis.compromised=true">';
+    vi.mocked(useAuth).mockReturnValue({
+      ...authenticatedState(),
+      user: { ...testUser, first_name: hostileName, last_name: "Literal" }
+    });
+
+    const rendered = renderLayout();
+
+    expect(screen.getByText(`${hostileName} Literal`)).toBeInTheDocument();
+    expect(rendered.container.querySelector("img")).toBeNull();
+    expect((globalThis as typeof globalThis & { compromised?: boolean }).compromised).toBeUndefined();
+  });
+
   it("opens and closes the mobile sidebar with focus management", async () => {
     setMobileViewport(true);
     const user = userEvent.setup();
