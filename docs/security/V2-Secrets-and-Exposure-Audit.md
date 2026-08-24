@@ -13,7 +13,7 @@ Nunca se registran aquí valores de credenciales, cookies, tokens, URLs autentic
 ## 3. Resultado ejecutivo
 
 - Secretos de aspecto real en el árbol actual: **0**.
-- Secretos de aspecto real encontrados solo en historia: **1 potencial** (`SEC-SECRET-001`).
+- Secretos de aspecto real encontrados solo en historia: **1 potencial cerrado por rotación/revocación** (`SEC-SECRET-001`).
 - Claves privadas, tokens GitHub o Bearer literales en árbol/historia: **0**.
 - Los demás matches de URLs autenticadas pertenecen a `.env.example` o tests y usan material explícitamente ficticio.
 - El build frontend no contiene URLs PostgreSQL, claves privadas, secretos de servidor ni tokens literales.
@@ -25,14 +25,14 @@ Nunca se registran aquí valores de credenciales, cookies, tokens, URLs autentic
 
 | ID | Severidad | Estado | Evidencia | Alcance | Remediación | Etapa / verificación |
 |---|---|---|---|---|---|---|
-| `SEC-SECRET-001` | HIGH | ABIERTO — acción manual | `backend/alembic.ini` en commit `9811036d528b6df9a965072a51893acea9d5b612`; retirado en `b677ba58bcb15477548d5938e78bf0e1426d7b2b` | URL PostgreSQL con username, password, host local y database; alcanzable en historia que probablemente fue publicada | confirmar que fue desechable y nunca reutilizada; de lo contrario rotar todo rol/credencial coincidente; documentar revocación; luego evaluar limpieza de historia | 2.2 manual; evidencia del proveedor sin reutilizar el material expuesto |
+| `SEC-SECRET-001` | HIGH | CERRADO — ROTACIÓN/REVOCACIÓN | `backend/alembic.ini` en commit `9811036d528b6df9a965072a51893acea9d5b612`; retirado en `b677ba58bcb15477548d5938e78bf0e1426d7b2b` | URL PostgreSQL del usuario local `postgres`; alcanzable en historia, sin coincidencia en URL remota/Neon encontrada | contraseña local rotada, configuración local actualizada y conexión sustituta verificada con `SELECT 1`; valor anterior revocado | 2.13; confirmación/remediación manual del product owner sin probar el valor histórico |
 | `SEC-FE-001` | HIGH | CERRADO PARA V2 ACTIVO EN STAGE 2.8 | cliente y `AuthContext` V2 | el antiguo token Bearer persistido en Web Storage era extraíble por XSS | sesión V2 en cookie HttpOnly/Secure/SameSite, CSRF ligado, sin storage/attachment/restoration Bearer | tests de transporte/contexto, build y scan sin usos activos |
 | `SEC-IGNORE-001` | LOW | CERRADO | `.gitignore` no cubría formatos comunes de claves/credenciales | commit accidental futuro | añadidos ignores de PEM/KEY/P12/PFX y JSON de credenciales/service accounts | 2.2; `git check-ignore` y ningún tracked afectado |
 | `SEC-CACHE-001` | LOW | CONTROL ACTUAL | `frontend/vite.config.ts`, build `dist/sw.js` temporal | cache PWA | mantener solo precache estático; prohibir runtime cache de API privada | 2.12; inspección de SW/build |
-| `SEC-CONFIG-001` | MEDIUM | ABIERTO — diseño V2 | configuración actual solo cubre secretos V1 | futuros secretos de CSRF, email, Turnstile, VAPID y scheduler | añadir únicamente como variables backend/proveedor secretas cuando se implementen | 2.3–2.12; startup/config tests |
-| `SEC-LOG-001` | MEDIUM | ABIERTO — diseño V2 | V1 usa errores de dominio como texto y permite `SQL_ECHO` configurable | futura fuga por errores/logs | envelope V2, redacción central y `SQL_ECHO=false` productivo | 2.11; captura de logs y corpus de errores |
-| `SEC-API-001` | HIGH | ABIERTO — diseño V2 | modelos V2 contienen hashes, digests, roles y ciphertext; APIs V2 aún no existen | serialización accidental | DTOs allowlist explícitos, sin serialización genérica ORM, proyección de privacidad previa | 2.11 y verticales; tests exactos de campos |
-| `SEC-SC-001` | MEDIUM | ABIERTO | no existe `.github/` ni automatización de secret scanning en repo | supply chain/push accidental | habilitar controles GitHub y evaluar gitleaks/detect-secrets en CI | 2.12 / hardening; provider checklist |
+| `SEC-CONFIG-001` | MEDIUM | CERRADO PARA IDENTIDAD ACTIVA | Settings V2 cubre sesión, CSRF binding, limiter y Turnstile; secretos futuros aún no existen | futuros email/VAPID/scheduler secrets | añadir solo cuando se implementen sus módulos; setup productivo de Turnstile/email es operacional | 2.13 verificado; módulos posteriores |
+| `SEC-LOG-001` | MEDIUM | CERRADO PARA V2 ACTIVO | envelope 422/500, `repr` de Settings y `SQL_ECHO=false`; sin body dumps/logging sensible | futura fuga al incorporar observabilidad | mantener redacción y añadir logging estructurado en hardening | 2.11–2.13 verificado |
+| `SEC-API-001` | HIGH | CERRADO PARA IDENTIDAD ACTIVA | DTOs allowlist, `extra='forbid'`, OpenAPI y respuestas minimizadas | serialización accidental en verticales futuras | repetir pruebas exactas por vertical; nunca serializar ORM genérico | 2.11–2.13 verificado |
+| `SEC-SC-001` | MEDIUM | DIFERIDO — HARDENING | no existe `.github/` ni automatización de secret scanning en repo | supply chain/push accidental | habilitar controles GitHub y evaluar gitleaks/detect-secrets en CI | hardening posterior; no bloquea foundation local |
 
 ## 5. Árbol actual y archivos de entorno
 
@@ -46,11 +46,11 @@ La revisión inicial `9811036d528b6df9a965072a51893acea9d5b612` incluyó una URL
 
 El archivo actual deja `sqlalchemy.url` vacío. `backend/alembic/env.py` obtiene la URL desde `app.db.session`, que a su vez exige `DATABASE_URL` o el conjunto completo de componentes DB en settings. No existe fallback hard-coded y Alembic no imprime explícitamente la URL. La configuración actual usa una fuente distinta: entorno protegido.
 
-Aunque parece una credencial local, el valor permanece alcanzable en Git y el remote configurado apunta a GitHub; por prudencia se presume que la historia pudo ser publicada. Debe confirmarse que era desechable y nunca fue reutilizada. Si existe cualquier reutilización, la rotación es obligatoria antes del gate 2.13. No se debe intentar autenticar con el valor histórico.
+El valor permanece alcanzable en Git y el remote configurado apunta a GitHub; por prudencia se presume que la historia pudo ser publicada. Como no fue posible confirmar su no reutilización histórica, el product owner rotó la contraseña del usuario PostgreSQL local `postgres`, actualizó la configuración local y verificó la conexión sustituta con `SELECT 1`. El valor anterior queda revocado. No se intentó autenticar con el valor histórico.
 
 ### Decisión sobre historia
 
-Recomendación **A condicionada**: rotación/no reutilización primero; no reescribir historia ahora. Si se confirma reutilización, exposición pública sensible, forks o clones externos, evaluar **rotación + reescritura** coordinada después, entendiendo que reescribir no elimina copias existentes ni sustituye revocar la credencial.
+Decisión **A satisfecha**: la rotación/revocación se completó y no se reescribe historia ahora. Una eventual limpieza coordinada de historia es hardening posterior; no elimina copias existentes ni sustituye la revocación ya realizada.
 
 ## 7. Variables de entorno y ubicación aprobada
 
@@ -73,6 +73,8 @@ Recomendación **A condicionada**: rotación/no reutilización primero; no reesc
 | `VITE_API_BASE_URL` | PÚBLICO | Cloudflare build environment; URL API sin credenciales |
 
 La configuración Stage 2.8 implementa cookies, CSRF, Origin y CORS sin un secreto CSRF separado: el binding usa `SECRET_KEY` exclusivamente en backend. Turnstile, proveedor real de email, VAPID y scheduler permanecen pendientes y no deben recibir placeholders que aparenten ser secretos funcionales antes de su etapa.
+
+La `SECRET_KEY` del `.env` local es deliberadamente de desarrollo y solo es aceptable en ese entorno. Producción debe usar una clave fuerte, única y exclusiva del backend mediante el secret store del proveedor. Este requisito operacional no reabre `SEC-SECRET-001`.
 
 ## 8. Frontend, build y DevTools
 
@@ -149,25 +151,24 @@ En Stage 2.12 conviene evaluar gitleaks o detect-secrets en pre-commit/CI y Truf
 ### Neon
 
 - Solo backend/migrator recibe credenciales; frontend y Cloudflare Pages nunca.
-- Confirmar el estado de `SEC-SECRET-001`; rotar cualquier credencial reutilizada.
+- `SEC-SECRET-001` está cerrado por rotación/revocación local; mantener separadas y rotadas las credenciales productivas.
 - Revisar TLS, roles mínimos, separación runtime/migrator cuando se justifique, límites/conexiones y restore probado.
 - Las guardas destructivas deben continuar rechazando hosts Neon/remotos.
 
-## 15. Plan de rotación de `SEC-SECRET-001`
+## 15. Cierre de `SEC-SECRET-001`
 
-1. Un operador autorizado determina, sin usar el valor filtrado para autenticarse, si la credencial era desechable o fue reutilizada.
-2. Si hubo reutilización, crea/rota la credencial en el proveedor o PostgreSQL autorizado.
-3. Actualiza únicamente el secret store backend con la credencial nueva.
-4. Verifica la aplicación usando la credencial nueva.
-5. Revoca la credencial anterior.
-6. Verifica mediante tooling autorizado que la anterior está revocada, sin que este audit use el material expuesto.
-7. Registra fecha, alcance y responsable sin valores.
-8. Evalúa limpieza coordinada de historia por separado; clones/forks/caches siguen requiriendo rotación.
+El product owner no confirmó la no reutilización histórica y eligió la vía segura de remediación:
 
-El gate 2.13 permanece bloqueado mientras no exista evidencia de no reutilización o rotación/revocación.
+1. identificó la credencial como perteneciente al usuario PostgreSQL local `postgres`;
+2. cambió/rotó la contraseña local;
+3. actualizó la configuración local de LifeManager;
+4. verificó la conexión sustituta mediante `SELECT 1`;
+5. confirmó con ello la revocación de la credencial anterior.
+
+No se imprimió, recuperó ni probó el valor antiguo o nuevo durante este cierre y no se contactó Neon/producción. La revisión histórica confirmó que el valor solo aparece en una ruta con host loopback y no en una URL PostgreSQL remota/Neon encontrada. `SEC-SECRET-001` queda **CERRADO por rotación/revocación**. La limpieza de historia, si se decide posteriormente, es hardening separado y no sustituye la revocación.
 
 ## 16. Cierre de Stage 2.2
 
 Stage 2.2 queda **Completado técnicamente**: árbol, historia, Alembic/backend, entornos, bundle, source maps, storage, service worker, respuestas, logging, tests/docs y expectativas de proveedores fueron auditados; las brechas seguras del repositorio fueron mitigadas.
 
-Permanece abierta la acción manual `SEC-SECRET-001`. Su cierre es requisito del gate 2.13. Este estado no afirma que GitHub, Cloudflare, Render o Neon hayan sido revisados desde sus consolas.
+La acción manual `SEC-SECRET-001` fue cerrada por rotación/revocación y Stage 2.13 puede completarse. Este estado no afirma que GitHub, Cloudflare, Render o Neon hayan sido revisados desde sus consolas; esos controles y la `SECRET_KEY` productiva fuerte y única siguen siendo requisitos operacionales.

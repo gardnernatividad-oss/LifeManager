@@ -200,7 +200,7 @@ Un correo comprometido queda fuera del control completo del producto; se mitiga 
 ### Evidencia
 
 - Árbol actual: no se encontraron claves privadas ni tokens GitHub; los matches son placeholders explícitos o tests.
-- Historia Git: `backend/alembic.ini` contiene en una revisión inicial una URL PostgreSQL histórica con credencial de aspecto real y hostname local. No está en el archivo vigente y no se verificó contra ningún sistema. Debe considerarse expuesta, confirmar que fue desechable/no reutilizada o rotarla, y decidir por separado si procede limpiar historia.
+- Historia Git: `backend/alembic.ini` contiene en una revisión inicial una URL PostgreSQL histórica con credencial de aspecto real y hostname local. No está en el archivo vigente. Como no pudo confirmarse su no reutilización, el product owner rotó/revocó la contraseña del usuario PostgreSQL local, actualizó la configuración local y verificó la conexión sustituta; `SEC-SECRET-001` está cerrado. La limpieza de historia se decide por separado.
 - `.env` está ignorado; solo `.env.example` está tracked.
 
 La caracterización completa, el inventario frontend/cloud y las acciones manuales se mantienen en [`V2-Secrets-and-Exposure-Audit.md`](V2-Secrets-and-Exposure-Audit.md).
@@ -294,7 +294,7 @@ riesgos residuales deliberados.
 | NOTIF-003 | Disponibilidad | Amplificación/duplicados | MEDIUM | dedup index | one logical event, caps, retry-safe | Notifications | concurrency/fan-out |
 | JOB-001 | Jobs | Endpoint público/replay/HMAC leak | CRITICAL | diseño documental | HMAC+timestamp+nonce, hidden namespace | Scheduler stage | signature/replay suite |
 | INPUT-001 | DB/browser | SQLi/XSS/mass assignment | HIGH | ORM/React escaping | validation, CSP, DTO forbid | 2.11–2.12 | payload corpus |
-| SEC-001 | Secretos | Credencial histórica reutilizada | HIGH | retirada del árbol; hostname histórico local | confirmar no reutilización o rotar; history policy separada | 2.2/2.13 | secret scan/rotation record |
+| SEC-001 | Secretos | Credencial histórica reutilizada | HIGH | retirada del árbol; hostname histórico local; rotación/revocación completada | mantener credenciales productivas separadas; history policy opcional | CERRADO 2.13 | registro de rotación sin valores |
 | LOG-001 | Secretos/PII | Logs contienen auth/recovery/SQL | HIGH | SQL echo configurable | redaction + structured logging | 2.11/final hardening | log-capture tests |
 | DB-001 | Datos | Reset destructivo productivo | CRITICAL | guardas e4f5 | excluir pipeline, retire after bootstrap | final migration gate | refusal/schema-unchanged |
 | DB-002 | Datos | Credencial DB amplia o filtrada | CRITICAL | secrets backend-only | least privilege, rotation, TLS/backups | 2.2/cloud gate | privilege/restore audit |
@@ -331,7 +331,7 @@ riesgos residuales deliberados.
 
 ## 23. Mapeo de etapas
 
-- **2.2:** inventario de secretos, credencial histórica, bundle/storage y cloud configuration; la acción manual abierta bloquea 2.13.
+- **2.2:** inventario de secretos, credencial histórica, bundle/storage y cloud configuration; la acción manual fue cerrada por rotación/revocación en 2.13.
 - **2.3:** global roles, account state y separación admin/private content.
 - **2.4:** registro/aprobación y anti-mass-assignment.
 - **2.5:** verificación email y tokens single-use.
@@ -342,7 +342,7 @@ riesgos residuales deliberados.
 - **2.10:** Turnstile completado en registro, recovery y reenvío de verificación.
 - **2.11:** completado: DTO forbid, mass-assignment matrix, límites/controles Unicode, SQL/XSS audit, respuestas allowlisted, envelope/redacción y seguridad de repr; CSP y observabilidad estructurada siguen diferidos.
 - **2.12:** completado: matriz ofensiva HTTP/DB/browser para autenticación, autorización, tokens, sesión, CSRF/CORS, rate limit/Turnstile, injection/XSS, exposición y concurrencia; evidencia en `V2-Identity-Security-Validation.md`.
-- **2.13:** gate de identidad/seguridad.
+- **2.13:** completado: gate técnico aprobado en pruebas locales y `SEC-SECRET-001` cerrado por rotación/revocación; evidencia en `V2-Identity-Security-Gate.md`.
 - Stages posteriores de Workspace/verticales implementan autorización funcional; Calendar y Notifications implementan privacidad/jobs; hardening final cubre CSP, CI/cloud, backups y supply chain.
 
 ## 24. Supuestos y no objetivos
@@ -353,4 +353,4 @@ No objetivos: defender un OS totalmente comprometido, SIEM empresarial, HSM, det
 
 ## 25. Resultado de Stage 2.1
 
-No se encontró una vulnerabilidad CRITICAL activa confirmada. Stage 2.2 caracterizó la credencial histórica como local y retirada del árbol actual, pero exige confirmar que fue desechable/no reutilizada o completar rotación; el gate 2.13 permanece bloqueado. Los riesgos CRITICAL/HIGH cuentan con controles y etapas de verificación asignados. Stage 2.1 queda **Completado** como threat model; no como implementación de controles.
+No se encontró una vulnerabilidad CRITICAL activa confirmada. Stage 2.2 caracterizó la credencial histórica como local y retirada del árbol actual; Stage 2.13 cerró el riesgo mediante rotación/revocación. No quedan hallazgos CRITICAL o HIGH abiertos de Phase 2. Los riesgos futuros conservan controles y etapas de verificación asignados. Stage 2.1 queda **Completado** como threat model; no como implementación de todos los controles futuros.

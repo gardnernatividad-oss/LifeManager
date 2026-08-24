@@ -34,14 +34,14 @@ El roadmap conservará exactamente estas columnas:
 | Phase 2 — Security foundation and identity | Stage 2.10 | Turnstile integration | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.11 | Server validation and error handling | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.12 | Security tests | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Completado |
 
 `Estado` solo puede contener:
 
 - Completado
 - Pendiente
 
-Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model. Stage 2.2 auditó exposición y mantiene una acción manual antes de 2.13. Stages 2.3–2.7 establecieron identidad, recovery y política Argon2id. Stage 2.8 estableció sesión cookie/CSRF, Stage 2.9 rate limiting PostgreSQL y Stage 2.10 Turnstile server-side en las tres rutas públicas seleccionadas. Stage 2.11 cerró validación autoritativa, mass assignment, límites baratos, SQL/XSS boundaries y respuestas/errores seguros. Stage 2.12 completó la regresión ofensiva conjunta de auth, authz, tokens, sesión, CSRF/CORS, abuso, inyección, exposición y concurrencia; la evidencia está en `docs/security/V2-Identity-Security-Validation.md`.
+Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model. Stage 2.2 auditó exposición. Stages 2.3–2.7 establecieron identidad, recovery y política Argon2id. Stage 2.8 estableció sesión cookie/CSRF, Stage 2.9 rate limiting PostgreSQL y Stage 2.10 Turnstile server-side en las tres rutas públicas seleccionadas. Stage 2.11 cerró validación autoritativa y Stage 2.12 la regresión ofensiva. Stage 2.13 queda `Completado`: superó sus controles técnicos y PostgreSQL locales y cerró `SEC-SECRET-001` mediante rotación/revocación; ver `docs/security/V2-Identity-Security-Gate.md`. La configuración de una `SECRET_KEY` productiva fuerte, única y backend-only permanece como requisito operacional de despliegue, no como hallazgo abierto de Phase 2.
 
 ## Referencia histórica
 
