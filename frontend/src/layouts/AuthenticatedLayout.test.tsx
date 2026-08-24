@@ -25,7 +25,6 @@ function setMobileViewport(matches: boolean) {
 
 function authenticatedState(logout = vi.fn()): AuthState {
   return {
-    accessToken: "access-token",
     user: testUser,
     workspace: null,
     isAuthenticated: true,

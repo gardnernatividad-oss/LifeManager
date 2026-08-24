@@ -111,13 +111,13 @@ El router actual sigue siendo V1 y está temporalmente roto por símbolos retira
 
 - Credential stuffing, spraying y brute force: respuesta uniforme, Argon2, rate limit por IP+cuenta, backoff y Turnstile escalonado.
 - Enumeración: registro/recovery/resend con mensajes y tiempos suficientemente neutrales.
-- Robo/fijación/replay de sesión: JWT corto en cookie `HttpOnly; Secure; SameSite`, rotación al autenticar/cambiar contraseña, logout server-aware cuando se concrete revocación y `/me` revalida cuenta ACTIVE.
+- Robo/fijación/replay de sesión: JWT de ocho horas en cookie `HttpOnly; Secure; SameSite`, material y CSRF nuevos en cada login, logout por eliminación local y `/me` revalida cuenta ACTIVE.
 - CSRF: Origin exacto, cookie double-submit ligada por digest al JWT y header obligatorio en métodos unsafe.
-- Deshabilitación/cambio de contraseña: invalidar sesiones mediante versión/epoch de seguridad o registro server-side aprobado en Stage 2.8.
+- Deshabilitación/cambio de contraseña: cuenta ACTIVE y huella HMAC del hash se verifican contra DB en cada request; cambiar el hash invalida todas las sesiones anteriores.
 - Verificación/reset: token aleatorio de alta entropía, digest DB, expiración, propósito, single-use atómico y revocación de tokens previos.
 - Aprobación: transición de estados server-side con locks y evento de auditoría; no confiar en body/global role frontend.
 
-Evidencia actual: Argon2 y validación JWT existen en V1, pero el token se persiste en `localStorage`; V2 debe reemplazarlo, no adaptarlo como arquitectura final.
+Evidencia Stage 2.8: V2 usa JWT de ocho horas exclusivamente en cookie HttpOnly, revalida ACTIVE/rol/hash contra DB y no persiste el token en storage JavaScript. HttpOnly evita exfiltración directa, pero un XSS activo aún puede originar requests; CSP y hardening XSS siguen pendientes.
 
 ## 8. Autorización, IDOR y GLOBAL_ADMIN
 
@@ -189,7 +189,7 @@ Un correo comprometido queda fuera del control completo del producto; se mitiga 
 ## 15. Browser, PWA y frontend
 
 - El bundle, variables `VITE_*`, requests y DevTools son públicos. Nunca contienen secretos.
-- V2 usa cookie HttpOnly y no `localStorage`; el token Bearer V1 actual es un riesgo HIGH ante XSS.
+- V2 usa cookie HttpOnly y no `localStorage`; el token Bearer pertenece al runtime V1 histórico y no al transporte V2 activo.
 - TanStack Query se limpia en logout/401 y debe separar cache keys por identidad/Workspace.
 - Service worker cachea únicamente shell/assets versionados; no API, respuestas autenticadas ni páginas con datos personales. Logout debe limpiar caches sensibles si llegaran a existir.
 - Definir CSP, frame-ancestors, nosniff, Referrer-Policy y Permissions-Policy en Cloudflare/Render.
@@ -247,9 +247,9 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 | ID | Activo | Amenaza / camino | Riesgo | Control actual | Control V2 requerido | Etapa | Verificación |
 |---|---|---|---|---|---|---|---|
 | AUTH-001 | Cuenta | Stuffing/brute force en login | HIGH | Stage 2.7: política central 8–128, Argon2id recomendado, verificación segura y rehash boundary | neutralidad login, rate limit, Turnstile/backoff | 2.8–2.10 | corpus, timing y HTTP multi-IP/cuenta |
-| AUTH-002 | Sesión | Robo JWT desde localStorage por XSS | HIGH | limpieza 401/logout V1 | cookie HttpOnly/Secure + CSP | 2.8, 2.12 | browser/XSS/cookie flags |
-| AUTH-003 | Sesión | CSRF sobre cookie V2 | HIGH | no aplica a Bearer V1 | double-submit, Origin exacto | 2.8 | CORS/CSRF HTTP real |
-| AUTH-004 | Cuenta | Sesión stale tras disable/password change | HIGH | `/me` V1 parcial | revalidación/epoch/revocación | 2.3, 2.8 | disable-session regression |
+| AUTH-002 | Sesión | Robo JWT desde storage/XSS | HIGH | Stage 2.8: HttpOnly, sin token JS, Secure productivo | CSP/hardening XSS | 2.12 | bundle/XSS/cookie flags |
+| AUTH-003 | Sesión | CSRF sobre cookie V2 | HIGH | Stage 2.8: double-submit ligado + Origin exacto + SameSite | pruebas browser finales | 2.12 | CORS/CSRF HTTP real |
+| AUTH-004 | Cuenta | Sesión stale tras disable/password change | HIGH | Stage 2.8: DB ACTIVE + credential fingerprint | session/device model si se amplía TTL | 2.12 | disable/reset regression |
 | ACT-001 | Tokens | Guess/replay verification/reset | HIGH | ambos purposes: 256-bit entropy, SHA-256 digest, TTL, revocación y single-use lock | rate limit, cleanup y gate integral | 2.9, 2.12–2.13 | concurrency/replay por purpose |
 | AUTHZ-001 | Workspace | IDOR con UUID foreign | CRITICAL | FKs estructurales | membership + scoped SQL + 404 masking | Workspace/verticales | matriz cross-user |
 | AUTHZ-002 | Cuenta | Mass assignment de actor/role/scope | CRITICAL | modelo restringe algunos valores | DTO forbid + server-derived fields | 2.11/verticales | forged-field tests |
@@ -313,7 +313,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 - **2.5:** verificación email y tokens single-use.
 - **2.6:** recovery/reset neutral y revocación.
 - **2.7:** policy central Unicode-safe, límite anti-DoS, Argon2id, rehash boundary y credential redaction completados.
-- **2.8:** cookies, CSRF, sesión/revocación.
+- **2.8:** cookie HttpOnly, CSRF/Origin, login/me/logout e invalidación por credencial completados.
 - **2.9:** rate limiting y fuerza bruta.
 - **2.10:** Turnstile.
 - **2.11:** validación, envelope, logging/redaction.

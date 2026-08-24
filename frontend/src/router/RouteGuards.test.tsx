@@ -11,7 +11,6 @@ vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 
 function authState(overrides: Partial<AuthState> = {}): AuthState {
   return {
-    accessToken: null,
     user: null,
     workspace: null,
     isAuthenticated: false,
@@ -50,7 +49,6 @@ describe("authentication route guards", () => {
 
   it("redirects an authenticated user away from Login", () => {
     vi.mocked(useAuth).mockReturnValue(authState({
-      accessToken: "token",
       user: testUser,
       isAuthenticated: true
     }));

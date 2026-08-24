@@ -3,20 +3,24 @@ import uuid
 from collections.abc import Generator
 from typing import Annotated
 
-from fastapi import Depends, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, Request, status
+from fastapi.security import APIKeyCookie
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.v2.errors import V2APIError
-from app.core.tokens import decode_access_token
+from app.core.config import settings
+from app.core.session_security import (
+    decode_session_token,
+    session_matches_password,
+)
 from app.db.session import SessionLocal
 from app.models import User, WorkspaceMember
 from app.models.enums import AccountStatus, GlobalRole, MembershipStatus
 
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v2/auth/login",
+session_cookie = APIKeyCookie(
+    name=settings.SESSION_COOKIE_NAME,
     auto_error=False,
 )
 
@@ -41,20 +45,22 @@ def _authentication_error() -> V2APIError:
 
 
 def get_current_account(
-    token: Annotated[str | None, Depends(oauth2_scheme)],
+    request: Request,
+    token: Annotated[str | None, Depends(session_cookie)],
     db: SessionDependency,
 ) -> User:
-    subject = decode_access_token(token)
-    try:
-        user_id = uuid.UUID(subject) if subject is not None else None
-    except (TypeError, ValueError):
-        user_id = None
-    if user_id is None:
+    claims = decode_session_token(token)
+    if claims is None:
         raise _authentication_error()
 
-    user = db.scalar(select(User).where(User.id == user_id))
-    if user is None:
+    user = db.scalar(select(User).where(User.id == claims.user_id))
+    if (
+        user is None
+        or user.account_status != AccountStatus.ACTIVE
+        or not session_matches_password(claims, user.hashed_password)
+    ):
         raise _authentication_error()
+    request.state.session_claims = claims
     return user
 
 

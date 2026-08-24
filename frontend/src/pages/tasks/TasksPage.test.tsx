@@ -31,7 +31,7 @@ const response: TaskListResponse = { items: [task], total: 21, page: 1, page_siz
 
 function Auth({ children, initial = workspace }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) {
   const [selected, setWorkspace] = useState(initial);
-  const value = useMemo<AuthState>(() => ({ accessToken: "token", user: testUser, workspace: selected, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace, clearSession: vi.fn(), setAuthenticatedUser: vi.fn() }), [selected]);
+  const value = useMemo<AuthState>(() => ({ user: testUser, workspace: selected, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace, clearSession: vi.fn(), setAuthenticatedUser: vi.fn() }), [selected]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 function Switcher() { const { setWorkspace } = useAuth(); return <button onClick={() => setWorkspace(otherWorkspace)}>Cambiar espacio</button>; }

@@ -19,6 +19,7 @@ from app.services.account_action_token_service import (
     generate_action_token,
     is_well_formed_action_token,
 )
+from app.services.session_service import invalidate_sessions_after_credential_change
 
 
 PASSWORD_RESET_TOKEN_LENGTH = ACTION_TOKEN_LENGTH
@@ -41,10 +42,6 @@ class IssuedPasswordReset:
 
 
 SessionInvalidationHook = Callable[[Session, User], None]
-
-
-def _no_session_invalidation(_db: Session, _user: User) -> None:
-    """Stage 2.8 will replace this boundary with session invalidation."""
 
 
 def _now() -> datetime:
@@ -155,7 +152,9 @@ def reset_password(
     raw_token: str,
     new_password: str,
     now: datetime | None = None,
-    session_invalidation_hook: SessionInvalidationHook = _no_session_invalidation,
+    session_invalidation_hook: SessionInvalidationHook = (
+        invalidate_sessions_after_credential_change
+    ),
 ) -> User:
     validate_password_policy(new_password)
     reset_at = now or _now()

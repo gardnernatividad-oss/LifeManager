@@ -14,7 +14,7 @@ vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 
 const setAuthenticatedUser = vi.fn();
 function auth(): AuthState {
-  return { accessToken: "token", user: testUser, workspace: null, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn(), setAuthenticatedUser };
+  return { user: testUser, workspace: null, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn(), setAuthenticatedUser };
 }
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

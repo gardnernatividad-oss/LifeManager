@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models.enums import AccountStatus
+from app.models.enums import AccountStatus, GlobalRole
 from app.core.password_policy import validate_password_policy
 
 
@@ -48,6 +48,29 @@ class RegistrationRequestAcknowledgement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     accepted: Literal[True] = True
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def clean_email(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+class AuthenticatedAccountRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: EmailStr
+    first_name: str
+    last_name: str
+    timezone: str
+    global_role: GlobalRole | None
 
 
 class EmailVerificationRequest(BaseModel):

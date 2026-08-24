@@ -1,10 +1,15 @@
 import axios from "axios";
 
-import { getAccessToken, handleUnauthorized } from "../services/authToken";
+import {
+  CSRF_HEADER_NAME,
+  handleUnauthorized,
+  readCsrfToken
+} from "../services/sessionTransport";
 import { env } from "../utils/env";
 
 export const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
+  withCredentials: true,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json"
@@ -12,10 +17,12 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const accessToken = getAccessToken();
-
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+  const method = config.method?.toUpperCase() ?? "GET";
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrfToken = readCsrfToken();
+    if (csrfToken) {
+      config.headers[CSRF_HEADER_NAME] = csrfToken;
+    }
   }
 
   return config;
@@ -26,8 +33,7 @@ apiClient.interceptors.response.use(
   async (error: unknown) => {
     if (
       axios.isAxiosError(error) &&
-      error.response?.status === 401 &&
-      getAccessToken()
+      error.response?.status === 401
     ) {
       await handleUnauthorized();
     }

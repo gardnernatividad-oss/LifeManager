@@ -11,7 +11,6 @@ vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 
 function authState(login: AuthState["login"]): AuthState {
   return {
-    accessToken: null,
     user: null,
     workspace: null,
     isAuthenticated: false,

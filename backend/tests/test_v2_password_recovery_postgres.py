@@ -13,6 +13,12 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
 from app.core.password_policy import PasswordPolicyError
+from app.core.session_security import (
+    create_session_token,
+    decode_session_token,
+    new_csrf_token,
+    session_matches_password,
+)
 from app.models import AccountActionToken, User, UserAccountStateEvent, Workspace
 from app.models.enums import AccountActionTokenType, AccountStatus
 from app.services.email_delivery import PasswordResetEmail, RecordingEmailDelivery
@@ -28,6 +34,7 @@ from app.services.password_recovery_service import (
     request_password_recovery,
     reset_password,
 )
+from app.services.session_service import InvalidCredentialsError, authenticate_session
 
 
 def _local_test_url() -> str:
@@ -178,6 +185,42 @@ def test_identical_passwords_have_distinct_argon2_hashes(db: Session) -> None:
     assert first.hashed_password != second.hashed_password
     assert verify_password("SharedPassword!", first.hashed_password)
     assert verify_password("SharedPassword!", second.hashed_password)
+
+
+def test_password_reset_invalidates_old_session_and_new_login_works(db: Session) -> None:
+    user = _active_user(db, password="OldPassword!")
+    old_session = create_session_token(
+        user_id=user.id,
+        hashed_password=user.hashed_password,
+        csrf_token=new_csrf_token(),
+    )
+    old_claims = decode_session_token(old_session)
+    assert old_claims is not None
+    issued = request_password_recovery(db, email=user.email)
+    assert issued is not None
+    reset_password(
+        db,
+        raw_token=issued.raw_token,
+        new_password="NewPassword!",
+    )
+    db.flush()
+
+    assert not session_matches_password(old_claims, user.hashed_password)
+    with pytest.raises(InvalidCredentialsError):
+        authenticate_session(db, email=user.email, password="OldPassword!")
+    assert authenticate_session(
+        db,
+        email=user.email,
+        password="NewPassword!",
+    ) is user
+    new_session = create_session_token(
+        user_id=user.id,
+        hashed_password=user.hashed_password,
+        csrf_token=new_csrf_token(),
+    )
+    new_claims = decode_session_token(new_session)
+    assert new_claims is not None
+    assert session_matches_password(new_claims, user.hashed_password)
 
 
 def test_reissue_revokes_old_token_and_new_token_resets(db: Session) -> None:

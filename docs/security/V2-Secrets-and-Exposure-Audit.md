@@ -18,7 +18,7 @@ Nunca se registran aquí valores de credenciales, cookies, tokens, URLs autentic
 - Los demás matches de URLs autenticadas pertenecen a `.env.example` o tests y usan material explícitamente ficticio.
 - El build frontend no contiene URLs PostgreSQL, claves privadas, secretos de servidor ni tokens literales.
 - El service worker precachea solamente shell y assets estáticos; no configura cache runtime de API.
-- V1 conserva el access token en `localStorage`; es deuda HIGH que Stage 2.8 debe retirar.
+- V1 histórico conservaba el access token en `localStorage`; Stage 2.8 retiró esa arquitectura de los paths activos V2.
 - No se encontró un secreto actual que active una condición de parada inmediata.
 
 ## 4. Hallazgos
@@ -26,7 +26,7 @@ Nunca se registran aquí valores de credenciales, cookies, tokens, URLs autentic
 | ID | Severidad | Estado | Evidencia | Alcance | Remediación | Etapa / verificación |
 |---|---|---|---|---|---|---|
 | `SEC-SECRET-001` | HIGH | ABIERTO — acción manual | `backend/alembic.ini` en commit `9811036d528b6df9a965072a51893acea9d5b612`; retirado en `b677ba58bcb15477548d5938e78bf0e1426d7b2b` | URL PostgreSQL con username, password, host local y database; alcanzable en historia que probablemente fue publicada | confirmar que fue desechable y nunca reutilizada; de lo contrario rotar todo rol/credencial coincidente; documentar revocación; luego evaluar limpieza de historia | 2.2 manual; evidencia del proveedor sin reutilizar el material expuesto |
-| `SEC-FE-001` | HIGH | ABIERTO — migración planificada | `frontend/src/services/authToken.ts`, `frontend/src/api/client.ts`, `frontend/src/store/AuthContext.tsx` y tests | robo de sesión V1 ante XSS por token persistente en Web Storage | reemplazar por sesión V2 en cookie HttpOnly/Secure/SameSite y CSRF; eliminar storage/attachment/restoration Bearer | 2.8; pruebas browser/HTTP y búsqueda sin usos residuales |
+| `SEC-FE-001` | HIGH | CERRADO PARA V2 ACTIVO EN STAGE 2.8 | cliente y `AuthContext` V2 | el antiguo token Bearer persistido en Web Storage era extraíble por XSS | sesión V2 en cookie HttpOnly/Secure/SameSite, CSRF ligado, sin storage/attachment/restoration Bearer | tests de transporte/contexto, build y scan sin usos activos |
 | `SEC-IGNORE-001` | LOW | CERRADO | `.gitignore` no cubría formatos comunes de claves/credenciales | commit accidental futuro | añadidos ignores de PEM/KEY/P12/PFX y JSON de credenciales/service accounts | 2.2; `git check-ignore` y ningún tracked afectado |
 | `SEC-CACHE-001` | LOW | CONTROL ACTUAL | `frontend/vite.config.ts`, build `dist/sw.js` temporal | cache PWA | mantener solo precache estático; prohibir runtime cache de API privada | 2.12; inspección de SW/build |
 | `SEC-CONFIG-001` | MEDIUM | ABIERTO — diseño V2 | configuración actual solo cubre secretos V1 | futuros secretos de CSRF, email, Turnstile, VAPID y scheduler | añadir únicamente como variables backend/proveedor secretas cuando se implementen | 2.3–2.12; startup/config tests |
@@ -72,7 +72,7 @@ Recomendación **A condicionada**: rotación/no reutilización primero; no reesc
 | scheduler HMAC secret futuro | SECRET | backend y scheduler secret stores separados |
 | `VITE_API_BASE_URL` | PÚBLICO | Cloudflare build environment; URL API sin credenciales |
 
-La configuración actual no implementa aún CSRF, Turnstile, email, VAPID o scheduler. No deben añadirse placeholders que aparenten ser secretos funcionales hasta su etapa.
+La configuración Stage 2.8 implementa cookies, CSRF, Origin y CORS sin un secreto CSRF separado: el binding usa `SECRET_KEY` exclusivamente en backend. Turnstile, proveedor real de email, VAPID y scheduler permanecen pendientes y no deben recibir placeholders que aparenten ser secretos funcionales antes de su etapa.
 
 ## 8. Frontend, build y DevTools
 
@@ -90,18 +90,18 @@ El bundle excede 500 kB minificado antes de gzip; es rendimiento, no hallazgo de
 
 Verificar Network, cookies, Local/Session Storage, IndexedDB, Cache Storage, service worker, React Query, source maps y errores. Logout/401 debe retirar sesión y cache de datos privados.
 
-## 9. Storage del navegador y deuda Stage 2.8
+## 9. Storage del navegador tras Stage 2.8
 
 Uso actual:
 
-- `frontend/src/services/authToken.ts`: lee, escribe y elimina `lifemanager.accessToken` en `localStorage`.
-- `frontend/src/api/client.ts`: obtiene ese token y agrega Bearer `Authorization`.
-- `frontend/src/store/AuthContext.tsx`: persiste tras login, restaura sesión, elimina en logout/401 y limpia TanStack Query.
+- La utilidad `authToken.ts` fue retirada del frontend activo.
+- `api/client.ts` usa `credentials: include`, no adjunta Bearer y agrega el header CSRF solo en métodos unsafe.
+- `AuthContext.tsx` mantiene identidad solo en memoria, restaura con `/api/v2/auth/me` y limpia TanStack Query en logout/401.
 - `frontend/src/store/AuthContext.test.tsx` y `frontend/src/test/setup.ts`: verifican/limpian el storage de prueba.
 
-No hay usos de `sessionStorage`, IndexedDB o cookies. TanStack Query permanece en memoria; no hay persister. No se encontraron logs del token.
+No hay credencial de autenticación en `localStorage`, `sessionStorage` o IndexedDB. La cookie de sesión HttpOnly no es accesible a JavaScript; la cookie CSRF legible no contiene la credencial. TanStack Query permanece en memoria y no hay persister. No se encontraron logs del token.
 
-Stage 2.8 debe retirar todos esos puntos, introducir cookie HttpOnly y CSRF según ADR-010, restaurar mediante endpoint autenticado sin leer token desde JS y actualizar tests. Solo un Workspace seleccionado u otra preferencia no sensible podrá persistirse si se aprueba.
+La deuda `SEC-FE-001` queda cerrada para los paths activos V2. Solo un Workspace seleccionado u otra preferencia no sensible podrá persistirse si se aprueba. HttpOnly no elimina el riesgo XSS: un script activo aún puede originar requests, por lo que CSP y hardening continúan pendientes.
 
 ## 10. Service worker y cache
 

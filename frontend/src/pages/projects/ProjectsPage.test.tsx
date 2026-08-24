@@ -64,7 +64,6 @@ function WorkspaceSwitchButton() {
 function StatefulAuth({ children, initialWorkspace }: PropsWithChildren<{ initialWorkspace: WorkspaceSummary | null }>) {
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const value = useMemo<AuthState>(() => ({
-    accessToken: "token",
     user: testUser,
     workspace,
     isAuthenticated: true,

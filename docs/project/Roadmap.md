@@ -29,7 +29,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 2 — Security foundation and identity | Stage 2.5 | Email verification | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.6 | Password recovery | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.7 | Password policy and hashing | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.8 | Session architecture | Pendiente |
+| Phase 2 — Security foundation and identity | Stage 2.8 | Session architecture | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.9 | Rate limiting and brute-force protection | Pendiente |
 | Phase 2 — Security foundation and identity | Stage 2.10 | Turnstile integration | Pendiente |
 | Phase 2 — Security foundation and identity | Stage 2.11 | Server validation and error handling | Pendiente |
@@ -41,7 +41,7 @@ El roadmap conservará exactamente estas columnas:
 - Completado
 - Pendiente
 
-Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model. Stage 2.2 auditó exposición y mantiene una acción manual antes de 2.13. Stages 2.3–2.6 establecieron estados, registro/aprobación, verificación y recovery/reset. Stage 2.7 centralizó la política 8–128 y Argon2id, con validación previa al hashing y preservación del token ante errores de política. Sesión, rate limiting y Turnstile permanecen en sus etapas asignadas.
+Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model. Stage 2.2 auditó exposición y mantiene una acción manual antes de 2.13. Stages 2.3–2.7 establecieron identidad, recovery y política Argon2id. Stage 2.8 sustituyó Bearer/localStorage por sesión cookie HttpOnly de ocho horas, CSRF ligado, CORS credentialed, restauración `/auth/me` e invalidación por cambio de credencial. Rate limiting y Turnstile permanecen en sus etapas asignadas.
 
 ## Referencia histórica
 

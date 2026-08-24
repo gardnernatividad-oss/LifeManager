@@ -22,7 +22,6 @@ const summary: HomeSummary = {
 };
 
 const authState: AuthState = {
-  accessToken: "token",
   user: testUser,
   workspace: null,
   isAuthenticated: true,

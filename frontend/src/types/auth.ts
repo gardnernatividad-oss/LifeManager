@@ -8,6 +8,7 @@ export interface AuthenticatedUser {
   is_verified?: boolean;
   created_at?: string;
   updated_at?: string;
+  global_role?: "GLOBAL_ADMIN" | null;
 }
 
 export interface WorkspaceSummary {
@@ -22,11 +23,6 @@ export interface WorkspaceSummary {
 export interface LoginCredentials {
   email: string;
   password: string;
-}
-
-export interface TokenResponse {
-  access_token: string;
-  token_type: "bearer";
 }
 
 export interface RegistrationPayload {

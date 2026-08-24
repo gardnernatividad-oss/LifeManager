@@ -16,8 +16,8 @@ export function Sidebar({ closeButtonRef, isMobile, isOpen, onClose }: SidebarPr
   const navigate = useNavigate();
   const location = useLocation();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     onClose(false);
     navigate("/login", { replace: true });
   }
@@ -75,7 +75,7 @@ export function Sidebar({ closeButtonRef, isMobile, isOpen, onClose }: SidebarPr
         ) : <div key={section.label}>{link(section)}</div>)}
       </nav>
       <div className="sidebar__footer">
-        <button className="sidebar__logout" type="button" onClick={handleLogout}>
+        <button className="sidebar__logout" type="button" onClick={() => void handleLogout()}>
           <span aria-hidden="true">↪</span><span>Cerrar sesión</span>
         </button>
       </div>

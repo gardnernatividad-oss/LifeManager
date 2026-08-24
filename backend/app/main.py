@@ -9,6 +9,7 @@ from app.api.v2.errors import (
     v2_api_error_handler,
     v2_unexpected_error_handler,
 )
+from app.api.v2.csrf import CSRFMiddleware
 from app.api.v2.router import api_router
 from app.core.config import settings
 
@@ -18,12 +19,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ALLOWED_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_credentials=True,
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Content-Type",
+        "Accept",
+        settings.CSRF_HEADER_NAME,
+    ],
 )
 
 app.add_exception_handler(V2APIError, v2_api_error_handler)

@@ -18,6 +18,7 @@ def test_production_database_url_and_safe_sql_logging_default() -> None:
 
     assert settings.DATABASE_URL == "postgresql://user:password@db.example/lifemanager"
     assert settings.SQL_ECHO is False
+    assert settings.session_cookie_secure is True
 
 
 def test_component_database_configuration_remains_supported() -> None:
@@ -32,6 +33,28 @@ def test_component_database_configuration_remains_supported() -> None:
     )
 
     assert settings.DB_HOST == "localhost"
+    assert settings.session_cookie_secure is False
+
+
+def test_cookie_cross_site_and_credentialed_cors_require_safe_configuration() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DATABASE_URL="postgresql://user:password@db.example/lifemanager",
+            SECRET_KEY=SECRET,
+            CORS_ALLOWED_ORIGINS=["*"],
+        )
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            DB_HOST="localhost",
+            DB_PORT=5432,
+            DB_NAME="lifemanager",
+            DB_USER="postgres",
+            DB_PASSWORD="password",
+            SECRET_KEY=SECRET,
+            SESSION_COOKIE_SAMESITE="none",
+        )
 
 
 @pytest.mark.parametrize("scheme", ["postgres://", "postgresql://"])

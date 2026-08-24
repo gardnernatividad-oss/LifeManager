@@ -49,7 +49,7 @@ describe("RegistrationPage", () => {
   });
 
   it("submits the exact payload and redirects to Login", async () => {
-    vi.mocked(authApi.registerUser).mockResolvedValue({ id: "u", email: "ada@example.com", first_name: "Ada", last_name: "Lovelace", timezone: "America/Lima" });
+    vi.mocked(authApi.registerUser).mockResolvedValue();
     mount(); const user = await fillValid();
     await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
     await waitFor(() => expect(authApi.registerUser).toHaveBeenCalledWith({ email: "ada@example.com", password: "secret", first_name: "Ada", last_name: "Lovelace" }));

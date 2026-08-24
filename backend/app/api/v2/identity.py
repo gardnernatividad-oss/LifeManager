@@ -1,15 +1,22 @@
 import uuid
 
-from fastapi import APIRouter, status
+from datetime import datetime, timedelta, timezone
 
-from app.api.v2.dependencies import GlobalAdmin, SessionDependency
+from fastapi import APIRouter, Response, status
+
+from app.api.v2.dependencies import GlobalAdmin, SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
+from app.core.config import settings
+from app.core.session_security import create_session_token, new_csrf_token
+from app.models.user import User
 from app.schemas.v2_identity import (
+    AuthenticatedAccountRead,
     AdminAccountSummary,
     AdminRegistrationList,
     EmailVerificationRequest,
     EmailVerificationResendRequest,
     EmailVerificationResponse,
+    LoginRequest,
     PasswordRecoveryRequest,
     PasswordResetRequest,
     PasswordResetResponse,
@@ -44,9 +51,58 @@ from app.services.password_recovery_service import (
     request_password_recovery,
     reset_password,
 )
+from app.services.session_service import InvalidCredentialsError, authenticate_session
 
 
 router = APIRouter()
+
+
+def _set_session_cookies(response: Response, *, user: User) -> None:
+    csrf_token = new_csrf_token()
+    expires = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.SESSION_EXPIRE_MINUTES
+    )
+    token = create_session_token(
+        user_id=user.id,
+        hashed_password=user.hashed_password,
+        csrf_token=csrf_token,
+    )
+    common = {
+        "max_age": settings.SESSION_EXPIRE_MINUTES * 60,
+        "expires": expires,
+        "path": "/",
+        "secure": settings.session_cookie_secure,
+        "samesite": settings.SESSION_COOKIE_SAMESITE,
+    }
+    response.set_cookie(
+        settings.SESSION_COOKIE_NAME,
+        token,
+        httponly=True,
+        **common,
+    )
+    response.set_cookie(
+        settings.CSRF_COOKIE_NAME,
+        csrf_token,
+        httponly=False,
+        **common,
+    )
+
+
+def _clear_session_cookies(response: Response) -> None:
+    for name, httponly in (
+        (settings.SESSION_COOKIE_NAME, True),
+        (settings.CSRF_COOKIE_NAME, False),
+    ):
+        response.set_cookie(
+            name,
+            "",
+            max_age=0,
+            expires=0,
+            path="/",
+            secure=settings.session_cookie_secure,
+            httponly=httponly,
+            samesite=settings.SESSION_COOKIE_SAMESITE,
+        )
 
 
 def _service_error(error: Exception) -> V2APIError:
@@ -67,6 +123,56 @@ def _service_error(error: Exception) -> V2APIError:
         code="ACCOUNT_STATE_CONFLICT",
         message="La cuenta cambió o no admite esta acción.",
     )
+
+
+@router.post(
+    "/auth/login",
+    response_model=AuthenticatedAccountRead,
+    tags=["V2 Authentication"],
+)
+def login(
+    credentials: LoginRequest,
+    response: Response,
+    db: SessionDependency,
+) -> AuthenticatedAccountRead:
+    try:
+        user = authenticate_session(
+            db,
+            email=str(credentials.email),
+            password=credentials.password,
+        )
+        db.commit()
+        db.refresh(user)
+    except InvalidCredentialsError as error:
+        db.rollback()
+        raise V2APIError(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="INVALID_CREDENTIALS",
+            message="Correo o contraseña incorrectos.",
+        ) from error
+    except Exception:
+        db.rollback()
+        raise
+    _set_session_cookies(response, user=user)
+    return AuthenticatedAccountRead.model_validate(user)
+
+
+@router.get(
+    "/me",
+    response_model=AuthenticatedAccountRead,
+    tags=["V2 Authentication"],
+)
+def current_account(account: UsableAccount) -> AuthenticatedAccountRead:
+    return AuthenticatedAccountRead.model_validate(account)
+
+
+@router.post(
+    "/auth/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["V2 Authentication"],
+)
+def logout(response: Response) -> None:
+    _clear_session_cookies(response)
 
 
 @router.post(
