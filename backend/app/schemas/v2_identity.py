@@ -72,6 +72,30 @@ class EmailVerificationResendRequest(BaseModel):
         return value.strip().lower() if isinstance(value, str) else value
 
 
+class PasswordRecoveryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def clean_email(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=512)
+    new_password: str
+
+
+class PasswordResetResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password_reset: Literal[True] = True
+
+
 class AdminAccountSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

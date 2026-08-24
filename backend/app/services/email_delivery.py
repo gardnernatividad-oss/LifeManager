@@ -9,8 +9,16 @@ class VerificationEmail:
     raw_token: str
 
 
+@dataclass(frozen=True)
+class PasswordResetEmail:
+    recipient: str
+    raw_token: str
+
+
 class EmailDelivery(Protocol):
     def send_verification_email(self, message: VerificationEmail) -> None: ...
+
+    def send_password_reset_email(self, message: PasswordResetEmail) -> None: ...
 
 
 class DisabledEmailDelivery:
@@ -19,14 +27,20 @@ class DisabledEmailDelivery:
     def send_verification_email(self, message: VerificationEmail) -> None:
         del message
 
+    def send_password_reset_email(self, message: PasswordResetEmail) -> None:
+        del message
+
 
 @dataclass
 class RecordingEmailDelivery:
     """Development/test adapter; never configured as the production default."""
 
-    messages: list[VerificationEmail] = field(default_factory=list)
+    messages: list[VerificationEmail | PasswordResetEmail] = field(default_factory=list)
 
     def send_verification_email(self, message: VerificationEmail) -> None:
+        self.messages.append(message)
+
+    def send_password_reset_email(self, message: PasswordResetEmail) -> None:
         self.messages.append(message)
 
 
@@ -34,6 +48,14 @@ def build_verification_url(*, frontend_base_url: str, raw_token: str) -> str:
     """Build the future frontend link without embedding identity information."""
     return (
         f"{frontend_base_url.rstrip('/')}/verificar-correo"
+        f"?token={quote(raw_token, safe='')}"
+    )
+
+
+def build_password_reset_url(*, frontend_base_url: str, raw_token: str) -> str:
+    """Build the future reset link without embedding account information."""
+    return (
+        f"{frontend_base_url.rstrip('/')}/restablecer-contrasena"
         f"?token={quote(raw_token, safe='')}"
     )
 

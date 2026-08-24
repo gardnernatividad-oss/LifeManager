@@ -293,6 +293,8 @@ En V2 inicial, el orchestration service devuelve una instrucción de entrega sin
 
 Stage 2.5 materializa esta frontera con una interfaz provider-neutral y un adapter sin entrega externa como default seguro. La selección de proveedor gratuito, credenciales y `PUBLIC_FRONTEND_BASE_URL` sigue siendo configuración operativa pendiente; ninguna base localhost queda embebida. El link builder recibe la base explícitamente y añade únicamente el token. Un cambio futuro de email deberá revocar todos los action tokens del email anterior antes de emitir uno nuevo.
 
+Stage 2.6 amplía la misma interfaz para password reset y reutiliza `AccountActionToken` con purpose aislado. El reset no crea un evento de estado porque no cambia `account_status`; un security-event log persistente requerirá diseño posterior. El servicio invoca un hook de invalidación de sesión actualmente no-op: Stage 2.8 debe reemplazarlo por la revocación aprobada sin alterar la transacción de password/token. Hasta entonces, Bearer JWT ya emitidos no se invalidan inmediatamente y conservan su expiración existente.
+
 ## 20. Configuración y secretos
 
 Backend environment secrets: `DATABASE_URL`, `SECRET_KEY`, clave de cifrado push, VAPID private key, email API secret, scheduler HMAC secret, Turnstile secret y origins. Viven en Render/secret manager y `.env` local ignorado.

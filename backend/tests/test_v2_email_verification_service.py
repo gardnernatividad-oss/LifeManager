@@ -66,7 +66,7 @@ def test_token_generation_uses_32_random_bytes_and_sha256_digest() -> None:
     db = MagicMock()
     user = _user()
     with patch(
-        "app.services.email_verification_service.secrets.token_urlsafe",
+        "app.services.account_action_token_service.secrets.token_urlsafe",
         return_value=RAW_TOKEN,
     ) as generator:
         issued = issue_email_verification_token(db, user=user, now=NOW)
@@ -162,7 +162,7 @@ def test_resend_normalizes_email_revokes_old_and_issues_new_token() -> None:
     db.scalar.side_effect = [user.id, user]
     db.scalars.return_value.all.return_value = [old_token]
     with patch(
-        "app.services.email_verification_service.secrets.token_urlsafe",
+        "app.services.account_action_token_service.secrets.token_urlsafe",
         return_value=RAW_TOKEN,
     ):
         issued = resend_email_verification(

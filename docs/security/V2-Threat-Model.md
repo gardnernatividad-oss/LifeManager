@@ -250,7 +250,7 @@ Caps server-side: recurrence expected count/range; IDs por batch; page_size; ran
 | AUTH-002 | Sesión | Robo JWT desde localStorage por XSS | HIGH | limpieza 401/logout V1 | cookie HttpOnly/Secure + CSP | 2.8, 2.12 | browser/XSS/cookie flags |
 | AUTH-003 | Sesión | CSRF sobre cookie V2 | HIGH | no aplica a Bearer V1 | double-submit, Origin exacto | 2.8 | CORS/CSRF HTTP real |
 | AUTH-004 | Cuenta | Sesión stale tras disable/password change | HIGH | `/me` V1 parcial | revalidación/epoch/revocación | 2.3, 2.8 | disable-session regression |
-| ACT-001 | Tokens | Guess/replay verification/reset | HIGH | verificación: 256-bit entropy, SHA-256 digest, TTL, purpose y single-use lock | completar los mismos controles para recovery | 2.6 | concurrency/replay por purpose |
+| ACT-001 | Tokens | Guess/replay verification/reset | HIGH | ambos purposes: 256-bit entropy, SHA-256 digest, TTL, revocación y single-use lock | rate limit, cleanup y gate integral | 2.9, 2.12–2.13 | concurrency/replay por purpose |
 | AUTHZ-001 | Workspace | IDOR con UUID foreign | CRITICAL | FKs estructurales | membership + scoped SQL + 404 masking | Workspace/verticales | matriz cross-user |
 | AUTHZ-002 | Cuenta | Mass assignment de actor/role/scope | CRITICAL | modelo restringe algunos valores | DTO forbid + server-derived fields | 2.11/verticales | forged-field tests |
 | ADMIN-001 | Plataforma | Forjar GLOBAL_ADMIN | CRITICAL | check/unique DB; dependency/DTO y pruebas negativas Stage 2.3–2.4 | completar bootstrap operativo y gates | 2.13 | ordinary→admin denial; disabled admin denial; sin membership implícita |

@@ -10,11 +10,18 @@ from app.schemas.v2_identity import (
     EmailVerificationRequest,
     EmailVerificationResendRequest,
     EmailVerificationResponse,
+    PasswordRecoveryRequest,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RegistrationRequestCreate,
     RegistrationRequestAcknowledgement,
     RejectAccountRequest,
 )
-from app.services.email_delivery import VerificationEmail, email_delivery
+from app.services.email_delivery import (
+    PasswordResetEmail,
+    VerificationEmail,
+    email_delivery,
+)
 from app.services.email_verification_service import (
     InvalidEmailVerificationTokenError,
     create_registration_with_verification,
@@ -30,6 +37,12 @@ from app.services.v2_identity import (
     get_admin_account,
     list_pending_registration_requests,
     reject_registration_request,
+)
+from app.services.password_recovery_service import (
+    InvalidPasswordResetTokenError,
+    PasswordRecoveryIssuanceConflictError,
+    request_password_recovery,
+    reset_password,
 )
 
 
@@ -138,6 +151,64 @@ def resend_verification(
             )
         )
     return RegistrationRequestAcknowledgement()
+
+
+@router.post(
+    "/auth/password-recovery-requests",
+    response_model=RegistrationRequestAcknowledgement,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["V2 Authentication"],
+)
+def request_password_reset(
+    recovery_in: PasswordRecoveryRequest,
+    db: SessionDependency,
+) -> RegistrationRequestAcknowledgement:
+    try:
+        issued = request_password_recovery(db, email=str(recovery_in.email))
+        db.commit()
+    except PasswordRecoveryIssuanceConflictError:
+        db.rollback()
+        return RegistrationRequestAcknowledgement()
+    except Exception:
+        db.rollback()
+        raise
+    if issued is not None:
+        email_delivery.send_password_reset_email(
+            PasswordResetEmail(
+                recipient=issued.recipient,
+                raw_token=issued.raw_token,
+            )
+        )
+    return RegistrationRequestAcknowledgement()
+
+
+@router.post(
+    "/auth/password-resets",
+    response_model=PasswordResetResponse,
+    tags=["V2 Authentication"],
+)
+def perform_password_reset(
+    reset_in: PasswordResetRequest,
+    db: SessionDependency,
+) -> PasswordResetResponse:
+    try:
+        reset_password(
+            db,
+            raw_token=reset_in.token,
+            new_password=reset_in.new_password,
+        )
+        db.commit()
+    except InvalidPasswordResetTokenError as error:
+        db.rollback()
+        raise V2APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="INVALID_PASSWORD_RESET_TOKEN",
+            message="El enlace para restablecer la contraseña no es válido.",
+        ) from error
+    except Exception:
+        db.rollback()
+        raise
+    return PasswordResetResponse()
 
 
 @router.get(
