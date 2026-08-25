@@ -11,6 +11,7 @@ from app.api.v2.dependencies import (
 from app.api.v2.errors import V2APIError
 from app.models import User, WorkspaceMember
 from app.schemas.v2_workspace_member import WorkspaceMemberRead
+from app.schemas.v2_workspace_lifecycle import MemberExitResolution
 from app.services.v2_workspace_member import (
     WorkspaceMemberConflictError,
     WorkspaceMemberNotFoundError,
@@ -91,6 +92,7 @@ def remove_member(
     user_id: uuid.UUID,
     db: SessionDependency,
     owner_access: WorkspaceOwner,
+    resolution: MemberExitResolution | None = None,
 ) -> WorkspaceMemberRead:
     del workspace_id
     try:
@@ -98,6 +100,7 @@ def remove_member(
             db,
             owner_access=owner_access,
             target_user_id=user_id,
+            resolution=resolution,
         )
         db.commit()
         db.refresh(membership)
@@ -124,6 +127,7 @@ def leave_workspace(
     db: SessionDependency,
     current_account: UsableAccount,
     access: ActiveWorkspaceMembership,
+    resolution: MemberExitResolution | None = None,
 ) -> WorkspaceMemberRead:
     del workspace_id
     try:
@@ -131,6 +135,7 @@ def leave_workspace(
             db,
             access=access,
             account=current_account,
+            resolution=resolution,
         )
         db.commit()
         db.refresh(membership)

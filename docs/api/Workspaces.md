@@ -82,9 +82,31 @@ Una acción repetida produce conflicto y una cuenta `GLOBAL_ADMIN` carece de
 bypass. Personal no admite estas rutas colaborativas. Una invitación posterior
 puede reactivar la misma fila y restablece privacidad `HIDE`.
 
+## Lifecycle avanzado Shared
+
+```text
+GET    /api/v2/workspaces/{workspace_id}/lifecycle
+POST   /api/v2/workspaces/{workspace_id}/transfer-ownership
+POST   /api/v2/workspaces/{workspace_id}/deactivate
+DELETE /api/v2/workspaces/{workspace_id}
+```
+
+`lifecycle` devuelve estado y `can_delete` calculado server-side. Transferir
+exige otro Miembro y cuenta `ACTIVE` del mismo Workspace; el owner anterior
+permanece Miembro. Desactivar conserva datos y membresías, cancela invitaciones
+`PENDING` y bloquea toda operación ordinaria. `DELETE` es hard delete y solo
+funciona cuando no queda ningún registro funcional/histórico; la membresía
+estructural del owner no bloquea por sí sola.
+
+Los bodies opcionales de retiro/salida aceptan una resolución estricta por
+Tareas, Pendientes, Proyectos y Etapas con `REASSIGN` o `DELETE`, o
+`delete_all=true`. `REASSIGN` exige destino ACTIVE del mismo Workspace.
+`delete_all` afecta únicamente contenido futuro elegible del miembro. La
+participación futura en Activities se marca `REMOVED` y sus reminders se
+desactivan; organizer e historia no se reescriben.
+
 ## Diferido
 
 Listado/selector general de Workspaces, interfaz de administración, privacidad,
-transferencia, eliminación Shared, tratamiento de responsabilidades futuras,
-email y notificaciones permanecen diferidos. Transferencia, eliminación y
-responsabilidades pertenecen a Stage 3.5; selector e interfaz a 3.6/13.3.
+reactivación, email y notificaciones permanecen diferidos. Selector, gestión de
+inactivos y eventual reactivación pertenecen a 3.6/13.3.

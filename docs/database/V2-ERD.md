@@ -88,6 +88,8 @@ erDiagram
         uuid id PK
         varchar kind
         uuid owner_user_id FK
+        varchar lifecycle
+        timestamptz deactivated_at
         integer lock_version
     }
     WORKSPACE_MEMBER {

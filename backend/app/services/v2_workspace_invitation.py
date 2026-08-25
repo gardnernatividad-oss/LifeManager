@@ -15,6 +15,7 @@ from app.models.enums import (
     InvitationStatus,
     MembershipStatus,
     WorkspaceKind,
+    WorkspaceLifecycle,
 )
 from app.schemas.v2_workspace_invitation import WorkspaceInvitationCreate
 from app.services.v2_workspace import WorkspaceAccess
@@ -55,7 +56,10 @@ def _new_token_digest() -> bytes:
 
 
 def _require_shared(workspace: Workspace) -> None:
-    if workspace.kind != WorkspaceKind.SHARED:
+    if (
+        workspace.kind != WorkspaceKind.SHARED
+        or workspace.lifecycle not in (None, WorkspaceLifecycle.ACTIVE)
+    ):
         raise WorkspaceInvitationConflictError(
             "Personal workspace does not support invitations"
         )
@@ -189,6 +193,7 @@ def list_current_user_invitations(
             WorkspaceInvitation.status == InvitationStatus.PENDING,
             WorkspaceInvitation.expires_at > current_time,
             Workspace.kind == WorkspaceKind.SHARED,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
         )
         .order_by(
             WorkspaceInvitation.created_at.desc(),
@@ -310,6 +315,7 @@ def cancel_workspace_invitation(
             Workspace.id == invitation.workspace_id,
             Workspace.owner_user_id == owner.id,
             Workspace.kind == WorkspaceKind.SHARED,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
         )
         .with_for_update()
     )

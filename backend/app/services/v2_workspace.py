@@ -6,7 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import User, Workspace, WorkspaceMember
-from app.models.enums import AccountStatus, MembershipStatus, WorkspaceKind
+from app.models.enums import (
+    AccountStatus,
+    MembershipStatus,
+    WorkspaceKind,
+    WorkspaceLifecycle,
+)
 from app.schemas.v2_workspace import SharedWorkspaceCreate
 
 
@@ -82,6 +87,7 @@ def resolve_active_workspace_access(
         )
         .where(
             Workspace.id == workspace_id,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
             WorkspaceMember.user_id == account.id,
             WorkspaceMember.status == MembershipStatus.ACTIVE,
         )

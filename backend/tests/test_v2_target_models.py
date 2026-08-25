@@ -36,6 +36,10 @@ def test_workspace_and_membership_invariants_are_structural() -> None:
     assert "uq_workspace_members_workspace_user" in names(WorkspaceMember.__table__, UniqueConstraint)
     assert "uq_workspace_members_id_workspace" in names(WorkspaceMember.__table__, UniqueConstraint)
     assert "ck_workspace_members_lifecycle_consistent" in names(WorkspaceMember.__table__, CheckConstraint)
+    assert "ck_workspaces_lifecycle_valid" in names(Workspace.__table__, CheckConstraint)
+    assert "ck_workspaces_lifecycle_consistent" in names(Workspace.__table__, CheckConstraint)
+    assert "ck_workspaces_personal_active" in names(Workspace.__table__, CheckConstraint)
+    assert Workspace.__table__.c.lifecycle.server_default is not None
 
 
 def test_task_occurrence_and_same_workspace_constraints_exist() -> None:

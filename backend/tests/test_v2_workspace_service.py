@@ -12,6 +12,7 @@ from app.models.enums import (
     GlobalRole,
     MembershipStatus,
     WorkspaceKind,
+    WorkspaceLifecycle,
 )
 from app.services.v2_workspace import (
     PersonalWorkspaceInvariantError,
@@ -203,4 +204,19 @@ def test_create_shared_workspace_rejects_non_active_creator() -> None:
         )
     db.add.assert_not_called()
     db.flush.assert_not_called()
-    create_shared_workspace,
+
+
+def test_inactive_workspace_is_not_operationally_accessible() -> None:
+    db = MagicMock(spec=Session)
+    account = _account()
+    workspace = _workspace(account, kind=WorkspaceKind.SHARED)
+    workspace.lifecycle = WorkspaceLifecycle.INACTIVE
+    db.execute.return_value.one_or_none.return_value = None
+
+    with pytest.raises(WorkspaceAccessNotFoundError):
+        resolve_active_workspace_access(
+            db, account=account, workspace_id=workspace.id
+        )
+
+    statement = db.execute.call_args.args[0]
+    assert WorkspaceLifecycle.ACTIVE in statement.compile().params.values()

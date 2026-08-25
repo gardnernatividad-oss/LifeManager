@@ -65,6 +65,14 @@ Stage 3.3 añadió el lifecycle autenticado de invitaciones Shared para cuentas 
 
 Stage 3.4 completó el lifecycle ordinario de membresías Shared: cualquier Miembro `ACTIVE` puede consultar la lista mínima de miembros; un Miembro ordinario puede salir y el Propietario puede retirar a otro Miembro. Propietario/Miembro son roles visibles derivados de `owner_user_id`; V2 no persiste `WorkspaceRole`, y `GLOBAL_ADMIN` permanece independiente y sin bypass. La fila no se elimina: pasa a `LEFT` o `REMOVED`, conserva historia y privacidad almacenada, fija `ended_at` e invalida inmediatamente el acceso. El Propietario no puede salir ni ser retirado y Personal no expone estas operaciones. El reingreso mediante una invitación nueva conserva la semántica de Stage 3.3. El gate corrigió además el aislamiento de bases PostgreSQL automatizadas. La transferencia, eliminación y resolución transaccional de responsabilidades futuras quedan para Stage 3.5; la interfaz visible para administrar Workspaces se mantiene en 3.6/13.3.
 
+Stage 3.5 completó el lifecycle avanzado Shared. La propiedad se transfiere a
+otro Miembro ACTIVE sin expulsar al owner anterior. Un Workspace con datos se
+desactiva y conserva; uno actualmente vacío puede eliminarse físicamente tras
+revalidación server-side. Cuenta, membresía y Workspace deben estar ACTIVE para
+operar. Salida/retiro resuelven atómicamente responsabilidades futuras y
+preservan historia. La gestión visual de activos/inactivos y una eventual
+reactivación siguen en Stage 3.6.
+
 Tras completar Stage 3.3, el roadmap V2 fue reagrupado en bloques futuros más amplios y coherentes. La reorganización no elimina, simplifica ni desplaza funcionalidad fuera de V2: conserva requisitos funcionales, técnicos, de seguridad, UX/PWA, QA y publicación. La trazabilidad detallada se mantiene en [`V2-Roadmap-Regrouping-Traceability.md`](V2-Roadmap-Regrouping-Traceability.md).
 
 ## Principios

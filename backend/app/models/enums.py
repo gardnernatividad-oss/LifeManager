@@ -22,6 +22,11 @@ class WorkspaceKind(StringEnum):
     SHARED = "SHARED"
 
 
+class WorkspaceLifecycle(StringEnum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+
 class MembershipStatus(StringEnum):
     ACTIVE = "ACTIVE"
     LEFT = "LEFT"

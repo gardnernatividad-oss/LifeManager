@@ -472,6 +472,16 @@ salir. Owner, Personal y `GLOBAL_ADMIN` no tienen caminos alternativos. Una
 invitación nueva reactiva la misma fila y restablece `HIDE`. Stage 3.5 conserva
 la responsabilidad de transferencia, eliminación Shared y contenido futuro.
 
+Stage 3.5 implementa transferencia de propiedad, desactivación conservadora,
+hard delete exclusivamente vacío y resolución atómica de responsabilidades
+futuras. Workspace `INACTIVE` conserva todo el grafo y queda fuera de la
+autorización operacional. La elegibilidad de borrado comprueba en base todos
+los recursos funcionales e históricos; únicamente la membresía estructural del
+owner no bloquea. Salida/retiro resuelve Tareas, Pendientes, liderazgo de
+Proyectos y Etapas mediante reasignación o eliminación segura; participantes y
+recordatorios de Activities futuras se retiran/desactivan, mientras organizer e
+historia se preservan.
+
 ## 32. Decisiones y límites
 
 ADRs vinculadas:

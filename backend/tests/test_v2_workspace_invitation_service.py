@@ -14,6 +14,7 @@ from app.models.enums import (
     InvitationStatus,
     MembershipStatus,
     WorkspaceKind,
+    WorkspaceLifecycle,
 )
 from app.schemas.v2_workspace_invitation import WorkspaceInvitationCreate
 from app.services.v2_workspace import WorkspaceAccess
@@ -146,3 +147,20 @@ def test_disabled_recipient_cannot_accept_without_query() -> None:
             db, invitation_id=uuid.uuid4(), recipient=recipient, now=NOW
         )
     db.scalar.assert_not_called()
+
+
+def test_inactive_workspace_cannot_create_invitation() -> None:
+    db = MagicMock(spec=Session)
+    access = _access()
+    access.workspace.lifecycle = WorkspaceLifecycle.INACTIVE
+
+    with pytest.raises(WorkspaceInvitationConflictError):
+        create_workspace_invitation(
+            db,
+            owner_access=access,
+            invitation_in=WorkspaceInvitationCreate(email="member@example.com"),
+            now=NOW,
+        )
+
+    db.scalar.assert_not_called()
+    db.flush.assert_not_called()

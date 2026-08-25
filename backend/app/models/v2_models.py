@@ -20,7 +20,7 @@ from app.models.enums import (
     DeliveryStatus, GenerationEntityType, GenerationPattern, GlobalRole,
     HistoryEventType, InvitationStatus, MembershipStatus, NotificationType,
     ParticipantCalendarStatus, ReminderType, ScheduleKind, TaskResult,
-    WorkspaceKind,
+    WorkspaceKind, WorkspaceLifecycle,
 )
 
 
@@ -108,13 +108,19 @@ class Workspace(BaseEntity):
     __table_args__ = (
         CheckConstraint("length(btrim(name)) > 0", name="ck_workspaces_name_not_blank"),
         _enum_check("kind", WorkspaceKind, "ck_workspaces_kind_valid"),
+        _enum_check("lifecycle", WorkspaceLifecycle, "ck_workspaces_lifecycle_valid"),
+        CheckConstraint("(lifecycle = 'ACTIVE' AND deactivated_at IS NULL) OR (lifecycle = 'INACTIVE' AND deactivated_at IS NOT NULL)", name="ck_workspaces_lifecycle_consistent"),
+        CheckConstraint("kind = 'SHARED' OR lifecycle = 'ACTIVE'", name="ck_workspaces_personal_active"),
         CheckConstraint("lock_version > 0", name="ck_workspaces_lock_version_positive"),
         Index("uq_workspaces_personal_owner", "owner_user_id", unique=True, postgresql_where=text("kind = 'PERSONAL'")),
         Index("ix_workspaces_owner_kind_id", "owner_user_id", "kind", "id"),
+        Index("ix_workspaces_owner_lifecycle_kind_id", "owner_user_id", "lifecycle", "kind", "id"),
     )
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     kind: Mapped[WorkspaceKind] = mapped_column(String(20), default=WorkspaceKind.PERSONAL, server_default=text("'PERSONAL'"), nullable=False)
     owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    lifecycle: Mapped[WorkspaceLifecycle] = mapped_column(String(16), default=WorkspaceLifecycle.ACTIVE, server_default=text("'ACTIVE'"), nullable=False)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
     members: Mapped[list[WorkspaceMember]] = relationship(back_populates="workspace", passive_deletes=True)
     categories: Mapped[list[Category]] = relationship(back_populates="workspace", passive_deletes=True)

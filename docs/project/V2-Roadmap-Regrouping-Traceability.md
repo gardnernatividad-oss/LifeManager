@@ -81,7 +81,7 @@ Stage 1.7 se restaura entre 1.6 y 1.8 con respaldo documental, y se añaden
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
 | 3.4 | Listar miembros; lifecycle ACTIVE/LEFT/REMOVED; salida voluntaria; retiro por owner; preservar historia; cortar acceso inmediatamente; reingreso mediante invitación nueva; privacidad inicial segura. |
-| 3.5 | Transferencia de propiedad con locks; prohibición de salida del owner; eliminación Shared controlada; análisis/reasignación o eliminación de Tareas, Pendientes, Etapas y Activities futuras; `Eliminar todo`; conservación histórica. |
+| 3.5 | Completado: transferencia de propiedad con locks; prohibición de salida del owner; desactivación Shared conservadora; hard delete solo actualmente vacío; análisis/reasignación o eliminación de Tareas, Pendientes, Etapas y Activities futuras; `Eliminar todo`; conservación histórica. |
 | 3.6 | Listado y selector multi-Workspace; rol visible derivado Propietario/Miembro; integración de scopes globales y por Workspace; permisos reutilizables; separación estricta de `GLOBAL_ADMIN`. |
 | 3.7 | Matrices owner/member/nonmember/admin; IDOR, concurrencia, lifecycle, aislamiento, Personal invariants, PostgreSQL y gate funcional Workspace. |
 

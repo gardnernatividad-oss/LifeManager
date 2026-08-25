@@ -97,7 +97,13 @@ Token de un solo uso para `EMAIL_VERIFICATION` o `PASSWORD_RESET`.
 
 ### 4.1 `workspaces`
 
-`id UUID PK`, `name VARCHAR(150) NOT NULL`, `kind VARCHAR(20) NOT NULL`, `owner_user_id UUID NOT NULL FK users RESTRICT`, `lock_version INTEGER NOT NULL DEFAULT 1`, auditoría.
+`id UUID PK`, `name VARCHAR(150) NOT NULL`, `kind VARCHAR(20) NOT NULL`, `owner_user_id UUID NOT NULL FK users RESTRICT`, `lifecycle VARCHAR(16) NOT NULL DEFAULT 'ACTIVE'`, `deactivated_at TIMESTAMPTZ NULL`, `lock_version INTEGER NOT NULL DEFAULT 1`, auditoría.
+
+`lifecycle` admite `ACTIVE`/`INACTIVE`; timestamp y estado son consistentes y
+Personal permanece siempre ACTIVE. Desactivar Shared conserva el grafo. Hard
+delete solo se permite si una consulta central no encuentra recursos
+funcionales/históricos ni membresías de colaboración; la membresía estructural
+del owner se elimina por cascade y no bloquea por sí sola.
 
 Kinds: `PERSONAL`, `SHARED`.
 
@@ -409,7 +415,7 @@ Transferencia: lock Workspace, membresía de propietario actual y nueva persona 
 | Entidad | Política V2 |
 |---|---|
 | User | DISABLED si tiene historia; hard delete solo registro nunca activado y sin referencias |
-| Workspace | hard delete solo flujo administrativo explícito sin historia valiosa; normalmente conservar |
+| Workspace | Shared con datos/historia pasa a INACTIVE; hard delete solo si actualmente está vacío. Personal permanece ACTIVE y no admite ambas operaciones |
 | WorkspaceMember | ACTIVE/LEFT/REMOVED; no hard delete después de uso |
 | Invitation | conservar estado hasta retención; luego hard delete |
 | Category | Active/Inactive; hard delete solo sin referencias |

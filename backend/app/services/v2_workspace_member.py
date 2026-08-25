@@ -6,8 +6,9 @@ from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.models import User, Workspace, WorkspaceMember
-from app.models.enums import MembershipStatus, WorkspaceKind
+from app.models.enums import MembershipStatus, WorkspaceKind, WorkspaceLifecycle
 from app.services.v2_workspace import WorkspaceAccess
+from app.schemas.v2_workspace_lifecycle import MemberExitResolution
 
 
 class WorkspaceMemberNotFoundError(ValueError):
@@ -64,6 +65,7 @@ def remove_workspace_member(
     *,
     owner_access: WorkspaceAccess,
     target_user_id: uuid.UUID,
+    resolution: MemberExitResolution | None = None,
     now: datetime | None = None,
 ) -> tuple[WorkspaceMember, User]:
     workspace = db.scalar(
@@ -71,6 +73,7 @@ def remove_workspace_member(
         .where(
             Workspace.id == owner_access.workspace.id,
             Workspace.owner_user_id == owner_access.membership.user_id,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
         )
         .with_for_update()
     )
@@ -96,6 +99,23 @@ def remove_workspace_member(
     if membership.status != MembershipStatus.ACTIVE:
         raise WorkspaceMemberConflictError("Workspace member is not active")
 
+    from app.services.v2_workspace_lifecycle import (
+        WorkspaceLifecycleConflictError,
+        WorkspaceLifecycleNotFoundError,
+        resolve_member_future_responsibilities,
+    )
+    try:
+        resolve_member_future_responsibilities(
+            db,
+            workspace=workspace,
+            departing_user=user,
+            actor_user_id=owner_access.membership.user_id,
+            resolution=resolution,
+            now=now,
+        )
+    except (WorkspaceLifecycleConflictError, WorkspaceLifecycleNotFoundError) as error:
+        raise WorkspaceMemberConflictError(str(error)) from error
+
     membership.status = MembershipStatus.REMOVED
     membership.ended_at = now or _now()
     membership.lock_version += 1
@@ -108,12 +128,14 @@ def leave_shared_workspace(
     *,
     access: WorkspaceAccess,
     account: User,
+    resolution: MemberExitResolution | None = None,
     now: datetime | None = None,
 ) -> WorkspaceMember:
     workspace = db.scalar(
         select(Workspace)
         .where(
             Workspace.id == access.workspace.id,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
         )
         .with_for_update()
     )
@@ -138,6 +160,23 @@ def leave_shared_workspace(
         raise WorkspaceMemberNotFoundError("Workspace member not found")
     if membership.status != MembershipStatus.ACTIVE:
         raise WorkspaceMemberConflictError("Workspace member is not active")
+
+    from app.services.v2_workspace_lifecycle import (
+        WorkspaceLifecycleConflictError,
+        WorkspaceLifecycleNotFoundError,
+        resolve_member_future_responsibilities,
+    )
+    try:
+        resolve_member_future_responsibilities(
+            db,
+            workspace=workspace,
+            departing_user=account,
+            actor_user_id=account.id,
+            resolution=resolution,
+            now=now,
+        )
+    except (WorkspaceLifecycleConflictError, WorkspaceLifecycleNotFoundError) as error:
+        raise WorkspaceMemberConflictError(str(error)) from error
 
     membership.status = MembershipStatus.LEFT
     membership.ended_at = now or _now()

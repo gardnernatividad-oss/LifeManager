@@ -30,12 +30,14 @@ def test_migrations_form_one_linear_v2_head() -> None:
     config = Config(str(BACKEND_ROOT / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_heads() == ["c3d172b18308"]
-    current = script.get_revision("c3d172b18308")
+    assert script.get_heads() == ["d5e6f7a8b9c0"]
+    current = script.get_revision("d5e6f7a8b9c0")
+    rate_limits = script.get_revision("c3d172b18308")
     v2_reset = script.get_revision("e4f5a6b7c8d9")
     target = script.get_revision("d3e4f5a6b7c8")
     reset = script.get_revision("c2d3e4f5a6b7")
-    assert current is not None and current.down_revision == "e4f5a6b7c8d9"
+    assert current is not None and current.down_revision == "c3d172b18308"
+    assert rate_limits is not None and rate_limits.down_revision == "e4f5a6b7c8d9"
     assert v2_reset is not None and v2_reset.down_revision == "d3e4f5a6b7c8"
     assert target is not None and target.down_revision == "c2d3e4f5a6b7"
     assert reset is not None and reset.down_revision == "1b2c3d4e5f60"
@@ -144,7 +146,7 @@ def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
         with target_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "c3d172b18308"
+            ).scalar_one() == "d5e6f7a8b9c0"
             tables = set(sa.inspect(connection).get_table_names())
             assert {
                 "users",

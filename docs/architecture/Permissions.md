@@ -82,3 +82,11 @@ Stage 3.2 implementa exclusivamente la creación Shared: cualquier cuenta ACTIVE
 Stage 3.3 autoriza invitaciones únicamente al propietario persistido de un Workspace `SHARED`; ser Miembro o `GLOBAL_ADMIN` no concede esa facultad. Solo la cuenta `ACTIVE` vinculada como destinataria puede aceptar o rechazar. Al aceptar se crea o reactiva una membresía ordinaria; nunca se modifica `owner_user_id` ni `global_role`. Un Workspace `PERSONAL` no admite ninguna operación de invitación.
 
 Stage 3.4 permite a toda membresía `ACTIVE` listar la proyección mínima de miembros Shared. El retiro exige Propietario persistido y objetivo ordinario `ACTIVE`; la salida voluntaria exige que el actor sea un Miembro ordinario `ACTIVE`. Ambas operaciones bloquean en orden Workspace → WorkspaceMember, actualizan la misma fila a `REMOVED` o `LEFT`, fijan `ended_at` e incrementan la versión. La siguiente autorización falla de inmediato porque la frontera solo admite `ACTIVE`. El owner no puede salir ni ser retirado, Personal queda fuera de esta superficie y `GLOBAL_ADMIN` no obtiene bypass. Las responsabilidades futuras, transferencia y eliminación Shared se resolverán juntas en Stage 3.5.
+
+Stage 3.5 añade lifecycle `ACTIVE`/`INACTIVE` a Workspace. Toda frontera privada
+exige simultáneamente cuenta, membresía y Workspace `ACTIVE`; conservar
+membresías `ACTIVE` dentro de un Workspace inactivo no concede acceso. Solo la
+persona Propietaria puede transferir, desactivar o solicitar hard delete de
+Shared. Transferencia y resolución de salida bloquean en orden Workspace →
+WorkspaceMembers ordenadas → recursos ordenados. `GLOBAL_ADMIN` no sustituye
+ninguna de estas condiciones.

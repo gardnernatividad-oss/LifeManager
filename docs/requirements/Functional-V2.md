@@ -32,6 +32,15 @@ Las invitaciones V2.0.0 se dirigen exclusivamente a cuentas LifeManager `ACTIVE`
 
 En un Workspace compartido, cualquier Miembro `ACTIVE` puede consultar la lista de membresías. Un Miembro ordinario puede salir voluntariamente y pasa a `LEFT`; la persona Propietaria puede retirar a un Miembro ordinario, que pasa a `REMOVED`. Ambas transiciones conservan la fila histórica, registran la fecha de fin y revocan inmediatamente el acceso. La persona Propietaria no puede salir ni ser retirada hasta que exista el flujo posterior de transferencia. Personal no ofrece administración colaborativa de miembros. Una nueva invitación puede reactivar una membresía `LEFT` o `REMOVED` y restablece su privacidad a Ocultar.
 
+Un Workspace Compartido con información funcional o histórica se desactiva, no
+se destruye: conserva datos y membresías, cancela invitaciones pendientes y
+queda fuera de toda operación ordinaria. La eliminación física solo está
+disponible cuando el estado persistido actual no contiene información funcional
+ni histórica; la membresía estructural de la persona Propietaria, por sí sola,
+no bloquea eliminar un Workspace nunca utilizado. La elegibilidad se calcula
+exclusivamente en backend. Personal no puede desactivarse, transferirse ni
+eliminarse mediante este lifecycle.
+
 La interfaz presenta roles de Workspace como **Propietario** y **Miembro**; no expone enums internos.
 
 ### 3.1 Vistas globales
@@ -244,6 +253,12 @@ No incluye selector de idioma ni submódulo de Configuración regional. Se manti
 Al retirar a un miembro de un Workspace compartido, los datos pasados permanecen congelados y conservan autoría e historia.
 
 Para Tareas, Pendientes y Etapas futuras, el flujo permite a la persona Propietaria o administradora reasignar o eliminar un elemento futuro. Cuando existe contenido repetido o en serie, permite eliminar la ocurrencia seleccionada o las ocurrencias futuras relacionadas. También ofrece `Eliminar todo` para las responsabilidades o el contenido futuro pertinente de la persona retirada. La reasignación no es obligatoria.
+
+La salida voluntaria aplica la misma frontera transaccional: si existen
+responsabilidades futuras, deben resolverse antes de finalizar la membresía. La
+reasignación exige una cuenta y membresía activas del mismo Workspace. El
+antiguo Propietario permanece como Miembro tras una transferencia y debe iniciar
+su salida por separado.
 
 Las Actividades pasadas no cambian. En Actividades futuras se retira a la persona de Participantes. Si era Organizadora, puede conservarse su atribución histórica; V2 no exige reasignar al Organizador.
 
