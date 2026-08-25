@@ -17,6 +17,13 @@ from app.core.session_security import (
 from app.db.session import SessionLocal
 from app.models import User, WorkspaceMember
 from app.models.enums import AccountStatus, GlobalRole, MembershipStatus
+from app.services.v2_workspace import (
+    WorkspaceAccess,
+    WorkspaceAccessNotFoundError,
+    WorkspaceOwnerRequiredError,
+    require_workspace_owner as require_owner_access,
+    resolve_active_workspace_access,
+)
 
 
 session_cookie = APIKeyCookie(
@@ -103,3 +110,44 @@ def find_active_membership(
             WorkspaceMember.status == MembershipStatus.ACTIVE,
         )
     )
+
+
+def require_active_workspace_membership(
+    workspace_id: uuid.UUID,
+    db: SessionDependency,
+    current_account: UsableAccount,
+) -> WorkspaceAccess:
+    try:
+        return resolve_active_workspace_access(
+            db,
+            account=current_account,
+            workspace_id=workspace_id,
+        )
+    except WorkspaceAccessNotFoundError as error:
+        raise V2APIError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="WORKSPACE_NOT_FOUND",
+            message="No se encontró el espacio de trabajo.",
+        ) from error
+
+
+ActiveWorkspaceMembership = Annotated[
+    WorkspaceAccess,
+    Depends(require_active_workspace_membership),
+]
+
+
+def require_workspace_owner(
+    access: ActiveWorkspaceMembership,
+) -> WorkspaceAccess:
+    try:
+        return require_owner_access(access)
+    except WorkspaceOwnerRequiredError as error:
+        raise V2APIError(
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="WORKSPACE_OWNER_REQUIRED",
+            message="Se requiere ser propietario del espacio de trabajo.",
+        ) from error
+
+
+WorkspaceOwner = Annotated[WorkspaceAccess, Depends(require_workspace_owner)]

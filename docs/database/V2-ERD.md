@@ -4,7 +4,9 @@
 
 El diseño de dominio aprobado por ADR-008 está implementado. Stage 2.9 añade
 la tabla técnica de rate limiting sin alterar las relaciones de negocio. El
-ERD histórico del runtime V1 continúa en `ERD.md`.
+ERD histórico del runtime V1 continúa en `ERD.md`. Stage 3.1 no altera el
+esquema ni este diagrama: consolida en aplicación las invariantes y la frontera
+de autorización de los Workspaces `PERSONAL` y `SHARED` ya representados.
 
 El diagrama contiene las 25 entidades de dominio aprobadas y la tabla técnica
 independiente RateLimitBucket. Mermaid las representa en `UPPER_SNAKE_CASE`;

@@ -437,7 +437,23 @@ siendo operación de despliegue, no está instalada en el repositorio.
 CSP futuro deberá permitir el script/frame de
 `https://challenges.cloudflare.com` siguiendo la guía vigente del provider.
 
-## 31. Decisiones y límites
+## 31. Frontera Workspace Personal/Shared
+
+Stage 3.1 implementa `app.services.v2_workspace` como boundary reutilizable
+para todo vertical V2. La resolución exige simultáneamente cuenta `ACTIVE`,
+Workspace exacto y `WorkspaceMember.status='ACTIVE'`; un UUID inexistente o
+ajeno produce el mismo resultado 404. La autoridad de Propietario se deriva
+solo de `workspaces.owner_user_id`. `GLOBAL_ADMIN` no participa ni crea un
+bypass de contenido privado.
+
+Personal se aprovisiona exclusivamente durante aprobación global y queda
+protegido contra miembros ajenos, fin de la membresía propietaria, delete,
+transferencia y conversión ordinarios. Shared conserva owner+membresía ACTIVE
+y queda preparado para colaboración, pero sus rutas de creación, invitación,
+miembros y transferencia pertenecen a stages posteriores. No se introdujo
+ningún rol Workspace persistido: Propietario/Miembro siguen siendo derivados.
+
+## 32. Decisiones y límites
 
 ADRs vinculadas:
 

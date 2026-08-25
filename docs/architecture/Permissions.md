@@ -37,8 +37,8 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
 - `CurrentUser` autentica y exige cuenta ACTIVE; `GlobalAdmin`, `ActiveWorkspaceMembership` y `WorkspaceOwner` son dependencies reutilizables.
 - Los services siempre consultan recursos por `id + workspace_id`, aplican permisos funcionales y validan que responsables/participantes sean miembros ACTIVE.
 - Las FKs compuestas preservan mismo Workspace y la base de datos es la frontera final; frontend solo adapta UX.
-- Un miembro válido no puede distinguir mediante el API un UUID inexistente de uno perteneciente a otro Workspace: ambos producen 404.
-- La falta de membresía al Workspace produce 403; una sesión ausente/inválida produce 401.
+- Un usuario no puede distinguir mediante el API un UUID inexistente de uno perteneciente a otro Workspace: ambos producen 404 desde la frontera central.
+- Una sesión ausente/inválida produce 401; una operación reservada al owner produce 403 después de resolver una membresía ACTIVE válida.
 - `GLOBAL_ADMIN` protege rutas de plataforma, pero no concede acceso implícito a contenido privado ni reemplaza membership.
 - `AVAILABILITY_ONLY` devuelve intervalos sin objetos/detalles de Activity; `HIDE` no devuelve datos subyacentes.
 
@@ -59,4 +59,22 @@ Stage 2.4 valida una dependencia `GLOBAL_ADMIN` separada que exige cuenta `ACTIV
 
 La aprobación bloquea la cuenta objetivo y aprovisiona en una sola transacción el estado `ACTIVE`, su evento, el Personal Workspace y la membership ACTIVE del owner. El rol global no se copia al Workspace y las consultas de la cola administrativa no cargan contenido privado.
 
-La sesión todavía reutiliza temporalmente la validación Bearer V1; cookies/CSRF y revocación pertenecen a Stage 2.8. No debe interpretarse esta compatibilidad como el contrato de sesión final.
+La sesión V2 usa cookie HttpOnly, CSRF y validación de cuenta ACTIVE implementadas en Stage 2.8; no existe bypass de Workspace asociado al rol global.
+
+## Invariantes Personal y Shared — Stage 3.1
+
+| Invariante | PERSONAL | SHARED |
+|---|---|---|
+| Owner requerido | Sí, el usuario aprobado | Sí |
+| Membresía del owner | ACTIVE obligatoria al commit | ACTIVE obligatoria al commit |
+| Miembros adicionales | No | Sí, mediante flujo futuro |
+| Transferencia | Prohibida | Futura, transaccional |
+| Eliminación ordinaria | Prohibida | Solo flujo explícito futuro |
+| Conversión de kind | Prohibida | No se ofrece conversión |
+| Colaboración | No | Sí |
+| Rol visible | Propietario derivado | Propietario o Miembro derivados |
+| Creación | Aprobación global | Etapa posterior |
+
+`app.services.v2_workspace` concentra la resolución Workspace+membresía ACTIVE, la autoridad de owner y las guardas de invariantes. `ActiveWorkspaceMembership` y `WorkspaceOwner` exponen esa frontera a rutas V2 posteriores. El servicio usa únicamente estado persistido, scope exacto y cuenta ACTIVE; `GLOBAL_ADMIN` no participa en la decisión.
+
+Stage 3.1 no implementa creación Shared, invitaciones, aceptación, retiro de miembros ni transferencia. Esas operaciones deberán bloquear Workspace y membresías en orden determinista, reutilizar las guardas centrales y respetar el trigger diferible de owner ACTIVE.

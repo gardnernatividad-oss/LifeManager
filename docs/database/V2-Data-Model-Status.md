@@ -49,7 +49,8 @@ ventana. No persiste IP, email, actor ni token en claro. El índice
 efímera de seguridad, no una entidad de negocio ni historial de auditoría.
 
 - La infraestructura de fixtures V2 y el dataset canónico multi-Workspace están implementados exclusivamente para pruebas y desarrollo local.
-- Las APIs y servicios funcionales V2 todavía no están implementados.
+- Stage 3.1 implementó la frontera de servicio/autorización Workspace sin modificar la forma física: resolución por Workspace+membresía `ACTIVE`, autoridad de owner derivada y guardas Personal para miembros, eliminación, conversión, transferencia y finalización de la membresía propietaria.
+- No existe todavía una API funcional V2 de Workspace; creación Shared, invitaciones y administración de membresías pertenecen a etapas posteriores.
 - El runtime y los tests de dominio V1 que importan símbolos retirados son temporalmente incompatibles y serán reemplazados por los verticales V2; no deben interpretarse como defectos del esquema V2.
 
 Este archivo evita que el modelo V1 o documentos históricos se utilicen accidentalmente como diseño físico V2.

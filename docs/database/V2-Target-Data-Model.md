@@ -109,6 +109,8 @@ Kinds: `PERSONAL`, `SHARED`.
 
 El service de registro crea exactamente un Personal Workspace al activar/aprovisionar la cuenta. La unicidad parcial evita duplicarlo; la existencia para toda cuenta ACTIVE se valida en el flujo transaccional y pruebas de integridad.
 
+La clase de Workspace no se infiere del nombre. `PERSONAL` es inmutable en las operaciones ordinarias: no admite miembros distintos del owner, transferencia, conversión ni eliminación. La membresía `ACTIVE` del owner tampoco puede finalizar mientras conserve la propiedad. Estas reglas de operación se aplican en la frontera central de servicio; el índice único parcial y el trigger diferible permanecen como garantías finales de unicidad y consistencia owner/membership. `SHARED` admite colaboración futura, pero su creación, invitaciones, administración de miembros y transferencia se implementan en etapas posteriores.
+
 ### 4.2 `workspace_members`
 
 Una fila permanente representa la relación histórica de una persona con un Workspace.

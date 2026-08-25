@@ -35,6 +35,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 2 — Security foundation and identity | Stage 2.11 | Server validation and error handling | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.12 | Security tests | Completado |
 | Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Completado |
+| Phase 3 — Workspaces y colaboración base | Stage 3.1 | Adaptación del modelo Personal y Compartido de Workspace | Completado |
 
 `Estado` solo puede contener:
 
@@ -42,6 +43,8 @@ El roadmap conservará exactamente estas columnas:
 - Pendiente
 
 Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan de transición, `V2-Architecture-Baseline.md`, contrato API y ADR-008–012. Stage 1.9 implementó la base física V2, Stage 1.10 añadió fixtures y Stage 1.11 cerró el gate técnico. Stage 2.1 estableció el threat model. Stage 2.2 auditó exposición. Stages 2.3–2.7 establecieron identidad, recovery y política Argon2id. Stage 2.8 estableció sesión cookie/CSRF, Stage 2.9 rate limiting PostgreSQL y Stage 2.10 Turnstile server-side en las tres rutas públicas seleccionadas. Stage 2.11 cerró validación autoritativa y Stage 2.12 la regresión ofensiva. Stage 2.13 queda `Completado`: superó sus controles técnicos y PostgreSQL locales y cerró `SEC-SECRET-001` mediante rotación/revocación; ver `docs/security/V2-Identity-Security-Gate.md`. La configuración de una `SECRET_KEY` productiva fuerte, única y backend-only permanece como requisito operacional de despliegue, no como hallazgo abierto de Phase 2.
+
+Stage 3.1 consolidó la frontera reutilizable de autorización Workspace, explicitó las invariantes Personal/Shared y protegió centralmente las mutaciones que Personal prohíbe. No añadió rutas ni cambió el esquema: creación Shared, invitaciones, administración de miembros y transferencia Shared pertenecen a etapas posteriores.
 
 ## Referencia histórica
 
