@@ -37,6 +37,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Completado |
 | Phase 3 — Workspaces y colaboración base | Stage 3.1 | Adaptación del modelo Personal y Compartido de Workspace | Completado |
 | Phase 3 — Workspaces y colaboración base | Stage 3.2 | Creación de Workspace Compartido | Completado |
+| Phase 3 — Workspaces y colaboración base | Stage 3.3 | Invitaciones a Workspace Compartido | Completado |
 
 `Estado` solo puede contener:
 
@@ -48,6 +49,8 @@ Los stages documentales conocidos hasta 1.8 quedan cerrados por el modelo, plan 
 Stage 3.1 consolidó la frontera reutilizable de autorización Workspace, explicitó las invariantes Personal/Shared y protegió centralmente las mutaciones que Personal prohíbe. No añadió rutas ni cambió el esquema: creación Shared, invitaciones, administración de miembros y transferencia Shared pertenecen a etapas posteriores.
 
 Stage 3.2 implementó `POST /api/v2/workspaces` para que una cuenta ACTIVE cree un Workspace `SHARED`. Owner, kind y membresía ACTIVE se derivan en servidor y se persisten atómicamente. Invitaciones, administración de miembros, selector/listado y transferencia continúan pendientes.
+
+Stage 3.3 implementó invitaciones exclusivamente a cuentas LifeManager `ACTIVE` existentes. Solo el propietario de un Workspace `SHARED` puede crear o cancelar; el destinatario autenticado puede listar, aceptar o rechazar. La aceptación crea o reactiva atómicamente la misma membresía, restablece privacidad `HIDE` y nunca transfiere propiedad ni rol global. Las invitaciones vencen a los 14 días y se excluyen de listados accionables sin scheduler. Email, centro de notificaciones y administración general de miembros continúan diferidos.
 
 ## Referencia histórica
 

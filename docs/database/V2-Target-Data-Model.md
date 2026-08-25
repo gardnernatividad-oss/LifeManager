@@ -139,6 +139,8 @@ El rol visible se deriva: si `user_id = workspace.owner_user_id`, Propietario; e
 - aceptación bloquea invitación y Workspace, crea/reactiva WorkspaceMember y marca `ACCEPTED` en una transacción;
 - no se reutiliza para Participantes de Actividad.
 
+En V2.0.0 solo se invita a una cuenta `ACTIVE` existente y `recipient_user_id` queda siempre vinculado al crear. La vigencia es de 14 días. La aceptación se autentica por sesión contra ese destinatario, no mediante token entregado: se genera material aleatorio únicamente para satisfacer el digest físico, sin persistir ni retornar el valor crudo. Una reincorporación `LEFT` o `REMOVED` reutiliza la fila, fija `ACTIVE`, reinicia `joined_at`, limpia `ended_at`, restablece `calendar_visibility=HIDE` e incrementa `lock_version`. Los PENDING vencidos se filtran de listados accionables y se terminalizan al crear una nueva invitación para el mismo destinatario; no requieren scheduler.
+
 ## 5. Categorías y catálogos
 
 ### 5.1 `categories`

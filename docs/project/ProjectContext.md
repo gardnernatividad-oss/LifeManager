@@ -61,6 +61,8 @@ Stage 3.1 estableció la foundation Workspace definitiva sin cambiar el esquema 
 
 Stage 3.2 añadió la creación autenticada de Workspace Compartido. El cliente aporta únicamente el nombre; el backend fija `SHARED`, deriva al owner de la sesión, crea su membresía `ACTIVE` en la misma transacción y devuelve una proyección mínima. Personal continúa siendo system-only durante aprobación. Listado/selector, invitaciones, administración de miembros, transferencia y eliminación Shared siguen diferidos.
 
+Stage 3.3 añadió el lifecycle autenticado de invitaciones Shared para cuentas `ACTIVE` existentes. Solo el propietario crea y cancela; solo el destinatario vinculado acepta o rechaza. La aceptación crea una membresía ordinaria o reactiva la fila histórica `LEFT`/`REMOVED`, reiniciando `joined_at`, limpiando `ended_at` y restableciendo `calendar_visibility=HIDE`. No se entrega token, no se envía email y no se crea notificación en esta etapa.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.

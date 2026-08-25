@@ -456,6 +456,13 @@ administración de miembros y transferencia pertenecen a stages posteriores.
 No se introdujo ningún rol Workspace persistido: Propietario/Miembro siguen
 siendo derivados.
 
+Stage 3.3 implementa invitaciones para cuentas `ACTIVE` existentes con vigencia
+de 14 días. El owner Shared crea/cancela y el destinatario autenticado
+acepta/rechaza. La aceptación es atómica, crea o reactiva la identidad histórica
+de membresía y reinicia su privacidad a `HIDE`. El digest interno se conserva por
+compatibilidad física, pero V2.0.0 no entrega tokens ni implementa email o
+notificaciones en este flujo.
+
 ## 32. Decisiones y límites
 
 ADRs vinculadas:

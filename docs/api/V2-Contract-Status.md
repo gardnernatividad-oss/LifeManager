@@ -133,7 +133,9 @@ servicio hace flush sin commit y la ruta confirma una sola transacción. Respond
 roles, estados, IDs, versiones, timestamps o relaciones. Nombres Shared
 duplicados están permitidos.
 
-El listado/selector de Workspaces, invitaciones, miembros, transferencia y
+Stage 3.3 implementa creación, listados accionables, aceptación, rechazo y
+cancelación de invitaciones Shared para cuentas `ACTIVE` existentes. El
+listado/selector general de Workspaces, administración de miembros, transferencia y
 eliminación Shared permanecen diferidos. El contrato detallado está en
 [`Workspaces.md`](Workspaces.md).
 

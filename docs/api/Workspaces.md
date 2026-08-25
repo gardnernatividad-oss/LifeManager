@@ -51,8 +51,19 @@ La respuesta no expone owner interno, membership, campos de auditoría ni grafo
 ORM. Inmediatamente después del commit, la persona creadora cumple las fronteras
 `ActiveWorkspaceMembership` y `WorkspaceOwner`.
 
+## Invitaciones Shared
+
+- `POST /api/v2/workspaces/{workspace_id}/invitations`: owner crea una invitación para el email normalizado de una cuenta `ACTIVE` existente.
+- `GET /api/v2/workspaces/{workspace_id}/invitations`: owner lista invitaciones pendientes y no vencidas del Workspace.
+- `GET /api/v2/workspace-invitations`: destinatario autenticado lista sus invitaciones pendientes y no vencidas.
+- `POST /api/v2/workspace-invitations/{invitation_id}/accept`: destinatario acepta y crea/reactiva membresía ordinaria.
+- `POST /api/v2/workspace-invitations/{invitation_id}/reject`: destinatario rechaza.
+- `POST /api/v2/workspace-invitations/{invitation_id}/cancel`: owner del Workspace Shared cancela.
+
+Las mutaciones usan sesión cookie, CSRF y Origin. La vigencia es de 14 días. No se expone ni entrega token; el digest interno queda reservado para una posible evolución futura. Las respuestas nunca incluyen el digest, estado interno de cuenta ni grafos ORM. Invitaciones vencidas se excluyen de listados accionables; no se requiere scheduler.
+
 ## Diferido
 
-Listado/selector de Workspaces, invitaciones, aceptación, administración de
-miembros, privacidad, transferencia, salida y eliminación Shared no forman parte
-de Stage 3.2.
+Listado/selector general de Workspaces, administración general de miembros,
+privacidad, transferencia, salida, eliminación Shared, email y notificaciones no
+forman parte de Stage 3.3.

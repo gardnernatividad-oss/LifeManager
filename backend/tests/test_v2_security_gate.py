@@ -139,7 +139,7 @@ def test_registration_rejects_nested_privileged_payload(client_and_db) -> None:
     db.commit.assert_not_called()
 
 
-def test_v2_openapi_exposes_only_the_approved_identity_attack_surface() -> None:
+def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
     document = app.openapi()
     v2_paths = {path for path in document["paths"] if path.startswith("/api/v2")}
     assert v2_paths == {
@@ -155,6 +155,12 @@ def test_v2_openapi_exposes_only_the_approved_identity_attack_surface() -> None:
         "/api/v2/admin/account-requests/{user_id}",
         "/api/v2/admin/account-requests/{user_id}/approve",
         "/api/v2/admin/account-requests/{user_id}/reject",
+        "/api/v2/workspaces",
+        "/api/v2/workspaces/{workspace_id}/invitations",
+        "/api/v2/workspace-invitations",
+        "/api/v2/workspace-invitations/{invitation_id}/accept",
+        "/api/v2/workspace-invitations/{invitation_id}/reject",
+        "/api/v2/workspace-invitations/{invitation_id}/cancel",
     }
     serialized = str(document).lower()
     for forbidden in (

@@ -28,6 +28,8 @@ En la interfaz no se utilizarán `Tasks`, `Activity`, `Project Lead`, `OWNER`, `
 
 Cada usuario tiene automáticamente un Personal Workspace y puede pertenecer a Workspaces compartidos o colaborativos. Un rol global de plataforma es distinto de un rol dentro de un Workspace. Inicialmente habrá una sola persona administradora global: el propietario del producto.
 
+Las invitaciones V2.0.0 se dirigen exclusivamente a cuentas LifeManager `ACTIVE` existentes mediante email normalizado. Solo la persona Propietaria de un Workspace compartido puede invitar o cancelar; el destinatario autenticado puede aceptar o rechazar. La aceptación crea una membresía de Miembro o reactiva su identidad histórica `LEFT`/`REMOVED`, reiniciando fecha de ingreso y privacidad a Ocultar. Las invitaciones duran 14 días. Personal no admite invitaciones y `GLOBAL_ADMIN` no obtiene autoridad de Workspace implícita. Email y notificaciones de invitación se incorporarán en etapas posteriores.
+
 La interfaz presenta roles de Workspace como **Propietario** y **Miembro**; no expone enums internos.
 
 ### 3.1 Vistas globales
