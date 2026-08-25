@@ -23,6 +23,7 @@ from app.services.v2_workspace_invitation import (
     WorkspaceInvitationConflictError,
     WorkspaceInvitationNotFoundError,
     accept_workspace_invitation,
+    cancel_workspace_invitation,
     create_workspace_invitation,
     reject_workspace_invitation,
 )
@@ -64,8 +65,8 @@ def _invitation(recipient: User, workspace_id: uuid.UUID) -> WorkspaceInvitation
 def test_create_derives_secure_internal_state_and_never_commits() -> None:
     db = MagicMock(spec=Session)
     recipient = _user()
-    db.scalar.side_effect = [recipient, None, None]
     access = _access()
+    db.scalar.side_effect = [access.workspace, recipient, None, None]
 
     invitation = create_workspace_invitation(
         db, owner_access=access,
@@ -84,6 +85,9 @@ def test_create_derives_secure_internal_state_and_never_commits() -> None:
     db.flush.assert_called_once_with()
     db.commit.assert_not_called()
     db.rollback.assert_not_called()
+    first_statement = db.scalar.call_args_list[0].args[0]
+    assert "FROM workspaces" in str(first_statement)
+    assert first_statement._for_update_arg is not None
 
 
 @pytest.mark.parametrize("membership_status", [MembershipStatus.LEFT, MembershipStatus.REMOVED])
@@ -101,7 +105,7 @@ def test_accept_reactivates_same_membership_with_privacy_reset(membership_status
         joined_at=NOW - timedelta(days=20),
         calendar_visibility=CalendarVisibility.SHOW_DETAILS, lock_version=3,
     )
-    db.scalar.side_effect = [invitation, workspace, membership]
+    db.scalar.side_effect = [workspace.id, workspace, invitation, membership]
 
     accepted = accept_workspace_invitation(
         db, invitation_id=invitation.id, recipient=recipient, now=NOW
@@ -130,12 +134,52 @@ def test_expired_or_foreign_invitation_is_not_actionable() -> None:
 
     expired = _invitation(recipient, uuid.uuid4())
     expired.expires_at = NOW
-    db.scalar.return_value = expired
+    workspace = Workspace(
+        id=expired.workspace_id, name="Familia", kind=WorkspaceKind.SHARED,
+        owner_user_id=uuid.uuid4(),
+    )
+    db.scalar.side_effect = [expired.workspace_id, workspace, expired]
     with pytest.raises(WorkspaceInvitationConflictError):
         reject_workspace_invitation(
             db, invitation_id=expired.id, recipient=recipient, now=NOW
         )
     db.flush.assert_not_called()
+
+
+def test_invitation_mutations_lock_workspace_before_invitation() -> None:
+    recipient = _user()
+    owner = _user("owner@example.com")
+    workspace = Workspace(
+        id=uuid.uuid4(), name="Familia", kind=WorkspaceKind.SHARED,
+        owner_user_id=owner.id,
+    )
+    invitation = _invitation(recipient, workspace.id)
+
+    accept_db = MagicMock(spec=Session)
+    accept_db.scalar.side_effect = [workspace.id, workspace, invitation, None]
+    accept_workspace_invitation(
+        accept_db, invitation_id=invitation.id, recipient=recipient, now=NOW
+    )
+    accept_statements = [call.args[0] for call in accept_db.scalar.call_args_list]
+    assert accept_statements[0]._for_update_arg is None
+    assert "FROM workspaces" in str(accept_statements[1])
+    assert accept_statements[1]._for_update_arg is not None
+    assert "FROM workspace_invitations" in str(accept_statements[2])
+    assert accept_statements[2]._for_update_arg is not None
+
+    invitation.status = InvitationStatus.PENDING
+    invitation.responded_at = None
+    cancel_db = MagicMock(spec=Session)
+    cancel_db.scalar.side_effect = [workspace.id, workspace, invitation]
+    cancel_workspace_invitation(
+        cancel_db, invitation_id=invitation.id, owner=owner, now=NOW
+    )
+    cancel_statements = [call.args[0] for call in cancel_db.scalar.call_args_list]
+    assert cancel_statements[0]._for_update_arg is None
+    assert "FROM workspaces" in str(cancel_statements[1])
+    assert cancel_statements[1]._for_update_arg is not None
+    assert "FROM workspace_invitations" in str(cancel_statements[2])
+    assert cancel_statements[2]._for_update_arg is not None
 
 
 def test_disabled_recipient_cannot_accept_without_query() -> None:
@@ -163,4 +207,25 @@ def test_inactive_workspace_cannot_create_invitation() -> None:
         )
 
     db.scalar.assert_not_called()
+    db.flush.assert_not_called()
+
+
+def test_creation_rechecks_workspace_under_lock_before_recipient_lookup() -> None:
+    db = MagicMock(spec=Session)
+    access = _access()
+    db.scalar.return_value = None
+
+    with pytest.raises(WorkspaceInvitationConflictError):
+        create_workspace_invitation(
+            db,
+            owner_access=access,
+            invitation_in=WorkspaceInvitationCreate(email="member@example.com"),
+            now=NOW,
+        )
+
+    assert db.scalar.call_count == 1
+    statement = db.scalar.call_args.args[0]
+    assert "FROM workspaces" in str(statement)
+    assert statement._for_update_arg is not None
+    db.add.assert_not_called()
     db.flush.assert_not_called()

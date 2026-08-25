@@ -65,6 +65,44 @@ def _require_shared(workspace: Workspace) -> None:
         )
 
 
+def _lock_active_shared_workspace(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    owner_user_id: uuid.UUID | None = None,
+) -> Workspace:
+    predicates = [
+        Workspace.id == workspace_id,
+        Workspace.kind == WorkspaceKind.SHARED,
+        Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+    ]
+    if owner_user_id is not None:
+        predicates.append(Workspace.owner_user_id == owner_user_id)
+    workspace = db.scalar(
+        select(Workspace).where(*predicates).with_for_update()
+    )
+    if workspace is None:
+        raise WorkspaceInvitationNotFoundError("Invitation not found")
+    return workspace
+
+
+def _identify_recipient_invitation_workspace_id(
+    db: Session,
+    *,
+    invitation_id: uuid.UUID,
+    recipient: User,
+) -> uuid.UUID:
+    workspace_id = db.scalar(
+        select(WorkspaceInvitation.workspace_id).where(
+            WorkspaceInvitation.id == invitation_id,
+            WorkspaceInvitation.recipient_user_id == recipient.id,
+        )
+    )
+    if workspace_id is None:
+        raise WorkspaceInvitationNotFoundError("Invitation not found")
+    return workspace_id
+
+
 def _expire_existing_pending(
     db: Session,
     *,
@@ -98,6 +136,16 @@ def create_workspace_invitation(
     now: datetime | None = None,
 ) -> WorkspaceInvitation:
     _require_shared(owner_access.workspace)
+    try:
+        workspace = _lock_active_shared_workspace(
+            db,
+            workspace_id=owner_access.workspace.id,
+            owner_user_id=owner_access.membership.user_id,
+        )
+    except WorkspaceInvitationNotFoundError as error:
+        raise WorkspaceInvitationConflictError(
+            "Workspace is no longer available for invitations"
+        ) from error
     current_time = now or _now()
     normalized_email = str(invitation_in.email).strip().lower()
     recipient = db.scalar(
@@ -110,13 +158,13 @@ def create_workspace_invitation(
     )
     if recipient is None:
         raise WorkspaceInvitationTargetError("Eligible account not found")
-    if recipient.id == owner_access.workspace.owner_user_id:
+    if recipient.id == workspace.owner_user_id:
         raise WorkspaceInvitationConflictError("Workspace owner cannot be invited")
 
     membership = db.scalar(
         select(WorkspaceMember)
         .where(
-            WorkspaceMember.workspace_id == owner_access.workspace.id,
+            WorkspaceMember.workspace_id == workspace.id,
             WorkspaceMember.user_id == recipient.id,
         )
         .with_for_update()
@@ -126,13 +174,13 @@ def create_workspace_invitation(
 
     _expire_existing_pending(
         db,
-        workspace_id=owner_access.workspace.id,
+        workspace_id=workspace.id,
         recipient_email=normalized_email,
         now=current_time,
     )
     invitation = WorkspaceInvitation(
         id=uuid.uuid4(),
-        workspace_id=owner_access.workspace.id,
+        workspace_id=workspace.id,
         recipient_email=normalized_email,
         recipient_user_id=recipient.id,
         inviter_user_id=owner_access.membership.user_id,
@@ -212,11 +260,18 @@ def _lock_recipient_invitation(
 ) -> WorkspaceInvitation:
     if recipient.account_status != AccountStatus.ACTIVE:
         raise WorkspaceInvitationNotFoundError("Invitation not found")
+    workspace_id = _identify_recipient_invitation_workspace_id(
+        db,
+        invitation_id=invitation_id,
+        recipient=recipient,
+    )
+    _lock_active_shared_workspace(db, workspace_id=workspace_id)
     invitation = db.scalar(
         select(WorkspaceInvitation)
         .where(
             WorkspaceInvitation.id == invitation_id,
             WorkspaceInvitation.recipient_user_id == recipient.id,
+            WorkspaceInvitation.workspace_id == workspace_id,
         )
         .with_for_update()
     )
@@ -238,25 +293,17 @@ def accept_workspace_invitation(
     invitation = _lock_recipient_invitation(
         db, invitation_id=invitation_id, recipient=recipient, now=current_time
     )
-    workspace = db.scalar(
-        select(Workspace)
-        .where(Workspace.id == invitation.workspace_id)
-        .with_for_update()
-    )
-    if workspace is None:
-        raise WorkspaceInvitationNotFoundError("Invitation not found")
-    _require_shared(workspace)
     membership = db.scalar(
         select(WorkspaceMember)
         .where(
-            WorkspaceMember.workspace_id == workspace.id,
+            WorkspaceMember.workspace_id == invitation.workspace_id,
             WorkspaceMember.user_id == recipient.id,
         )
         .with_for_update()
     )
     if membership is None:
         membership = WorkspaceMember(
-            workspace_id=workspace.id,
+            workspace_id=invitation.workspace_id,
             user_id=recipient.id,
             status=MembershipStatus.ACTIVE,
             calendar_visibility=CalendarVisibility.HIDE,
@@ -302,24 +349,27 @@ def cancel_workspace_invitation(
     now: datetime | None = None,
 ) -> WorkspaceInvitation:
     current_time = now or _now()
+    workspace_id = db.scalar(
+        select(WorkspaceInvitation.workspace_id).where(
+            WorkspaceInvitation.id == invitation_id
+        )
+    )
+    if workspace_id is None:
+        raise WorkspaceInvitationNotFoundError("Invitation not found")
+    _lock_active_shared_workspace(
+        db,
+        workspace_id=workspace_id,
+        owner_user_id=owner.id,
+    )
     invitation = db.scalar(
         select(WorkspaceInvitation)
-        .where(WorkspaceInvitation.id == invitation_id)
-        .with_for_update()
-    )
-    if invitation is None:
-        raise WorkspaceInvitationNotFoundError("Invitation not found")
-    workspace = db.scalar(
-        select(Workspace)
         .where(
-            Workspace.id == invitation.workspace_id,
-            Workspace.owner_user_id == owner.id,
-            Workspace.kind == WorkspaceKind.SHARED,
-            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+            WorkspaceInvitation.id == invitation_id,
+            WorkspaceInvitation.workspace_id == workspace_id,
         )
         .with_for_update()
     )
-    if workspace is None:
+    if invitation is None:
         raise WorkspaceInvitationNotFoundError("Invitation not found")
     if invitation.status != InvitationStatus.PENDING or invitation.expires_at <= current_time:
         raise WorkspaceInvitationConflictError("Invitation is not actionable")

@@ -1,13 +1,15 @@
 # Contexto de LifeManager
 
-## Estado Stage 3.6
+## Estado Stage 3.7
 
 Stage 3.6 completa listado operacional y de gestión, reactivación Shared y el
 selector contextual frontend. Personal aparece primero; Shared inactivos solo
 son visibles al Propietario en Configuración. La gestión integra creación,
 invitaciones, miembros, transferencia y resolución de responsabilidades.
-Inicio, Revisión y Mi calendario siguen globales. Stage 3.7 conserva el gate
-integral de autorización e aislamiento.
+Inicio, Revisión y Mi calendario siguen globales. Stage 3.7 cerró el gate
+integral de autorización e aislamiento y corrigió el orden transaccional de
+invitaciones a `Workspace → WorkspaceInvitation`. La evidencia autoritativa
+está en `docs/security/V2-Workspace-Gate.md`.
 
 ## Estado del producto
 

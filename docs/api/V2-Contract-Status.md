@@ -1,6 +1,6 @@
 # Contrato API objetivo de LifeManager V2.0.0
 
-## Stage 3.6
+## Stage 3.7
 
 Quedan implementados `GET /api/v2/workspaces`,
 `GET /api/v2/workspaces/management` y
@@ -8,6 +8,10 @@ Quedan implementados `GET /api/v2/workspaces`,
 frontend de creación, invitaciones, miembros, transferencia y lifecycle. Las
 notas antiguas que difieran listado, selector o reactivación quedan
 sustituidas por este estado.
+
+El gate de Workspace está cerrado: 17 operaciones OpenAPI activas, sin rutas
+duplicadas ni bypass `GLOBAL_ADMIN`. La matriz y evidencia están en
+[`V2-Workspace-Gate.md`](../security/V2-Workspace-Gate.md).
 
 ## Estado y autoridad
 
@@ -145,14 +149,15 @@ duplicados están permitidos.
 Stage 3.3 implementa creación, listados accionables, aceptación, rechazo y
 cancelación de invitaciones Shared para cuentas `ACTIVE` existentes. El
 Stage 3.4 añade listado de miembros, retiro owner-only y salida voluntaria con
-transiciones históricas `LEFT`/`REMOVED`. El listado/selector general de
-Workspaces y la interfaz de administración permanecen diferidos. El contrato detallado está en
+transiciones históricas `LEFT`/`REMOVED`. Stage 3.6 completó listado/selector y
+la interfaz de administración. El contrato detallado está en
 [`Workspaces.md`](Workspaces.md).
 
 Stage 3.5 incorpora transferencia, desactivación, elegibilidad de hard delete y
 resolución transaccional de responsabilidades futuras. `can_delete` nunca se
-infiere en cliente. La gestión visual de Workspaces activos/inactivos continúa
-en Stage 3.6.
+infiere en cliente. La gestión visual de Workspaces activos/inactivos y la
+reactivación quedaron implementadas en Stage 3.6; Stage 3.7 validó la vertical
+completa.
 
 ## 5. Envelope de error
 

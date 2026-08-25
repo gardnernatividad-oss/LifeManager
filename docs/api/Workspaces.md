@@ -1,9 +1,14 @@
 # Workspaces V2
 
-## Stage 3.6: listado, selector y gestión
+## Stage 3.7: vertical Workspace cerrada
 
 Esta sección sustituye cualquier nota posterior que aún describa listado,
 selector o reactivación como diferidos.
+
+El gate integral de autorización, aislamiento, lifecycle, concurrencia y
+contratos está cerrado. Su matriz autoritativa se conserva en
+[`V2-Workspace-Gate.md`](../security/V2-Workspace-Gate.md). Las mutaciones de
+invitaciones respetan el orden de lock `Workspace → WorkspaceInvitation`.
 
 ```text
 GET  /api/v2/workspaces
@@ -127,6 +132,7 @@ desactivan; organizer e historia no se reescriben.
 
 ## Diferido
 
-Listado/selector general de Workspaces, interfaz de administración, privacidad,
-reactivación, email y notificaciones permanecen diferidos. Selector, gestión de
-inactivos y eventual reactivación pertenecen a 3.6/13.3.
+La privacidad colaborativa del Calendario, email y notificaciones permanecen
+diferidos a sus stages. Listado, selector, administración y reactivación ya
+están implementados; las verticales funcionales posteriores deben reutilizar
+esta API sin inferir autoridad desde el cliente.

@@ -98,3 +98,12 @@ persona Propietaria puede transferir, desactivar o solicitar hard delete de
 Shared. Transferencia y resolución de salida bloquean en orden Workspace →
 WorkspaceMembers ordenadas → recursos ordenados. `GLOBAL_ADMIN` no sustituye
 ninguna de estas condiciones.
+
+Stage 3.7 valida la matriz completa owner/member/nonmember/`GLOBAL_ADMIN`,
+Personal/Shared, lifecycle, IDOR, mass assignment y concurrencia. El orden
+canónico también rige invitaciones: Workspace se bloquea antes que Invitation
+o Membership, incluidas creación, aceptación, rechazo y cancelación. La matriz
+autoritativa y evidencia están en
+[`V2-Workspace-Gate.md`](../security/V2-Workspace-Gate.md). La autorización de
+acciones dentro de cada dominio posterior debe reutilizar esta frontera sin
+crear bypass global.

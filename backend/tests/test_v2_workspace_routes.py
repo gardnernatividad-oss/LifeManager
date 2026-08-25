@@ -296,3 +296,34 @@ def test_active_and_management_workspace_listings_are_explicit_and_read_only() -
     db.commit.assert_not_called()
     db.rollback.assert_not_called()
     db.flush.assert_not_called()
+
+
+def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
+    methods = {"get", "post", "put", "patch", "delete"}
+    operations = {
+        (method.upper(), path)
+        for path, path_item in app.openapi()["paths"].items()
+        if path.startswith("/api/v2/workspace")
+        for method in path_item
+        if method in methods
+    }
+
+    assert operations == {
+        ("GET", "/api/v2/workspaces"),
+        ("GET", "/api/v2/workspaces/management"),
+        ("POST", "/api/v2/workspaces"),
+        ("GET", "/api/v2/workspaces/{workspace_id}/members"),
+        ("DELETE", "/api/v2/workspaces/{workspace_id}/members/{user_id}"),
+        ("POST", "/api/v2/workspaces/{workspace_id}/leave"),
+        ("POST", "/api/v2/workspaces/{workspace_id}/invitations"),
+        ("GET", "/api/v2/workspaces/{workspace_id}/invitations"),
+        ("GET", "/api/v2/workspace-invitations"),
+        ("POST", "/api/v2/workspace-invitations/{invitation_id}/accept"),
+        ("POST", "/api/v2/workspace-invitations/{invitation_id}/reject"),
+        ("POST", "/api/v2/workspace-invitations/{invitation_id}/cancel"),
+        ("GET", "/api/v2/workspaces/{workspace_id}/lifecycle"),
+        ("POST", "/api/v2/workspaces/{workspace_id}/transfer-ownership"),
+        ("POST", "/api/v2/workspaces/{workspace_id}/deactivate"),
+        ("POST", "/api/v2/workspaces/{workspace_id}/reactivate"),
+        ("DELETE", "/api/v2/workspaces/{workspace_id}"),
+    }

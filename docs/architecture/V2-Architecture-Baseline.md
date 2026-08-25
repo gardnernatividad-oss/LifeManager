@@ -458,8 +458,9 @@ protegido contra miembros ajenos, fin de la membresía propietaria, delete,
 transferencia y conversión ordinarios. Shared conserva owner+membresía ACTIVE
 y Stage 3.2 implementa su creación mediante `POST /api/v2/workspaces`. El DTO
 acepta solo el nombre; kind, owner y membership se derivan en servidor y el
-router confirma una única transacción. Invitaciones, listado/selector,
-administración de miembros y transferencia pertenecen a stages posteriores.
+router confirma una única transacción. Listado/selector, invitaciones,
+administración de miembros, transferencia y lifecycle están implementados y
+validados por el gate de Stage 3.7.
 No se introdujo ningún rol Workspace persistido: Propietario/Miembro siguen
 siendo derivados.
 
@@ -488,6 +489,12 @@ owner no bloquea. Salida/retiro resuelve Tareas, Pendientes, liderazgo de
 Proyectos y Etapas mediante reasignación o eliminación segura; participantes y
 recordatorios de Activities futuras se retiran/desactivan, mientras organizer e
 historia se preservan.
+
+Stage 3.6 integra selector/contexto y gestión colaborativa frontend. Stage 3.7
+cierra la matriz integral, IDOR, mass assignment, cache, concurrencia y
+PostgreSQL. Todas las mutaciones de invitación usan el orden canónico
+`Workspace → WorkspaceInvitation` para serializarse con desactivación y hard
+delete. Véase `docs/security/V2-Workspace-Gate.md`.
 
 ## 32. Decisiones y límites
 

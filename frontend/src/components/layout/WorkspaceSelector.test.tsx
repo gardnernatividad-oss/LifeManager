@@ -21,7 +21,7 @@ function mount() {
   vi.mocked(useAuth).mockReturnValue(auth);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><WorkspaceSelector /></QueryClientProvider>);
-  return setWorkspace;
+  return { client, setWorkspace };
 }
 
 describe("WorkspaceSelector", () => {
@@ -32,11 +32,17 @@ describe("WorkspaceSelector", () => {
 
   it("shows Personal first and switches using validated active listing data", async () => {
     const user = userEvent.setup();
-    const setWorkspace = mount();
+    const { client, setWorkspace } = mount();
+    client.setQueryData(["tasks", personal.id], { private: "Personal" });
+    client.setQueryData(["home"], { global: true });
+    client.setQueryData(["review"], { global: true });
     const selector = await screen.findByRole("combobox", { name: "Espacio de trabajo activo" });
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Personal · Personal", "Familia"]);
     await user.selectOptions(selector, shared.id);
     expect(setWorkspace).toHaveBeenCalledWith(shared);
     expect(window.localStorage.getItem("lifemanager.selected-workspace-id")).toBe(shared.id);
+    expect(client.getQueryData(["tasks", personal.id])).toBeUndefined();
+    expect(client.getQueryData(["home"])).toEqual({ global: true });
+    expect(client.getQueryData(["review"])).toEqual({ global: true });
   });
 });

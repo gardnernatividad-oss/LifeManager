@@ -52,7 +52,7 @@ El roadmap conservará exactamente estas columnas:
 | 3. Workspaces y colaboración base | 3.4 | Administración, salida y ciclo de membresías de Workspaces compartidos | Completado |
 | 3. Workspaces y colaboración base | 3.5 | Gestión avanzada de Workspace: propiedad, desactivación, eliminación y responsabilidades futuras | Completado |
 | 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Completado |
-| 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Pendiente |
+| 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Completado |
 | 4. Tablas maestras | 4.1 | Categorías y catálogos maestros de Tareas y Actividades | Pendiente |
 | 4. Tablas maestras | 4.2 | Reclasificación histórica, ciclo de maestros y selectores reutilizables | Pendiente |
 | 4. Tablas maestras | 4.3 | UX, autorización y gate de Tablas maestras | Pendiente |
@@ -130,6 +130,14 @@ desactivación conservadora, hard delete exclusivamente vacío y resolución
 atómica de responsabilidades futuras al salir o retirar miembros. Personal y
 `GLOBAL_ADMIN` no obtienen atajos. `can_delete` se deriva en backend; la gestión
 visual y reactivación permanecen en Stage 3.6.
+
+Stage 3.6 completó listado operacional y de gestión, selector/contexto y la
+administración colaborativa frontend. Stage 3.7 cerró el gate integral de
+Personal/Shared, ownership, invitaciones, membresías, lifecycle, IDOR,
+mass assignment, cache y PostgreSQL. El gate corrigió el orden de locks de
+invitaciones a `Workspace → WorkspaceInvitation`; la matriz y evidencia quedan
+en `docs/security/V2-Workspace-Gate.md`. Las autorizaciones particulares de
+cada dominio continúan en sus stages respectivos.
 
 Después de Stage 3.3, el alcance futuro se reagrupará en bloques de implementación coherentes sin reducir funcionalidad. La correspondencia completa entre historia, requisitos autoritativos y los 60 stages pendientes está en [`V2-Roadmap-Regrouping-Traceability.md`](V2-Roadmap-Regrouping-Traceability.md).
 
