@@ -60,6 +60,10 @@ def test_catalog_constraints_lifecycle_and_workspace_isolation_on_disposable_pos
             db.commit()
             assert category_a.normalized_name == category_b.normalized_name
 
+            unaccented = create_category(db, workspace_id=workspace_a, category_in=CategoryCreate(name="Tecnologia"))
+            db.commit()
+            assert unaccented.normalized_name != category_a.normalized_name
+
             with pytest.raises(CatalogNameConflictError):
                 create_category(db, workspace_id=workspace_a, category_in=CategoryCreate(name="tecnología"))
             db.rollback()
@@ -74,11 +78,24 @@ def test_catalog_constraints_lifecycle_and_workspace_isolation_on_disposable_pos
             db.commit()
             assert master.workspace_id == activity.workspace_id == workspace_a
 
+            for model, duplicate_name in ((MasterTask, "  LEER  "), (ActivityMaster, "CAMINAR")):
+                with pytest.raises(CatalogNameConflictError):
+                    create_item(db, model=model, workspace_id=workspace_a, item_in=CatalogItemCreate(name=duplicate_name, category_id=category_a.id))
+                db.rollback()
+
+            create_item(db, model=MasterTask, workspace_id=workspace_b, item_in=CatalogItemCreate(name="Leer", category_id=category_b.id))
+            create_item(db, model=ActivityMaster, workspace_id=workspace_b, item_in=CatalogItemCreate(name="Caminar", category_id=category_b.id))
+            db.commit()
+
             set_category_active(db, workspace_id=workspace_a, category_id=category_a.id, expected_version=category_a.lock_version, active=False)
             db.commit()
             with pytest.raises(CatalogCategoryUnavailableError):
                 create_item(db, model=MasterTask, workspace_id=workspace_a, item_in=CatalogItemCreate(name="Otro", category_id=category_a.id))
             db.rollback()
+
+            master = update_item(db, model=MasterTask, workspace_id=workspace_a, item_id=master.id, item_in=CatalogItemUpdate(name="Leer diario", lock_version=master.lock_version))
+            db.commit()
+            assert master.category_id == category_a.id
 
             with pytest.raises(CatalogVersionConflictError):
                 update_item(db, model=MasterTask, workspace_id=workspace_a, item_id=master.id, item_in=CatalogItemUpdate(name="Cambio", lock_version=999))

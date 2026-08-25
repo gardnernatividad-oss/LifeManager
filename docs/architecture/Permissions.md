@@ -35,6 +35,7 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
 - Propietario y Miembro son los únicos roles visibles; `GLOBAL_ADMIN` vive exclusivamente en User como rol de plataforma.
 - Toda membresía `ACTIVE` puede consultar y administrar los catálogos del Workspace en Stage 4.1. El `workspace_id` de la ruta es la frontera de autorización; `GLOBAL_ADMIN` no tiene bypass. La eliminación física no se expone y el ocultamiento operativo usa Activo/Inactivo.
 - Desde Stage 4.2, esa misma membresía puede solicitar hard delete, pero el servidor lo permite únicamente después de bloquear la fila, comprobar `lock_version` y verificar que no exista ninguna referencia retenida. Un registro referenciado devuelve conflicto y conserva la alternativa Activo/Inactivo.
+- Stage 4.3 confirma esta matriz para Categorías, Tareas, Actividades y sus selectores: Personal owner, Shared owner y Shared member con membership `ACTIVE` están permitidos; LEFT/REMOVED, no miembro, cuenta DISABLED, Workspace `INACTIVE` y `GLOBAL_ADMIN` sin membership están denegados. Ver `docs/security/V2-Master-Table-Gate.md`.
 - un trigger de restricción diferible exige que el propietario tenga membresía ACTIVE al commit;
 - recursos asignables referencian `(workspace_id, user_id)` contra WorkspaceMember, evitando responsables, Líderes, Organizadores o Participantes de otro Workspace;
 - los services validan además que la membresía esté ACTIVE bajo el locking apropiado;

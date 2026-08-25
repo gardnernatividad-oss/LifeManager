@@ -34,6 +34,10 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 Stage 4.1 habilita estas tres vistas sobre el Workspace seleccionado. El cambio de Workspace cambia también sus consultas y cachés; no existe un catálogo global.
 
 Los selectores reutilizables de Stage 4.2 también están aislados por Workspace. Para nuevas selecciones muestran únicamente opciones Activas; un formulario de edición puede pedir explícitamente su valor inactivo actual.
+
+Stage 4.3 cierra el gate de estas vistas y confirma que Categorías, Tareas y
+Actividades comparten lifecycle, autorización, aislamiento de caché y patrones
+responsive/accesibles coherentes.
 - Administración pertinente de miembros/Workspace dentro de Configuración.
 
 Mi calendario usa sus propios controles internos para colaboración y comparación.

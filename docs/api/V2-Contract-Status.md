@@ -2,11 +2,20 @@
 
 ## Stage 4.1
 
-Los catálogos de Categorías, Tareas y Actividades están disponibles bajo `/api/v2/workspaces/{workspace_id}`. Exponen listado, creación, lectura, actualización y operaciones dedicadas de activación/desactivación. Los DTO son estrictos, el servidor deriva normalización y alcance, y toda mutación exige `lock_version`. No se expone eliminación física en esta etapa.
+Los catálogos de Categorías, Tareas y Actividades están disponibles bajo `/api/v2/workspaces/{workspace_id}`. Exponen listado, creación, lectura, actualización y operaciones dedicadas de activación/desactivación. Los DTO son estrictos, el servidor deriva normalización y alcance, y toda mutación exige `lock_version`. Stage 4.2 añadió hard delete únicamente para registros sin referencias, revalidado por servidor y protegido por FK `RESTRICT`.
 
 ## Stage 4.2
 
 Las lecturas de gestión exponen `can_delete`, calculado por servidor. DELETE exige la versión esperada y solo elimina filas sin referencias; un FK retenido o una carrera devuelve 409. Los selectores mínimos `/selectors/categories`, `/selectors/tasks` y `/selectors/activities` devuelven activos por defecto y aceptan `current_id` para conservar visible un valor inactivo ya referenciado.
+
+## Stage 4.3
+
+El gate de Tablas maestras queda cerrado. Toda membership `ACTIVE` puede
+administrar catálogos de su Workspace `ACTIVE`; LEFT, REMOVED, no miembros,
+cuentas DISABLED y `GLOBAL_ADMIN` sin membership no obtienen acceso. La
+reclasificación histórica usa siempre la Categoría actual del maestro, sin
+snapshot. El inventario, la matriz y la evidencia están en
+[`V2-Master-Table-Gate.md`](../security/V2-Master-Table-Gate.md).
 
 ## Stage 3.7
 

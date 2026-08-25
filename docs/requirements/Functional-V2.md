@@ -77,6 +77,12 @@ Al programar una Tarea, el selector muestra solo el nombre, por ejemplo `Tarea: 
 
 Las ocurrencias referencian la clasificación maestra. Si cambia la Categoría de una entrada del catálogo, las ocurrencias y reportes históricos reflejan la Categoría nueva. Esta reclasificación dinámica es una excepción explícita a la inmutabilidad histórica; no elimina ni reescribe las ocurrencias.
 
+Stage 4.3 valida el catálogo completo como foundation cerrada: cualquier
+membresía `ACTIVE` del Workspace puede administrarlo, la eliminación física
+solo procede cuando el servidor confirma ausencia de referencias y los
+selectores normales no ofrecen valores inactivos salvo el valor actual pedido
+explícitamente. Las ocurrencias continúan fuera de Phase 4.
+
 En V2 esta edición del maestro es la operación explícita de reclasificación dinámica: conserva la identidad de las ocurrencias pero cambia su Categoría derivada, incluida su presentación histórica. El modelo no ofrece una variante «solo futuras» ni un bulk genérico por fechas. La interfaz debe advertir este alcance antes de guardar el cambio de Categoría.
 
 ### 4.3 Ocurrencias y responsables

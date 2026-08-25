@@ -84,6 +84,38 @@ def test_catalog_openapi_has_safe_delete_and_selectors_for_all_resources() -> No
     for selector in ("categories", "tasks", "activities"):
         assert "get" in paths[f"/api/v2/workspaces/{{workspace_id}}/selectors/{selector}"]
 
+    catalog_operations = [
+        (path, operation)
+        for path, definition in paths.items()
+        if path.startswith("/api/v2/workspaces/{workspace_id}/")
+        and any(segment in path for segment in ("categories", "master-tasks", "activity-masters", "selectors/"))
+        for operation in definition
+        if operation in {"get", "post", "patch", "delete"}
+    ]
+    assert len(catalog_operations) == 24
+    assert {operation for _, operation in catalog_operations} == {"get", "post", "patch", "delete"}
+    schemas = app.openapi()["components"]["schemas"]
+    assert "normalized_name" not in schemas["CategoryRead"]["properties"]
+    assert "normalized_name" not in schemas["CatalogItemRead"]["properties"]
+    assert "can_delete" not in schemas["CategoryCreate"]["properties"]
+    assert "can_delete" not in schemas["CatalogItemCreate"]["properties"]
+
+
+def test_anonymous_catalog_and_selector_reads_are_rejected() -> None:
+    app.dependency_overrides.clear()
+    with TestClient(app) as client:
+        for path in (
+            f"/api/v2/workspaces/{WORKSPACE_ID}/categories",
+            f"/api/v2/workspaces/{WORKSPACE_ID}/master-tasks",
+            f"/api/v2/workspaces/{WORKSPACE_ID}/activity-masters",
+            f"/api/v2/workspaces/{WORKSPACE_ID}/selectors/categories",
+            f"/api/v2/workspaces/{WORKSPACE_ID}/selectors/tasks",
+            f"/api/v2/workspaces/{WORKSPACE_ID}/selectors/activities",
+        ):
+            response = client.get(path)
+            assert response.status_code == 401
+            assert response.json()["error"]["code"] == "INVALID_SESSION"
+
 
 def test_referenced_delete_maps_to_conflict_and_rolls_back() -> None:
     db = MagicMock()

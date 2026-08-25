@@ -75,6 +75,13 @@ Stage 3.2 añadió la creación autenticada de Workspace Compartido. El cliente 
 
 Stage 4.2 añade elegibilidad de eliminación de catálogos derivada en servidor, hard delete solo sin referencias, selectores activos reutilizables e inclusión explícita del valor inactivo actualmente referenciado.
 
+Stage 4.3 cierra el gate integral de Tablas maestras: confirma la matriz de
+autorización sin bypass `GLOBAL_ADMIN`, normalización y lifecycle de los tres
+catálogos, eliminación segura, reclasificación histórica dinámica, selectores
+reutilizables, aislamiento de Workspace/caché y UX responsive/accesible. No
+existe snapshot histórico de Categoría ni se implementaron ocurrencias. La
+evidencia está en `docs/security/V2-Master-Table-Gate.md`.
+
 Stage 3.3 añadió el lifecycle autenticado de invitaciones Shared para cuentas `ACTIVE` existentes. Solo el propietario crea y cancela; solo el destinatario vinculado acepta o rechaza. La aceptación crea una membresía ordinaria o reactiva la fila histórica `LEFT`/`REMOVED`, reiniciando `joined_at`, limpiando `ended_at` y restableciendo `calendar_visibility=HIDE`. No se entrega token, no se envía email y no se crea notificación en esta etapa.
 
 Stage 3.4 completó el lifecycle ordinario de membresías Shared: cualquier Miembro `ACTIVE` puede consultar la lista mínima de miembros; un Miembro ordinario puede salir y el Propietario puede retirar a otro Miembro. Propietario/Miembro son roles visibles derivados de `owner_user_id`; V2 no persiste `WorkspaceRole`, y `GLOBAL_ADMIN` permanece independiente y sin bypass. La fila no se elimina: pasa a `LEFT` o `REMOVED`, conserva historia y privacidad almacenada, fija `ended_at` e invalida inmediatamente el acceso. El Propietario no puede salir ni ser retirado y Personal no expone estas operaciones. El reingreso mediante una invitación nueva conserva la semántica de Stage 3.3. El gate corrigió además el aislamiento de bases PostgreSQL automatizadas. La transferencia, eliminación y resolución transaccional de responsabilidades futuras quedan para Stage 3.5; la interfaz visible para administrar Workspaces se mantiene en 3.6/13.3.
