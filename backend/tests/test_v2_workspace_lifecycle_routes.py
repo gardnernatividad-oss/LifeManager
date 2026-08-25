@@ -94,6 +94,34 @@ def test_deactivate_commits_and_returns_server_derived_can_delete() -> None:
     db.commit.assert_called_once_with()
 
 
+def test_reactivate_resolves_inactive_owner_and_commits_once() -> None:
+    db = MagicMock()
+    account, access = _context()
+    access.workspace.lifecycle = WorkspaceLifecycle.INACTIVE
+    access.workspace.deactivated_at = NOW
+    with patch(
+        "app.api.v2.workspace_lifecycle.resolve_owned_shared_workspace",
+        return_value=access,
+    ), patch(
+        "app.api.v2.workspace_lifecycle.reactivate_shared_workspace",
+        return_value=access.workspace,
+    ) as service, patch(
+        "app.api.v2.workspace_lifecycle.get_workspace_lifecycle",
+        return_value=(access.workspace, False),
+    ), _client(db, account, access) as client:
+        access.workspace.lifecycle = WorkspaceLifecycle.ACTIVE
+        access.workspace.deactivated_at = None
+        response = client.post(
+            f"/api/v2/workspaces/{access.workspace.id}/reactivate"
+        )
+
+    assert response.status_code == 200
+    assert response.json()["lifecycle"] == "ACTIVE"
+    service.assert_called_once_with(db, owner_access=access)
+    db.commit.assert_called_once_with()
+    db.refresh.assert_called_once_with(access.workspace)
+
+
 def test_hard_delete_returns_204_and_conflict_rolls_back() -> None:
     db = MagicMock()
     account, access = _context()

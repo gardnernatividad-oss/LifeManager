@@ -15,6 +15,7 @@ from app.services.v2_workspace_lifecycle import (
     deactivate_shared_workspace,
     get_workspace_lifecycle,
     hard_delete_shared_workspace,
+    reactivate_shared_workspace,
     resolve_owned_shared_workspace,
     transfer_workspace_ownership,
 )
@@ -117,6 +118,32 @@ def deactivate_workspace(
         db.rollback()
         raise
     return _read(db, owner_access)
+
+
+@router.post("/reactivate", response_model=WorkspaceLifecycleRead)
+def reactivate_workspace(
+    workspace_id: uuid.UUID,
+    db: SessionDependency,
+    current_account: UsableAccount,
+) -> WorkspaceLifecycleRead:
+    try:
+        access = resolve_owned_shared_workspace(
+            db, account=current_account, workspace_id=workspace_id
+        )
+        reactivate_shared_workspace(db, owner_access=access)
+        db.commit()
+        db.refresh(access.workspace)
+    except (
+        WorkspaceLifecycleConflictError,
+        WorkspaceLifecycleNotFoundError,
+        WorkspaceLifecyclePermissionError,
+    ) as error:
+        db.rollback()
+        _raise_domain_error(error)
+    except Exception:
+        db.rollback()
+        raise
+    return _read(db, access)
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

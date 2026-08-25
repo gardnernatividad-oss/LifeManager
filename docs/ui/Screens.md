@@ -1,5 +1,13 @@
 # Inventario de pantallas de LifeManager
 
+## Gestión de Workspaces
+
+Configuración separa Workspaces activos e inactivos e integra creación Shared,
+invitaciones, miembros, transferencia, salida/retiro, resolución de
+responsabilidades, desactivación, reactivación y eliminación elegible. Las
+acciones dependen de `visible_role`, lifecycle y `can_delete` calculados por el
+backend.
+
 ## V1 actual
 
 Las pantallas implementadas son Login, Registro, Inicio, Revisión, Planificación/Seguimiento/Reportes de Tareas, Pendientes y Proyectos, Tablas de Tareas/Categorías y Configuración. El frontend actual opera sobre el Personal Workspace implícito.

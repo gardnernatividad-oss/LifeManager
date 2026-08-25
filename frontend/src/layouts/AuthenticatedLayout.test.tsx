@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,16 +39,19 @@ function authenticatedState(logout = vi.fn()): AuthState {
 }
 
 function renderLayout(initialEntry = "/inicio") {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
+    <QueryClientProvider client={client}><MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<AuthenticatedLayout />}>
           <Route path="/inicio" element={<h1>Contenido de Inicio</h1>} />
+          <Route path="/revision" element={<h1>Contenido de Revisión</h1>} />
+          <Route path="/calendario" element={<h1>Contenido de Mi calendario</h1>} />
           <Route path="/planificacion/tareas" element={<h1>Contenido de Planificación</h1>} />
         </Route>
         <Route path="/login" element={<h1>Destino de inicio de sesión</h1>} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter></QueryClientProvider>
   );
 }
 
@@ -64,6 +68,11 @@ describe("AuthenticatedLayout V1", () => {
     expect(screen.getByRole("heading", { name: "Contenido de Inicio" })).toBeInTheDocument();
     expect(screen.queryByText(/Espacio de trabajo|Sin espacio|Cambiar espacio/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it.each(["/inicio", "/revision", "/calendario"])("keeps global view %s free of the Workspace selector", (path) => {
+    renderLayout(path);
+    expect(screen.queryByRole("combobox", { name: "Espacio de trabajo activo" })).not.toBeInTheDocument();
   });
 
   it("renders exact top-level entries and exact nested menus", () => {
@@ -112,7 +121,7 @@ describe("AuthenticatedLayout V1", () => {
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     expect(logout).toHaveBeenCalledOnce();
-    expect(screen.getByRole("heading", { name: "Destino de inicio de sesión" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Destino de inicio de sesión" })).toBeInTheDocument();
   });
 
   it("renders hostile account text without creating executable HTML", () => {

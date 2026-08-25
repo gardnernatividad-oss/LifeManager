@@ -1,5 +1,13 @@
 # Navegación de LifeManager
 
+## Integración de Workspace implementada
+
+El selector usa el listado operacional autenticado, muestra Personal primero
+y valida cualquier UUID preferido antes de reutilizarlo. Aparece en
+Planificación, Seguimiento, Tablas, Reportes y gestión de Configuración. No se
+muestra en Inicio, Revisión ni Mi calendario. Cambiar de Workspace invalida
+cachés scoped y nunca concede autorización.
+
 ## V1 actual
 
 El runtime V1.0.0 expone Inicio, Revisión, Planificación, Seguimiento, Reportes, Tablas y Configuración dentro de un único Personal Workspace implícito. Las rutas exactas se conservan en el router frontend y en `docs/requirements/Functional.md`.

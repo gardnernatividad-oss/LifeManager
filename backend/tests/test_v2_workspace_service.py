@@ -1,6 +1,7 @@
 import uuid
 
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +22,8 @@ from app.services.v2_workspace import (
     WorkspaceInvariantError,
     WorkspaceOwnerRequiredError,
     create_shared_workspace,
+    list_active_workspaces,
+    list_manageable_workspaces,
     ensure_member_addition_allowed,
     ensure_membership_can_end,
     ensure_ownership_transfer_allowed,
@@ -29,6 +32,30 @@ from app.services.v2_workspace import (
     require_workspace_owner,
     resolve_active_workspace_access,
 )
+
+
+def test_workspace_listings_return_only_query_rows_without_global_admin_bypass() -> None:
+    db = MagicMock()
+    account = _account()
+    personal = _workspace(account, kind=WorkspaceKind.PERSONAL)
+    shared = _workspace(account, kind=WorkspaceKind.SHARED)
+    personal_member = SimpleNamespace(user_id=account.id, workspace_id=personal.id)
+    shared_member = SimpleNamespace(user_id=account.id, workspace_id=shared.id)
+    db.execute.return_value.all.return_value = [
+        (personal, personal_member),
+        (shared, shared_member),
+    ]
+
+    active = list_active_workspaces(db, account=account)
+    manageable = list_manageable_workspaces(db, account=account)
+
+    assert [access.workspace for access in active] == [personal, shared]
+    assert [access.workspace for access in manageable] == [personal, shared]
+    for call in db.execute.call_args_list:
+        sql = str(call.args[0])
+        assert "workspace_members.user_id" in sql
+        assert "workspace_members.status" in sql
+    assert "workspaces.lifecycle" in str(db.execute.call_args_list[0].args[0])
 from app.schemas.v2_workspace import SharedWorkspaceCreate
 
 

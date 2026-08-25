@@ -192,6 +192,36 @@ def deactivate_shared_workspace(
     return workspace
 
 
+def reactivate_shared_workspace(
+    db: Session,
+    *,
+    owner_access: WorkspaceAccess,
+) -> Workspace:
+    workspace = _lock_owned_shared_workspace(
+        db,
+        access=owner_access,
+        require_active=False,
+    )
+    if workspace.lifecycle != WorkspaceLifecycle.INACTIVE:
+        raise WorkspaceLifecycleConflictError("Workspace is already active")
+    membership = db.scalar(
+        select(WorkspaceMember)
+        .where(
+            WorkspaceMember.workspace_id == workspace.id,
+            WorkspaceMember.user_id == workspace.owner_user_id,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+        )
+        .with_for_update()
+    )
+    if membership is None:
+        raise WorkspaceLifecycleConflictError("Active owner membership required")
+    workspace.lifecycle = WorkspaceLifecycle.ACTIVE
+    workspace.deactivated_at = None
+    workspace.lock_version += 1
+    db.flush()
+    return workspace
+
+
 def hard_delete_shared_workspace(
     db: Session,
     *,

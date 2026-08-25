@@ -13,7 +13,8 @@ from app.core.config import settings
 from app.core.session_security import create_session_token, new_csrf_token
 from app.main import app
 from app.models import Workspace
-from app.models.enums import AccountStatus, GlobalRole, WorkspaceKind
+from app.models.enums import AccountStatus, GlobalRole, WorkspaceKind, WorkspaceLifecycle
+from app.services.v2_workspace import WorkspaceAccess
 
 
 NOW = datetime(2026, 8, 24, 12, 0, tzinfo=timezone.utc)
@@ -254,3 +255,44 @@ def test_openapi_workspace_creation_is_allowlisted() -> None:
         "owner_user_id", "global_role", "lock_version", "members",
     ):
         assert forbidden not in serialized
+
+
+def test_active_and_management_workspace_listings_are_explicit_and_read_only() -> None:
+    db = MagicMock()
+    account = _account()
+    personal = _workspace(account, "Personal")
+    personal.kind = WorkspaceKind.PERSONAL
+    personal.lifecycle = WorkspaceLifecycle.ACTIVE
+    shared = _workspace(account, "Familia")
+    shared.lifecycle = WorkspaceLifecycle.INACTIVE
+    personal_access = WorkspaceAccess(
+        workspace=personal,
+        membership=SimpleNamespace(user_id=account.id),
+    )
+    shared_access = WorkspaceAccess(
+        workspace=shared,
+        membership=SimpleNamespace(user_id=account.id),
+    )
+    with patch(
+        "app.api.v2.workspaces.list_active_workspaces",
+        return_value=[personal_access],
+    ), patch(
+        "app.api.v2.workspaces.list_manageable_workspaces",
+        return_value=[personal_access, shared_access],
+    ), patch(
+        "app.api.v2.workspaces.workspace_can_be_hard_deleted",
+        return_value=False,
+    ), _client(db, account=account) as client:
+        active = client.get("/api/v2/workspaces")
+        management = client.get("/api/v2/workspaces/management")
+
+    assert active.status_code == 200
+    assert [item["kind"] for item in active.json()] == ["PERSONAL"]
+    assert management.status_code == 200
+    assert [item["lifecycle"] for item in management.json()] == ["ACTIVE", "INACTIVE"]
+    assert management.json()[1]["visible_role"] == "Propietario"
+    assert management.json()[1]["can_manage"] is True
+    assert management.json()[1]["can_delete"] is False
+    db.commit.assert_not_called()
+    db.rollback.assert_not_called()
+    db.flush.assert_not_called()

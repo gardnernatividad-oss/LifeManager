@@ -21,11 +21,46 @@ from app.services.v2_workspace_lifecycle import (
     WorkspaceLifecycleConflictError,
     WorkspaceLifecycleNotFoundError,
     deactivate_shared_workspace,
+    reactivate_shared_workspace,
     hard_delete_shared_workspace,
     resolve_member_future_responsibilities,
     transfer_workspace_ownership,
     workspace_can_be_hard_deleted,
 )
+
+
+def test_reactivate_requires_inactive_shared_owner_and_active_owner_membership() -> None:
+    db = MagicMock()
+    account, access = _access(lifecycle=WorkspaceLifecycle.INACTIVE)
+    access.workspace.lifecycle = WorkspaceLifecycle.INACTIVE
+    access.workspace.deactivated_at = NOW
+    owner_membership = access.membership
+    db.scalar.side_effect = [access.workspace, owner_membership]
+
+    result = reactivate_shared_workspace(db, owner_access=access)
+
+    assert result is access.workspace
+    assert result.lifecycle == WorkspaceLifecycle.ACTIVE
+    assert result.deactivated_at is None
+    assert result.lock_version == 3
+    assert db.scalar.call_count == 2
+    db.flush.assert_called_once_with()
+    db.commit.assert_not_called()
+    db.rollback.assert_not_called()
+
+
+def test_reactivate_does_not_restore_members_or_invitations() -> None:
+    db = MagicMock()
+    _, access = _access(lifecycle=WorkspaceLifecycle.INACTIVE)
+    access.workspace.lifecycle = WorkspaceLifecycle.INACTIVE
+    access.workspace.deactivated_at = NOW
+    db.scalar.side_effect = [access.workspace, access.membership]
+
+    reactivate_shared_workspace(db, owner_access=access)
+
+    statements = [str(call.args[0]) for call in db.scalar.call_args_list]
+    assert all("workspace_invitations" not in sql for sql in statements)
+    assert all("LEFT" not in sql and "REMOVED" not in sql for sql in statements)
 
 
 NOW = datetime(2026, 8, 24, 12, tzinfo=timezone.utc)

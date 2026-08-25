@@ -14,10 +14,15 @@ export interface AuthenticatedUser {
 export interface WorkspaceSummary {
   id: string;
   name: string;
-  description: string | null;
+  kind?: "PERSONAL" | "SHARED";
+  lifecycle?: "ACTIVE" | "INACTIVE";
+  visible_role?: "Propietario" | "Miembro";
+  can_manage?: boolean;
+  can_delete?: boolean;
+  description?: string | null;
   timezone: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface LoginCredentials {

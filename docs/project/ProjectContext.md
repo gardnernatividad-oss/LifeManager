@@ -1,5 +1,14 @@
 # Contexto de LifeManager
 
+## Estado Stage 3.6
+
+Stage 3.6 completa listado operacional y de gestión, reactivación Shared y el
+selector contextual frontend. Personal aparece primero; Shared inactivos solo
+son visibles al Propietario en Configuración. La gestión integra creación,
+invitaciones, miembros, transferencia y resolución de responsabilidades.
+Inicio, Revisión y Mi calendario siguen globales. Stage 3.7 conserva el gate
+integral de autorización e aislamiento.
+
 ## Estado del producto
 
 LifeManager V1.0.0 es la implementación publicada y la línea base técnica. El tag anotado `v1.0.0` resuelve al commit `fafa8844f83763c837aa423d0773cd6d5782752c`.

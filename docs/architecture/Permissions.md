@@ -1,5 +1,13 @@
 # Autorización y roles de LifeManager
 
+## Frontera de listado y gestión de Workspace
+
+El listado operacional exige cuenta, Workspace y membership `ACTIVE`. El
+listado de gestión puede incluir un Shared `INACTIVE` solo para su owner
+persistido. `visible_role`, `can_manage` y `can_delete` se derivan en servidor.
+El selector es estado cliente no autoritativo. Reactivar no revive memberships
+`LEFT`/`REMOVED`, y `GLOBAL_ADMIN` no produce bypass.
+
 ## V1 actual
 
 El runtime V1 deriva un único Personal Workspace cuya membresía es `OWNER`. Los enums técnicos también contienen `ADMIN`, `MEMBER` y `VIEWER`, pero no tienen flujos colaborativos activos.

@@ -1,5 +1,10 @@
 # Roadmap de LifeManager V2.0.0
 
+> **Actualización Stage 3.6:** Completado. Se implementaron listado, selector,
+> permisos derivados, reactivación e integración colaborativa. La fila histórica
+> de la tabla que aún indique `Pendiente` para 3.6 queda sustituida por esta
+> actualización hasta la siguiente consolidación editorial.
+
 ## Estado
 
 El diseño funcional V2 está aprobado en `docs/requirements/Functional-V2.md` y ADR-007. El roadmap oficial V2 continúa después de cerrar esta línea base funcional. El detalle completo del baseline de ejecución todavía no está disponible dentro del repositorio, por lo que no se fabrican etapas adicionales.
@@ -46,7 +51,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 3 — Workspaces y colaboración base | Stage 3.3 | Invitaciones a Workspace Compartido | Completado |
 | 3. Workspaces y colaboración base | 3.4 | Administración, salida y ciclo de membresías de Workspaces compartidos | Completado |
 | 3. Workspaces y colaboración base | 3.5 | Gestión avanzada de Workspace: propiedad, desactivación, eliminación y responsabilidades futuras | Completado |
-| 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Pendiente |
+| 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Completado |
 | 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Pendiente |
 | 4. Tablas maestras | 4.1 | Categorías y catálogos maestros de Tareas y Actividades | Pendiente |
 | 4. Tablas maestras | 4.2 | Reclasificación histórica, ciclo de maestros y selectores reutilizables | Pendiente |

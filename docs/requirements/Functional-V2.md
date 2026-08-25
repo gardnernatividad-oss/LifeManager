@@ -1,5 +1,13 @@
 # Especificación funcional de LifeManager V2.0.0
 
+## Decisión operacional de Workspace (Stage 3.6)
+
+El selector incluye Personal y Shared activos con membership activa y ordena
+Personal primero. Configuración muestra Shared inactivos únicamente a su
+Propietario. Reactivar conserva historia y memberships activas, sin revivir
+memberships terminadas ni invitaciones canceladas. La UI elimina solo cuando
+`can_delete` server-side es verdadero; de otro modo desactiva y conserva.
+
 ## 1. Autoridad y estado
 
 Este documento es la fuente funcional autoritativa del objetivo aprobado para LifeManager V2.0.0. No describe funcionalidad ya implementada salvo cuando lo indica expresamente. La implementación actualmente publicada corresponde a V1.0.0 y se documenta en `Functional.md`, ADR-005, ADR-006 y el modelo físico V1.

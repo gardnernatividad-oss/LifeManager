@@ -1,5 +1,12 @@
 # Línea base de arquitectura técnica LifeManager V2.0.0
 
+## Contexto Workspace frontend (Stage 3.6)
+
+El cliente conserva solo un UUID de preferencia ordinaria, lo valida contra el
+listado `ACTIVE` y usa Personal como fallback. Toda cache dependiente incluye
+Workspace o se elimina al cambiar contexto. Inicio, Revisión y Mi calendario
+mantienen estado global independiente.
+
 ## Estado y autoridad
 
 Arquitectura aprobada para implementación futura. No describe capacidades ya implementadas ni autoriza cambios de código, infraestructura o base de datos.

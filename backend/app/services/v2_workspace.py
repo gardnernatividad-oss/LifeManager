@@ -2,7 +2,7 @@ import uuid
 
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from app.models import User, Workspace, WorkspaceMember
@@ -67,6 +67,65 @@ def create_shared_workspace(
     )
     db.flush()
     return workspace
+
+
+def list_active_workspaces(
+    db: Session,
+    *,
+    account: User,
+) -> list[WorkspaceAccess]:
+    """List operational Workspaces visible through an ACTIVE membership."""
+    if account.account_status != AccountStatus.ACTIVE:
+        return []
+    personal_first = case((Workspace.kind == WorkspaceKind.PERSONAL, 0), else_=1)
+    rows = db.execute(
+        select(Workspace, WorkspaceMember)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(
+            WorkspaceMember.user_id == account.id,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+        )
+        .order_by(
+            personal_first,
+            Workspace.name,
+            Workspace.id,
+        )
+    ).all()
+    return [WorkspaceAccess(workspace=workspace, membership=membership) for workspace, membership in rows]
+
+
+def list_manageable_workspaces(
+    db: Session,
+    *,
+    account: User,
+) -> list[WorkspaceAccess]:
+    """List active memberships plus owner-visible inactive Shared Workspaces."""
+    if account.account_status != AccountStatus.ACTIVE:
+        return []
+    personal_first = case((Workspace.kind == WorkspaceKind.PERSONAL, 0), else_=1)
+    rows = db.execute(
+        select(Workspace, WorkspaceMember)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(
+            WorkspaceMember.user_id == account.id,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+            (
+                (Workspace.lifecycle == WorkspaceLifecycle.ACTIVE)
+                | (
+                    (Workspace.lifecycle == WorkspaceLifecycle.INACTIVE)
+                    & (Workspace.owner_user_id == account.id)
+                )
+            ),
+        )
+        .order_by(
+            personal_first,
+            Workspace.lifecycle,
+            Workspace.name,
+            Workspace.id,
+        )
+    ).all()
+    return [WorkspaceAccess(workspace=workspace, membership=membership) for workspace, membership in rows]
 
 
 def resolve_active_workspace_access(

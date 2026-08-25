@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "../../api/authApi";
+import * as workspaceApi from "../../api/workspaceApi";
 import { queryKeys } from "../../api/queryKeys";
 import { useAuth } from "../../hooks/useAuth";
 import type { AuthState } from "../../store/auth-context";
@@ -10,6 +11,14 @@ import { testUser } from "../../test/testUser";
 import { ConfigurationPage } from "./ConfigurationPage";
 
 vi.mock("../../api/authApi", () => ({ listTimezones: vi.fn(), updateAuthenticatedUser: vi.fn() }));
+vi.mock("../../api/workspaceApi", () => ({
+  listManagedWorkspaces: vi.fn(), listMyWorkspaceInvitations: vi.fn(),
+  listWorkspaceMembers: vi.fn(), listWorkspaceInvitations: vi.fn(),
+  createSharedWorkspace: vi.fn(), createWorkspaceInvitation: vi.fn(),
+  actOnWorkspaceInvitation: vi.fn(), deactivateWorkspace: vi.fn(),
+  reactivateWorkspace: vi.fn(), deleteWorkspace: vi.fn(), leaveWorkspace: vi.fn(),
+  removeWorkspaceMember: vi.fn(), transferWorkspaceOwnership: vi.fn(),
+}));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 
 const setAuthenticatedUser = vi.fn();
@@ -28,6 +37,8 @@ describe("ConfigurationPage", () => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue(auth());
     vi.mocked(authApi.listTimezones).mockResolvedValue(["America/Lima", "Europe/London"]);
+    vi.mocked(workspaceApi.listManagedWorkspaces).mockResolvedValue([]);
+    vi.mocked(workspaceApi.listMyWorkspaceInvitations).mockResolvedValue([]);
   });
 
   it("shows only editable names/timezone and read-only email", async () => {
@@ -37,7 +48,7 @@ describe("ConfigurationPage", () => {
     expect(screen.getByLabelText("Apellido")).toHaveValue(testUser.last_name);
     expect(await screen.findByLabelText("Zona horaria")).toHaveValue(testUser.timezone);
     expect(screen.getAllByRole("button", { name: "Guardar" })).toHaveLength(1);
-    expect(screen.queryByLabelText(/semana|contraseña|idioma|recordatorio|notificación|workspace|espacio/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/semana|contraseña|idioma|recordatorio|notificación/i)).not.toBeInTheDocument();
   });
 
   it("loads timezone options and retries safely", async () => {

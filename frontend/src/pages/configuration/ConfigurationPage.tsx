@@ -5,6 +5,7 @@ import { listTimezones, updateAuthenticatedUser } from "../../api/authApi";
 import { queryKeys } from "../../api/queryKeys";
 import { useAuth } from "../../hooks/useAuth";
 import type { ProfileUpdatePayload } from "../../types/auth";
+import { WorkspaceManagement } from "./WorkspaceManagement";
 
 export function ConfigurationPage() {
   const { user, setAuthenticatedUser } = useAuth();
@@ -70,5 +71,6 @@ export function ConfigurationPage() {
         <button className="primary-button" type="submit" disabled={save.isPending || !timezones.isSuccess}>{save.isPending ? "Guardando…" : "Guardar"}</button>
       </form>
     </section>
+    <WorkspaceManagement />
   </section>;
 }

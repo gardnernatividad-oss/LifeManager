@@ -1,5 +1,25 @@
 # Workspaces V2
 
+## Stage 3.6: listado, selector y gestión
+
+Esta sección sustituye cualquier nota posterior que aún describa listado,
+selector o reactivación como diferidos.
+
+```text
+GET  /api/v2/workspaces
+GET  /api/v2/workspaces/management
+POST /api/v2/workspaces/{workspace_id}/reactivate
+```
+
+El listado operacional devuelve solamente Workspaces `ACTIVE` con membership
+`ACTIVE`: Personal primero y luego Shared por nombre e UUID. El listado de
+gestión añade Shared `INACTIVE` únicamente para su Propietario. La proyección
+expone rol visible y elegibilidad de eliminación derivados en servidor;
+`GLOBAL_ADMIN` no amplía el resultado.
+
+Reactivar exige al owner actual, conserva historia y memberships `ACTIVE`, y
+no restaura memberships `LEFT`/`REMOVED` ni invitaciones canceladas.
+
 ## Estado
 
 Stages 3.2–3.4 implementan creación Shared, invitaciones y el lifecycle

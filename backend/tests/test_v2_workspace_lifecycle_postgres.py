@@ -25,6 +25,8 @@ from app.schemas.v2_workspace_lifecycle import (
 from app.services.v2_workspace import (
     WorkspaceAccess,
     WorkspaceAccessNotFoundError,
+    list_active_workspaces,
+    list_manageable_workspaces,
     resolve_active_workspace_access,
 )
 from app.services.v2_workspace_lifecycle import (
@@ -32,6 +34,7 @@ from app.services.v2_workspace_lifecycle import (
     WorkspaceLifecyclePermissionError,
     deactivate_shared_workspace,
     hard_delete_shared_workspace,
+    reactivate_shared_workspace,
     transfer_workspace_ownership,
     workspace_can_be_hard_deleted,
 )
@@ -133,6 +136,25 @@ def test_transfer_preserves_former_owner_and_inactive_denies_access(db: Session)
         resolve_active_workspace_access(
             db, account=target, workspace_id=access.workspace.id
         )
+
+
+def test_active_and_management_listing_reactivation_semantics(db: Session) -> None:
+    owner = _user(db, "ListingOwner")
+    member = _user(db, "ListingMember")
+    access = _shared(db, owner)
+    member_membership = _join(db, access, member)
+
+    assert [item.workspace.id for item in list_active_workspaces(db, account=member)] == [access.workspace.id]
+    deactivate_shared_workspace(db, owner_access=access, now=NOW)
+    assert list_active_workspaces(db, account=owner) == []
+    assert list_active_workspaces(db, account=member) == []
+    assert [item.workspace.id for item in list_manageable_workspaces(db, account=owner)] == [access.workspace.id]
+    assert list_manageable_workspaces(db, account=member) == []
+
+    reactivate_shared_workspace(db, owner_access=access)
+    assert [item.workspace.id for item in list_active_workspaces(db, account=owner)] == [access.workspace.id]
+    assert [item.workspace.id for item in list_active_workspaces(db, account=member)] == [access.workspace.id]
+    assert member_membership.status == MembershipStatus.ACTIVE
 
 
 def test_empty_delete_and_current_state_eligibility(db: Session) -> None:

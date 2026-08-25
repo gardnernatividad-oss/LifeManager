@@ -4,8 +4,8 @@ import pytest
 
 from pydantic import ValidationError
 
-from app.models.enums import WorkspaceKind
-from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceRead
+from app.models.enums import WorkspaceKind, WorkspaceLifecycle
+from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceRead, WorkspaceSummaryRead
 
 
 def test_shared_workspace_create_cleans_unicode_name() -> None:
@@ -39,3 +39,17 @@ def test_workspace_read_is_allowlisted() -> None:
         kind=WorkspaceKind.SHARED,
     )
     assert set(result.model_dump()) == {"id", "name", "kind"}
+
+
+def test_workspace_summary_is_an_explicit_navigation_projection() -> None:
+    result = WorkspaceSummaryRead(
+        id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL,
+        lifecycle=WorkspaceLifecycle.ACTIVE, visible_role="Propietario",
+        can_manage=False, can_delete=False, timezone="America/Lima",
+    )
+    assert set(result.model_dump()) == {
+        "id", "name", "kind", "lifecycle", "visible_role",
+        "can_manage", "can_delete", "timezone",
+    }
+    with pytest.raises(ValidationError):
+        WorkspaceSummaryRead.model_validate({**result.model_dump(), "global_role": "GLOBAL_ADMIN"})

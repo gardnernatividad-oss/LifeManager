@@ -1,5 +1,14 @@
 # Contrato API objetivo de LifeManager V2.0.0
 
+## Stage 3.6
+
+Quedan implementados `GET /api/v2/workspaces`,
+`GET /api/v2/workspaces/management` y
+`POST /api/v2/workspaces/{workspace_id}/reactivate`, además de la integración
+frontend de creación, invitaciones, miembros, transferencia y lifecycle. Las
+notas antiguas que difieran listado, selector o reactivación quedan
+sustituidas por este estado.
+
 ## Estado y autoridad
 
 **Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Stages 3.2–3.5 implementan creación Shared, invitaciones, membresías y lifecycle avanzado. Otras verticales continúan pendientes.

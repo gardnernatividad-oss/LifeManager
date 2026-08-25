@@ -1,6 +1,8 @@
 import type { RefObject } from "react";
+import { useLocation } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
+import { WorkspaceSelector } from "./WorkspaceSelector";
 
 interface TopbarProps {
   isMenuOpen: boolean;
@@ -10,7 +12,15 @@ interface TopbarProps {
 
 export function Topbar({ isMenuOpen, menuButtonRef, onMenuToggle }: TopbarProps) {
   const { user } = useAuth();
+  const location = useLocation();
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ");
+  const workspaceScoped = [
+    "/planificacion/",
+    "/seguimiento/",
+    "/tablas/",
+    "/reportes/",
+    "/configuracion",
+  ].some((prefix) => location.pathname.startsWith(prefix));
 
   return (
     <header className="topbar">
@@ -27,6 +37,7 @@ export function Topbar({ isMenuOpen, menuButtonRef, onMenuToggle }: TopbarProps)
           <span aria-hidden="true">☰</span>
         </button>
         <strong>LifeManager</strong>
+        {workspaceScoped ? <WorkspaceSelector /> : null}
       </div>
       <div className="topbar__user" aria-label="Usuario actual">
         <span className="topbar__avatar" aria-hidden="true">
