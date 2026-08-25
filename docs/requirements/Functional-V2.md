@@ -77,6 +77,8 @@ Al programar una Tarea, el selector muestra solo el nombre, por ejemplo `Tarea: 
 
 Las ocurrencias referencian la clasificación maestra. Si cambia la Categoría de una entrada del catálogo, las ocurrencias y reportes históricos reflejan la Categoría nueva. Esta reclasificación dinámica es una excepción explícita a la inmutabilidad histórica; no elimina ni reescribe las ocurrencias.
 
+En V2 esta edición del maestro es la operación explícita de reclasificación dinámica: conserva la identidad de las ocurrencias pero cambia su Categoría derivada, incluida su presentación histórica. El modelo no ofrece una variante «solo futuras» ni un bulk genérico por fechas. La interfaz debe advertir este alcance antes de guardar el cambio de Categoría.
+
 ### 4.3 Ocurrencias y responsables
 
 Una Tarea es una ocurrencia puntual asignada a una fecha y puede tener Responsable cuando el Workspace lo permite. El objetivo de unicidad es:

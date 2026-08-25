@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { V2CatalogItem, V2CatalogList, V2Category } from "../types/v2Catalog";
+import type { V2CatalogItem, V2CatalogList, V2CatalogSelectorOption, V2Category } from "../types/v2Catalog";
 import { env } from "../utils/env";
 
 export type CatalogKind = "categories" | "master-tasks" | "activity-masters";
@@ -22,6 +22,17 @@ export async function updateV2Catalog<T extends V2Category>(workspaceId: string,
 export async function setV2CatalogActive<T extends V2Category>(workspaceId: string, kind: CatalogKind, item: T, active: boolean): Promise<T> {
   const action = active ? "activate" : "deactivate";
   return (await apiClient.post<T>(url(workspaceId, kind, `/${item.id}/${action}`), { lock_version: item.lock_version })).data;
+}
+
+export async function deleteV2Catalog(workspaceId: string, kind: CatalogKind, item: V2Category): Promise<void> {
+  await apiClient.delete(url(workspaceId, kind, `/${item.id}`), { params: { lock_version: item.lock_version } });
+}
+
+export type CatalogSelectorKind = "categories" | "tasks" | "activities";
+
+export async function listV2CatalogSelector(workspaceId: string, kind: CatalogSelectorKind, currentId?: string, search?: string): Promise<V2CatalogSelectorOption[]> {
+  const endpoint = new URL(`/api/v2/workspaces/${workspaceId}/selectors/${kind}`, env.apiBaseUrl).toString();
+  return (await apiClient.get<V2CatalogSelectorOption[]>(endpoint, { params: { current_id: currentId, search } })).data;
 }
 
 export type { V2CatalogItem, V2Category };

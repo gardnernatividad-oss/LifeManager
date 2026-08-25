@@ -30,6 +30,7 @@ Las pantallas implementadas son Login, Registro, Inicio, Revisión, Planificaci�
 | Workspace | Tablas · Actividades | Catálogo de Actividades Activas/Inactivas. |
 | Workspace | Tablas · Categorías | Clasificación reutilizable. |
 | Workspace | Tablas · gestión | Buscar, filtrar por vigencia, crear, editar, activar y desactivar Categorías, Tareas y Actividades sin exponer nombres técnicos. |
+| Workspace | Tablas · ciclo seguro | Eliminar solo cuando `can_delete` viene habilitado por backend; en caso contrario, desactivar. La reclasificación dinámica se advierte antes de guardar. |
 | Cuenta/Workspace | Configuración | Perfil, recordatorios, membresías, privacidad, seguridad y versión. |
 | Overlay | Notificaciones | Membresía, asignaciones, Actividades y recordatorios relevantes; no incluye comentarios ni es página completa. |
 

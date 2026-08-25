@@ -4,6 +4,10 @@
 
 Los catálogos de Categorías, Tareas y Actividades están disponibles bajo `/api/v2/workspaces/{workspace_id}`. Exponen listado, creación, lectura, actualización y operaciones dedicadas de activación/desactivación. Los DTO son estrictos, el servidor deriva normalización y alcance, y toda mutación exige `lock_version`. No se expone eliminación física en esta etapa.
 
+## Stage 4.2
+
+Las lecturas de gestión exponen `can_delete`, calculado por servidor. DELETE exige la versión esperada y solo elimina filas sin referencias; un FK retenido o una carrera devuelve 409. Los selectores mínimos `/selectors/categories`, `/selectors/tasks` y `/selectors/activities` devuelven activos por defecto y aceptan `current_id` para conservar visible un valor inactivo ya referenciado.
+
 ## Stage 3.7
 
 Quedan implementados `GET /api/v2/workspaces`,

@@ -74,9 +74,34 @@ def test_catalog_mass_assignment_is_rejected() -> None:
     assert response.status_code == 422
 
 
-def test_catalog_openapi_has_no_delete_and_has_all_three_resources() -> None:
+def test_catalog_openapi_has_safe_delete_and_selectors_for_all_resources() -> None:
     paths = app.openapi()["paths"]
     for resource in ("categories", "master-tasks", "activity-masters"):
         path = f"/api/v2/workspaces/{{workspace_id}}/{resource}"
         assert {"get", "post"} <= set(paths[path])
-        assert "delete" not in paths[path]
+        item_parameter = "category_id" if resource == "categories" else "item_id"
+        assert "delete" in paths[f"{path}/{{{item_parameter}}}"]
+    for selector in ("categories", "tasks", "activities"):
+        assert "get" in paths[f"/api/v2/workspaces/{{workspace_id}}/selectors/{selector}"]
+
+
+def test_referenced_delete_maps_to_conflict_and_rolls_back() -> None:
+    db = MagicMock()
+    from app.services.v2_catalog import CatalogReferencedError
+    with patch("app.api.v2.catalogs.delete_category", side_effect=CatalogReferencedError), _client(db) as client:
+        response = client.delete(f"/api/v2/workspaces/{WORKSPACE_ID}/categories/{uuid.uuid4()}?lock_version=1")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "CATALOG_REFERENCED"
+    db.rollback.assert_called_once_with()
+    db.commit.assert_not_called()
+
+
+def test_selector_is_workspace_scoped_and_returns_minimal_projection() -> None:
+    db = MagicMock()
+    category = _category()
+    with patch("app.api.v2.catalogs.category_selector", return_value=[category]) as service, _client(db) as client:
+        response = client.get(f"/api/v2/workspaces/{WORKSPACE_ID}/selectors/categories")
+    assert response.status_code == 200
+    assert response.json() == [{"id": str(category.id), "name": "Personal", "is_active": True, "category_id": None, "category_name": None}]
+    assert service.call_args.kwargs["workspace_id"] == WORKSPACE_ID
+    db.commit.assert_not_called()

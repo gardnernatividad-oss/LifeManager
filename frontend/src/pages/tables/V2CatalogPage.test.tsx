@@ -9,11 +9,11 @@ import type { AuthState } from "../../store/auth-context";
 import { V2CatalogPage } from "./V2CatalogPage";
 
 vi.mock("../../api/v2CatalogApi", () => ({
-  listV2Catalog: vi.fn(), createV2Catalog: vi.fn(), updateV2Catalog: vi.fn(), setV2CatalogActive: vi.fn()
+  listV2Catalog: vi.fn(), createV2Catalog: vi.fn(), updateV2Catalog: vi.fn(), setV2CatalogActive: vi.fn(), deleteV2Catalog: vi.fn()
 }));
 
 const workspace = { id: "11111111-1111-4111-8111-111111111111", name: "Familia", timezone: "America/Lima" };
-const category = { id: "22222222-2222-4222-8222-222222222222", workspace_id: workspace.id, name: "Personal", is_active: true, lock_version: 1, created_at: "2026-08-25T00:00:00Z", updated_at: "2026-08-25T00:00:00Z" };
+const category = { id: "22222222-2222-4222-8222-222222222222", workspace_id: workspace.id, name: "Personal", is_active: true, lock_version: 1, can_delete: false, created_at: "2026-08-25T00:00:00Z", updated_at: "2026-08-25T00:00:00Z" };
 
 function renderPage(node: React.ReactNode, selected = workspace) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -44,6 +44,17 @@ describe("V2CatalogPage", () => {
     renderPage(<V2CatalogPage kind="categories" label="Categorías" singular="Categoría" />);
     await user.click(await screen.findByRole("button", { name: "Desactivar" }));
     expect(api.setV2CatalogActive).toHaveBeenCalledWith(workspace.id, "categories", category, false);
+  });
+
+  it("shows server-derived delete only for an unused item", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.mocked(api.listV2Catalog).mockResolvedValue({ items: [{ ...category, can_delete: true }], total: 1 });
+    vi.mocked(api.deleteV2Catalog).mockResolvedValue();
+    renderPage(<V2CatalogPage kind="categories" label="Categorías" singular="Categoría" />);
+    await user.click(await screen.findByRole("button", { name: "Eliminar" }));
+    expect(api.deleteV2Catalog).toHaveBeenCalledWith(workspace.id, "categories", expect.objectContaining({ can_delete: true }));
+    expect(screen.getByRole("button", { name: "Desactivar" })).toBeInTheDocument();
   });
 
   it("does not query or leak catalog data without a selected Workspace", () => {

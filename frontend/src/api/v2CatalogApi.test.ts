@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "./client";
 import { createV2Catalog, listV2Catalog, setV2CatalogActive, updateV2Catalog } from "./v2CatalogApi";
 
-vi.mock("./client", () => ({ apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
+vi.mock("./client", () => ({ apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
 describe("v2CatalogApi", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -15,7 +15,7 @@ describe("v2CatalogApi", () => {
   });
 
   it("sends only approved create/update/lifecycle fields", async () => {
-    const item = { id: "item", workspace_id: "workspace-a", name: "Casa", is_active: true, lock_version: 3, created_at: "", updated_at: "" };
+    const item = { id: "item", workspace_id: "workspace-a", name: "Casa", is_active: true, lock_version: 3, can_delete: true, created_at: "", updated_at: "" };
     vi.mocked(apiClient.post).mockResolvedValue({ data: item });
     vi.mocked(apiClient.patch).mockResolvedValue({ data: item });
     await createV2Catalog("workspace-a", "categories", { name: "Casa" });

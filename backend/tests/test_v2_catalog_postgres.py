@@ -1,5 +1,6 @@
 import uuid
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -16,9 +17,16 @@ from app.services.v2_catalog import (
     CatalogCategoryUnavailableError,
     CatalogNameConflictError,
     CatalogNotFoundError,
+    CatalogReferencedError,
     CatalogVersionConflictError,
+    can_delete_category,
+    can_delete_item,
+    category_selector,
     create_category,
     create_item,
+    delete_category,
+    delete_item,
+    item_selector,
     set_category_active,
     update_item,
 )
@@ -75,4 +83,53 @@ def test_catalog_constraints_lifecycle_and_workspace_isolation_on_disposable_pos
             with pytest.raises(CatalogVersionConflictError):
                 update_item(db, model=MasterTask, workspace_id=workspace_a, item_id=master.id, item_in=CatalogItemUpdate(name="Cambio", lock_version=999))
             db.rollback()
+
+            assert can_delete_category(db, workspace_id=workspace_a, category_id=category_a.id) is False
+            unused_category = create_category(db, workspace_id=workspace_a, category_in=CategoryCreate(name="Sin uso"))
+            db.flush()
+            assert can_delete_category(db, workspace_id=workspace_a, category_id=unused_category.id) is True
+            delete_category(db, workspace_id=workspace_a, category_id=unused_category.id, expected_version=unused_category.lock_version)
+            db.commit()
+
+            target = create_category(db, workspace_id=workspace_a, category_in=CategoryCreate(name="Nueva clasificación"))
+            unused_master = create_item(db, model=MasterTask, workspace_id=workspace_a, item_in=CatalogItemCreate(name="Temporal", category_id=target.id))
+            unused_activity = create_item(db, model=ActivityMaster, workspace_id=workspace_a, item_in=CatalogItemCreate(name="Actividad temporal", category_id=target.id))
+            db.flush()
+            assert can_delete_item(db, model=MasterTask, workspace_id=workspace_a, item_id=unused_master.id)
+            assert can_delete_item(db, model=ActivityMaster, workspace_id=workspace_a, item_id=unused_activity.id)
+            delete_item(db, model=MasterTask, workspace_id=workspace_a, item_id=unused_master.id, expected_version=unused_master.lock_version)
+            delete_item(db, model=ActivityMaster, workspace_id=workspace_a, item_id=unused_activity.id, expected_version=unused_activity.lock_version)
+            db.commit()
+
+            master = db.get(MasterTask, master.id)
+            updated = update_item(db, model=MasterTask, workspace_id=workspace_a, item_id=master.id, item_in=CatalogItemUpdate(category_id=target.id, lock_version=master.lock_version))
+            db.commit()
+            assert updated.category_id == target.id
+            with pytest.raises(CatalogNotFoundError):
+                update_item(db, model=MasterTask, workspace_id=workspace_a, item_id=updated.id, item_in=CatalogItemUpdate(category_id=category_b.id, lock_version=updated.lock_version))
+            db.rollback()
+
+            task_id = uuid.uuid4()
+            db.execute(sa.text("INSERT INTO tasks (id,workspace_id,master_task_id,responsible_user_id,planned_date,created_by_user_id) VALUES (:id,:workspace,:master,:user,CURRENT_DATE,:user)"), {"id": task_id, "workspace": workspace_a, "master": updated.id, "user": user_id})
+            activity_id = uuid.uuid4()
+            starts_at = datetime.now(timezone.utc) + timedelta(days=1)
+            db.execute(sa.text("INSERT INTO activities (id,workspace_id,organizer_user_id,activity_master_id,title,starts_at,ends_at) VALUES (:id,:workspace,:user,:master,'Caminar',:starts,:ends)"), {"id": activity_id, "workspace": workspace_a, "user": user_id, "master": activity.id, "starts": starts_at, "ends": starts_at + timedelta(hours=1)})
+            db.commit()
+            assert can_delete_item(db, model=MasterTask, workspace_id=workspace_a, item_id=updated.id) is False
+            assert can_delete_item(db, model=ActivityMaster, workspace_id=workspace_a, item_id=activity.id) is False
+            with pytest.raises(CatalogReferencedError):
+                delete_category(db, workspace_id=workspace_a, category_id=category_a.id, expected_version=category_a.lock_version)
+            with pytest.raises(CatalogReferencedError):
+                delete_item(db, model=MasterTask, workspace_id=workspace_a, item_id=updated.id, expected_version=updated.lock_version)
+            with pytest.raises(CatalogReferencedError):
+                delete_item(db, model=ActivityMaster, workspace_id=workspace_a, item_id=activity.id, expected_version=activity.lock_version)
+            db.execute(sa.text("DELETE FROM tasks WHERE id=:id"), {"id": task_id})
+            db.commit()
+            assert can_delete_item(db, model=MasterTask, workspace_id=workspace_a, item_id=updated.id) is True
+
+            active_category_ids = {item.id for item in category_selector(db, workspace_id=workspace_a)}
+            assert category_a.id not in active_category_ids
+            included_ids = {item.id for item in category_selector(db, workspace_id=workspace_a, current_id=category_a.id)}
+            assert category_a.id in included_ids
+            assert all(item.workspace_id == workspace_a for item in item_selector(db, model=MasterTask, workspace_id=workspace_a))
         engine.dispose()

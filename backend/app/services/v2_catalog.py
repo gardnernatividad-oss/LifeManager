@@ -2,12 +2,12 @@ import uuid
 
 from typing import TypeVar
 
-from sqlalchemy import func, select, update
+from sqlalchemy import exists, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.names import normalize_name
-from app.models import ActivityMaster, Category, MasterTask
+from app.models import Activity, ActivityMaster, Category, MasterTask, PendingItem, Project, Task
 from app.schemas.v2_catalog import CategoryCreate, CategoryUpdate, CatalogItemCreate, CatalogItemUpdate
 
 
@@ -27,6 +27,10 @@ class CatalogCategoryUnavailableError(ValueError):
     pass
 
 
+class CatalogReferencedError(ValueError):
+    pass
+
+
 CatalogItem = TypeVar("CatalogItem", MasterTask, ActivityMaster)
 
 
@@ -40,6 +44,14 @@ def _integrity(error: IntegrityError) -> None:
         raise CatalogNameConflictError("Catalog name already exists") from error
     if constraint == "fk_master_tasks_category_workspace" or constraint == "fk_activity_masters_category_workspace":
         raise CatalogCategoryUnavailableError("Category unavailable") from error
+    if constraint in {
+        "fk_pending_items_category_workspace",
+        "fk_projects_category_workspace",
+        "fk_activities_custom_category_workspace",
+        "fk_tasks_master_task_workspace",
+        "fk_activities_master_workspace",
+    }:
+        raise CatalogReferencedError("Catalog item is referenced") from error
     raise error
 
 
@@ -57,9 +69,9 @@ def _execute_mutation(db: Session, statement):
         _integrity(error)
 
 
-def _category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, assignable: bool = False) -> Category:
+def _category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, assignable: bool = False, lock: bool = False) -> Category:
     statement = select(Category).where(Category.id == category_id, Category.workspace_id == workspace_id)
-    if assignable:
+    if assignable or lock:
         statement = statement.with_for_update()
     category = db.scalar(statement)
     if category is None:
@@ -91,6 +103,27 @@ def list_categories(db: Session, *, workspace_id: uuid.UUID, active: bool | None
 
 def get_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID) -> Category:
     return _category(db, workspace_id=workspace_id, category_id=category_id)
+
+
+def can_delete_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID) -> bool:
+    blockers = (
+        exists().where(MasterTask.workspace_id == workspace_id, MasterTask.category_id == category_id),
+        exists().where(ActivityMaster.workspace_id == workspace_id, ActivityMaster.category_id == category_id),
+        exists().where(PendingItem.workspace_id == workspace_id, PendingItem.category_id == category_id),
+        exists().where(Project.workspace_id == workspace_id, Project.category_id == category_id),
+        exists().where(Activity.workspace_id == workspace_id, Activity.custom_category_id == category_id),
+    )
+    return not bool(db.scalar(select(or_(*blockers))))
+
+
+def delete_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, expected_version: int) -> None:
+    category = _category(db, workspace_id=workspace_id, category_id=category_id, lock=True)
+    if category.lock_version != expected_version:
+        raise CatalogVersionConflictError("Catalog version conflict")
+    if not can_delete_category(db, workspace_id=workspace_id, category_id=category_id):
+        raise CatalogReferencedError("Catalog item is referenced")
+    db.delete(category)
+    _flush(db)
 
 
 def update_category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, category_in: CategoryUpdate) -> Category:
@@ -145,6 +178,46 @@ def get_item(db: Session, *, model: type[CatalogItem], workspace_id: uuid.UUID, 
     if item is None:
         raise CatalogNotFoundError("Catalog item not found")
     return item
+
+
+def can_delete_item(db: Session, *, model: type[CatalogItem], workspace_id: uuid.UUID, item_id: uuid.UUID) -> bool:
+    reference = Task.master_task_id if model is MasterTask else Activity.activity_master_id
+    reference_model = Task if model is MasterTask else Activity
+    return not bool(db.scalar(select(exists().where(reference_model.workspace_id == workspace_id, reference == item_id))))
+
+
+def delete_item(db: Session, *, model: type[CatalogItem], workspace_id: uuid.UUID, item_id: uuid.UUID, expected_version: int) -> None:
+    item = db.scalar(select(model).where(model.id == item_id, model.workspace_id == workspace_id).with_for_update())
+    if item is None:
+        raise CatalogNotFoundError("Catalog item not found")
+    if item.lock_version != expected_version:
+        raise CatalogVersionConflictError("Catalog version conflict")
+    if not can_delete_item(db, model=model, workspace_id=workspace_id, item_id=item_id):
+        raise CatalogReferencedError("Catalog item is referenced")
+    db.delete(item)
+    _flush(db)
+
+
+def category_selector(db: Session, *, workspace_id: uuid.UUID, current_id: uuid.UUID | None = None, search: str | None = None) -> list[Category]:
+    filters = [Category.workspace_id == workspace_id, or_(Category.is_active.is_(True), Category.id == current_id)]
+    if search and search.strip():
+        _, normalized = normalize_name(search, max_length=100, field_label="Search")
+        filters.append(Category.normalized_name.contains(normalized, autoescape=True))
+    return list(db.scalars(select(Category).where(*filters).order_by(Category.normalized_name, Category.id)).all())
+
+
+def item_selector(db: Session, *, model: type[CatalogItem], workspace_id: uuid.UUID, current_id: uuid.UUID | None = None, search: str | None = None) -> list[CatalogItem]:
+    filters = [
+        model.workspace_id == workspace_id,
+        or_(
+            (model.is_active.is_(True) & Category.is_active.is_(True)),
+            model.id == current_id,
+        ),
+    ]
+    if search and search.strip():
+        _, normalized = normalize_name(search, max_length=150, field_label="Search")
+        filters.append(model.normalized_name.contains(normalized, autoescape=True))
+    return list(db.scalars(select(model).join(Category, model.category_id == Category.id).options(selectinload(model.category)).where(*filters).order_by(model.normalized_name, model.id)).all())
 
 
 def update_item(db: Session, *, model: type[CatalogItem], workspace_id: uuid.UUID, item_id: uuid.UUID, item_in: CatalogItemUpdate) -> CatalogItem:

@@ -55,6 +55,7 @@ class CategoryRead(_StrictModel):
     name: str
     is_active: bool
     lock_version: int
+    can_delete: bool
     created_at: datetime
     updated_at: datetime
 
@@ -98,6 +99,7 @@ class CatalogItemRead(_StrictModel):
     category_name: str
     is_active: bool
     lock_version: int
+    can_delete: bool
     created_at: datetime
     updated_at: datetime
 
@@ -110,3 +112,11 @@ class CategoryListResponse(_StrictModel):
 class CatalogItemListResponse(_StrictModel):
     items: list[CatalogItemRead]
     total: int = Field(ge=0)
+
+
+class CatalogSelectorOption(_StrictModel):
+    id: uuid.UUID
+    name: str
+    is_active: bool
+    category_id: uuid.UUID | None = None
+    category_name: str | None = None

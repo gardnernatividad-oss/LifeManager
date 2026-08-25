@@ -54,7 +54,7 @@ El roadmap conservará exactamente estas columnas:
 | 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Completado |
 | 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Completado |
 | 4. Tablas maestras | 4.1 | Categorías y catálogos maestros de Tareas y Actividades | Completado |
-| 4. Tablas maestras | 4.2 | Reclasificación histórica, ciclo de maestros y selectores reutilizables | Pendiente |
+| 4. Tablas maestras | 4.2 | Reclasificación histórica, ciclo de maestros y selectores reutilizables | Completado |
 | 4. Tablas maestras | 4.3 | UX, autorización y gate de Tablas maestras | Pendiente |
 | 5. Tareas | 5.1 | Planificación, asignación y ciclo de vida de Tareas | Pendiente |
 | 5. Tareas | 5.2 | Recurrencia finita y generación de ocurrencias de Tareas | Pendiente |
