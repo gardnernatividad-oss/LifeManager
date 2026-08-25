@@ -91,7 +91,7 @@ describe("AuthenticatedLayout V1", () => {
     expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
     expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
     expect(within(groups[2]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
-    expect(within(groups[3]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Categorías"]);
+    expect(within(groups[3]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Actividades", "Categorías"]);
   });
 
   it("highlights the active nested navigation item and excludes legacy labels", () => {

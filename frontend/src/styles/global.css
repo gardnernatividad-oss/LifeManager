@@ -1596,6 +1596,14 @@ div.settings-toggles { border: 0; padding: 0; }
 .master-data-edit { display: contents; }
 .master-data-actions { display: flex; justify-content: flex-start; gap: 0.4rem; }
 .master-data-actions button { width: 2rem; min-height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.4rem; color: var(--color-primary); background: var(--color-surface); }
+.catalog-filters { display: grid; grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr); gap: 0.75rem; }
+.catalog-filters label, .catalog-card form label { display: grid; gap: 0.3rem; color: var(--color-muted); font-size: 0.84rem; font-weight: 650; }
+.catalog-card-list { display: grid; gap: 0.6rem; }
+.catalog-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem; border: 1px solid var(--color-border); border-radius: 0.65rem; }
+.catalog-card > div:first-child { display: grid; gap: 0.2rem; }
+.catalog-card small, .catalog-card span { color: var(--color-muted); }
+.catalog-card form { display: grid; grid-template-columns: minmax(10rem, 2fr) minmax(9rem, 1fr) auto auto; align-items: end; gap: 0.6rem; width: 100%; }
+@media (max-width: 40rem) { .catalog-filters, .catalog-card form { grid-template-columns: 1fr; } .catalog-card { align-items: stretch; flex-direction: column; } }
 .tracking-tasks-page { display: grid; gap: 1.25rem; }
 .tracking-tasks-page header h1, .tracking-tasks-panel h2 { margin: 0.15rem 0; }
 .tracking-tasks-panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }

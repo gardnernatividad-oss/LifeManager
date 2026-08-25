@@ -1,5 +1,9 @@
 # Contrato API objetivo de LifeManager V2.0.0
 
+## Stage 4.1
+
+Los catálogos de Categorías, Tareas y Actividades están disponibles bajo `/api/v2/workspaces/{workspace_id}`. Exponen listado, creación, lectura, actualización y operaciones dedicadas de activación/desactivación. Los DTO son estrictos, el servidor deriva normalización y alcance, y toda mutación exige `lock_version`. No se expone eliminación física en esta etapa.
+
 ## Stage 3.7
 
 Quedan implementados `GET /api/v2/workspaces`,

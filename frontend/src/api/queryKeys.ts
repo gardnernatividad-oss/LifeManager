@@ -1,4 +1,6 @@
 export const queryKeys = {
+  v2Catalog: (workspaceId: string, kind: string, params: object) => ["v2-catalog", workspaceId, kind, params] as const,
+  v2CatalogRoot: (workspaceId: string) => ["v2-catalog", workspaceId] as const,
   home: ["home"] as const,
   review: ["review"] as const,
   masterTasks: ["master-tasks", "options"] as const,

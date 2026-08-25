@@ -40,6 +40,7 @@ export const v1Navigation: readonly NavigationSection[] = [
     icon: "▦",
     children: [
       { label: "Tareas", path: "/tablas/tareas" },
+      { label: "Actividades", path: "/tablas/actividades" },
       { label: "Categorías", path: "/tablas/categorias" }
     ]
   },

@@ -33,6 +33,7 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
 - `workspaces.owner_user_id` es la única autoridad física de propiedad; el rol visible se deriva de esa columna.
 - `workspace_members` conserva una fila por Workspace+User y usa lifecycle ACTIVE/LEFT/REMOVED en vez de borrar historia.
 - Propietario y Miembro son los únicos roles visibles; `GLOBAL_ADMIN` vive exclusivamente en User como rol de plataforma.
+- Toda membresía `ACTIVE` puede consultar y administrar los catálogos del Workspace en Stage 4.1. El `workspace_id` de la ruta es la frontera de autorización; `GLOBAL_ADMIN` no tiene bypass. La eliminación física no se expone y el ocultamiento operativo usa Activo/Inactivo.
 - un trigger de restricción diferible exige que el propietario tenga membresía ACTIVE al commit;
 - recursos asignables referencian `(workspace_id, user_id)` contra WorkspaceMember, evitando responsables, Líderes, Organizadores o Participantes de otro Workspace;
 - los services validan además que la membresía esté ACTIVE bajo el locking apropiado;

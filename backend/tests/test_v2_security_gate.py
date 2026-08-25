@@ -170,6 +170,18 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/workspaces/{workspace_id}/deactivate",
             "/api/v2/workspaces/{workspace_id}/reactivate",
         "/api/v2/workspaces/{workspace_id}/transfer-ownership",
+        "/api/v2/workspaces/{workspace_id}/categories",
+        "/api/v2/workspaces/{workspace_id}/categories/{category_id}",
+        "/api/v2/workspaces/{workspace_id}/categories/{category_id}/activate",
+        "/api/v2/workspaces/{workspace_id}/categories/{category_id}/deactivate",
+        "/api/v2/workspaces/{workspace_id}/master-tasks",
+        "/api/v2/workspaces/{workspace_id}/master-tasks/{item_id}",
+        "/api/v2/workspaces/{workspace_id}/master-tasks/{item_id}/activate",
+        "/api/v2/workspaces/{workspace_id}/master-tasks/{item_id}/deactivate",
+        "/api/v2/workspaces/{workspace_id}/activity-masters",
+        "/api/v2/workspaces/{workspace_id}/activity-masters/{item_id}",
+        "/api/v2/workspaces/{workspace_id}/activity-masters/{item_id}/activate",
+        "/api/v2/workspaces/{workspace_id}/activity-masters/{item_id}/deactivate",
     }
     serialized = str(document).lower()
     for forbidden in (

@@ -43,6 +43,7 @@ En caso de contradicción funcional prevalecen `Functional-V2.md` y ADR-007. En 
 - PWA personal en español con autenticación Bearer JWT.
 - Un Personal Workspace creado automáticamente por usuario.
 - Categorías y catálogo de Tareas.
+- La API V2 y la interfaz gestionan Categorías, Tareas de catálogo y Actividades de catálogo dentro del Workspace seleccionado. Los nombres técnicos `MasterTask` y `ActivityMaster` no se exponen en la interfaz.
 - Planificación, Revisión, Seguimiento y Reportes para Tareas, Pendientes y Proyectos con componentes internos `ProjectStep` (Etapas en la terminología V2).
 - Inicio operativo y Configuración de perfil/zona horaria.
 - Backend FastAPI, SQLAlchemy 2.x, Alembic y PostgreSQL.

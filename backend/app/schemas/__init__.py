@@ -17,8 +17,28 @@ from app.schemas.v2_identity import (
     RegistrationRequestAcknowledgement,
     RejectAccountRequest,
 )
+from app.schemas.v2_catalog import (
+    CatalogItemCreate,
+    CatalogItemListResponse,
+    CatalogItemRead,
+    CatalogItemUpdate,
+    CatalogLifecycleUpdate,
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryRead,
+    CategoryUpdate,
+)
 
 __all__ = [
+    "CatalogItemCreate",
+    "CatalogItemListResponse",
+    "CatalogItemRead",
+    "CatalogItemUpdate",
+    "CatalogLifecycleUpdate",
+    "CategoryCreate",
+    "CategoryListResponse",
+    "CategoryRead",
+    "CategoryUpdate",
     "AdminAccountSummary",
     "AdminRegistrationList",
     "EmailVerificationRequest",

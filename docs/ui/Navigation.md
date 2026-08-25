@@ -30,6 +30,8 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.
 - Tablas: Tareas, Actividades y Categorías.
+
+Stage 4.1 habilita estas tres vistas sobre el Workspace seleccionado. El cambio de Workspace cambia también sus consultas y cachés; no existe un catálogo global.
 - Administración pertinente de miembros/Workspace dentro de Configuración.
 
 Mi calendario usa sus propios controles internos para colaboración y comparación.
