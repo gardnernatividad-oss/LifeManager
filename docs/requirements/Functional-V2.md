@@ -30,6 +30,8 @@ Cada usuario tiene automáticamente un Personal Workspace y puede pertenecer a W
 
 Las invitaciones V2.0.0 se dirigen exclusivamente a cuentas LifeManager `ACTIVE` existentes mediante email normalizado. Solo la persona Propietaria de un Workspace compartido puede invitar o cancelar; el destinatario autenticado puede aceptar o rechazar. La aceptación crea una membresía de Miembro o reactiva su identidad histórica `LEFT`/`REMOVED`, reiniciando fecha de ingreso y privacidad a Ocultar. Las invitaciones duran 14 días. Personal no admite invitaciones y `GLOBAL_ADMIN` no obtiene autoridad de Workspace implícita. Email y notificaciones de invitación se incorporarán en etapas posteriores.
 
+En un Workspace compartido, cualquier Miembro `ACTIVE` puede consultar la lista de membresías. Un Miembro ordinario puede salir voluntariamente y pasa a `LEFT`; la persona Propietaria puede retirar a un Miembro ordinario, que pasa a `REMOVED`. Ambas transiciones conservan la fila histórica, registran la fecha de fin y revocan inmediatamente el acceso. La persona Propietaria no puede salir ni ser retirada hasta que exista el flujo posterior de transferencia. Personal no ofrece administración colaborativa de miembros. Una nueva invitación puede reactivar una membresía `LEFT` o `REMOVED` y restablece su privacidad a Ocultar.
+
 La interfaz presenta roles de Workspace como **Propietario** y **Miembro**; no expone enums internos.
 
 ### 3.1 Vistas globales

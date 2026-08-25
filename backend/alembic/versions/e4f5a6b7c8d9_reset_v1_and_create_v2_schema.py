@@ -753,8 +753,7 @@ def _assert_safe_target(bind: sa.Connection) -> None:
     if "neon" in host or "production" in host or "prod" in host:
         raise RuntimeError("V2 reset refused: production/Neon target denied")
     database = unquote(url.database or "")
-    configured = {item.strip() for item in os.getenv("LIFEMANAGER_DESTRUCTIVE_DB_ALLOWLIST", "").split(",") if item.strip()}
-    allowlist = {"lifemanager", "lifemanager_test", "lifemanager_v2_test"} | configured
+    allowlist = {"lifemanager_test", "lifemanager_v2_test"}
     if database not in allowlist:
         raise RuntimeError("V2 reset refused: database name is not explicitly allowlisted")
     current_revision = bind.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()

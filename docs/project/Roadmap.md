@@ -44,7 +44,7 @@ El roadmap conservará exactamente estas columnas:
 | Phase 3 — Workspaces y colaboración base | Stage 3.1 | Adaptación del modelo Personal y Compartido de Workspace | Completado |
 | Phase 3 — Workspaces y colaboración base | Stage 3.2 | Creación de Workspace Compartido | Completado |
 | Phase 3 — Workspaces y colaboración base | Stage 3.3 | Invitaciones a Workspace Compartido | Completado |
-| 3. Workspaces y colaboración base | 3.4 | Administración, salida y ciclo de membresías de Workspaces compartidos | Pendiente |
+| 3. Workspaces y colaboración base | 3.4 | Administración, salida y ciclo de membresías de Workspaces compartidos | Completado |
 | 3. Workspaces y colaboración base | 3.5 | Gestión avanzada de Workspace: propiedad, eliminación y responsabilidades futuras | Pendiente |
 | 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Pendiente |
 | 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Pendiente |
@@ -117,6 +117,8 @@ Stage 3.1 consolidó la frontera reutilizable de autorización Workspace, explic
 Stage 3.2 implementó `POST /api/v2/workspaces` para que una cuenta ACTIVE cree un Workspace `SHARED`. Owner, kind y membresía ACTIVE se derivan en servidor y se persisten atómicamente. Invitaciones, administración de miembros, selector/listado y transferencia continúan pendientes.
 
 Stage 3.3 implementó invitaciones exclusivamente a cuentas LifeManager `ACTIVE` existentes. Solo el propietario de un Workspace `SHARED` puede crear o cancelar; el destinatario autenticado puede listar, aceptar o rechazar. La aceptación crea o reactiva atómicamente la misma membresía, restablece privacidad `HIDE` y nunca transfiere propiedad ni rol global. Las invitaciones vencen a los 14 días y se excluyen de listados accionables sin scheduler. Email, centro de notificaciones y administración general de miembros continúan diferidos.
+
+Stage 3.4 implementó el listado seguro de membresías Shared, salida voluntaria y retiro de Miembros ordinarios por el Propietario. Las transiciones preservan una única fila histórica (`ACTIVE → LEFT/REMOVED`), fijan `ended_at`, incrementan `lock_version` y revocan acceso inmediatamente. Propietario, Personal y `GLOBAL_ADMIN` no obtienen atajos; una invitación nueva puede reactivar la misma fila y restablece privacidad `HIDE`. El gate operacional corrigió el aislamiento Alembic/test mediante target explícito y allowlist fail-closed que excluye la base compartida `lifemanager`. Transferencia, eliminación Shared y tratamiento de responsabilidades futuras pertenecen a Stage 3.5; selector e interfaz de gestión pertenecen a 3.6/13.3.
 
 Después de Stage 3.3, el alcance futuro se reagrupará en bloques de implementación coherentes sin reducir funcionalidad. La correspondencia completa entre historia, requisitos autoritativos y los 60 stages pendientes está en [`V2-Roadmap-Regrouping-Traceability.md`](V2-Roadmap-Regrouping-Traceability.md).
 

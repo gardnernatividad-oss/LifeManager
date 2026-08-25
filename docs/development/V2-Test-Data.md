@@ -39,6 +39,20 @@ def test_scenario(db: Session) -> None:
 
 En pruebas PostgreSQL, `db` debe apuntar exclusivamente a una base local y desechable incluida en la allowlist de tests (`lifemanager_test` o `lifemanager_v2_test`). El test de integración de fixtures se omite si no recibe una URL local y permitida.
 
+`backend/tests/postgres_safety.py` es la frontera común para cualquier test que
+cree, migre, resetee o elimine una base. Exige intención de prueba explícita,
+host loopback y uno de esos dos nombres exactos antes de crear un engine o
+ejecutar DDL. `lifemanager` es la base local de desarrollo compartida y nunca
+es un target desechable; estar en loopback no basta. Un target ambiguo,
+preexistente, remoto o no allowlisted falla cerrado.
+
+Los tests que invoquen Alembic deben construir su `Config` mediante
+`alembic_config_for_test_database()`. El target explícito viaja en
+`Config.attributes["database_url"]` y `alembic/env.py` le da precedencia sobre
+la configuración de aplicación ya importada. No se debe cambiar únicamente una
+variable de entorno después de importar `app.db.session`: `DATABASE_URL`,
+`engine` y `SessionLocal` ya fueron materializados en ese momento.
+
 ## Seed de desarrollo
 
 Stage 1.10 no añade un script de seed. Los builders ya satisfacen las necesidades inmediatas de pruebas sin introducir un ejecutable que pueda apuntar accidentalmente a una base equivocada. Si más adelante se necesita poblar manualmente una base de desarrollo, se deberá diseñar un comando separado con opt-in explícito, clasificación LOCAL y rechazo obligatorio de hosts remotos.
@@ -46,3 +60,18 @@ Stage 1.10 no añade un script de seed. Los builders ya satisfacen las necesidad
 ## Advertencia
 
 Estos datos son exclusivamente para pruebas y desarrollo local. Nunca deben ejecutarse contra Neon, producción ni una base compartida. No se ejecutan al iniciar la aplicación y no incluyen credenciales, endpoints push ni datos personales reales.
+
+En la validación inicial de Stage 3.4, un harness ad hoc cambió el entorno
+después de importar `app.db.session`; Alembic reutilizó el `DATABASE_URL`
+cacheado y aplicó el reset V2 a `lifemanager`. No había datos personales V2 en
+uso autorizado y no se intentó restaurar V1. El incidente motivó la frontera
+fail-closed anterior y la eliminación de `lifemanager` de la allowlist de la
+migración destructiva.
+
+Esta eliminación es una excepción explícita y acotada a la inmutabilidad de la
+migración histórica `e4f5a6b7c8d9`: se realizó antes de producción para cerrar
+también la ejecución manual directa de la revisión, una vía que no pasa por el
+harness ni queda protegida por la selección de target en `alembic/env.py`. La
+revisión, su parent y todo su DDL congelado permanecen idénticos; únicamente se
+endureció la allowlist de su guarda previa a cualquier DDL. No se permiten más
+cambios en esa migración por esta excepción.

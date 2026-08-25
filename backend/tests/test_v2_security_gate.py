@@ -161,6 +161,9 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
         "/api/v2/workspace-invitations/{invitation_id}/accept",
         "/api/v2/workspace-invitations/{invitation_id}/reject",
         "/api/v2/workspace-invitations/{invitation_id}/cancel",
+        "/api/v2/workspaces/{workspace_id}/members",
+        "/api/v2/workspaces/{workspace_id}/members/{user_id}",
+        "/api/v2/workspaces/{workspace_id}/leave",
     }
     serialized = str(document).lower()
     for forbidden in (

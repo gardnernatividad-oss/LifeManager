@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Stage 3.2 implementa la creación de Workspace Compartido. Otras verticales continúan pendientes.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Stages 3.2–3.4 implementan creación Shared, invitaciones y lifecycle ordinario de membresías. Otras verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -135,8 +135,10 @@ duplicados están permitidos.
 
 Stage 3.3 implementa creación, listados accionables, aceptación, rechazo y
 cancelación de invitaciones Shared para cuentas `ACTIVE` existentes. El
-listado/selector general de Workspaces, administración de miembros, transferencia y
-eliminación Shared permanecen diferidos. El contrato detallado está en
+Stage 3.4 añade listado de miembros, retiro owner-only y salida voluntaria con
+transiciones históricas `LEFT`/`REMOVED`. El listado/selector general de
+Workspaces, la interfaz de administración, transferencia, eliminación Shared y
+tratamiento de responsabilidades futuras permanecen diferidos. El contrato detallado está en
 [`Workspaces.md`](Workspaces.md).
 
 ## 5. Envelope de error

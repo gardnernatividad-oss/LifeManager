@@ -2,7 +2,8 @@
 
 ## Estado
 
-Stage 3.2 implementa únicamente:
+Stages 3.2–3.4 implementan creación Shared, invitaciones y el lifecycle
+ordinario de membresías.
 
 ```text
 POST /api/v2/workspaces
@@ -62,8 +63,28 @@ ORM. Inmediatamente después del commit, la persona creadora cumple las frontera
 
 Las mutaciones usan sesión cookie, CSRF y Origin. La vigencia es de 14 días. No se expone ni entrega token; el digest interno queda reservado para una posible evolución futura. Las respuestas nunca incluyen el digest, estado interno de cuenta ni grafos ORM. Invitaciones vencidas se excluyen de listados accionables; no se requiere scheduler.
 
+## Miembros Shared
+
+- `GET /api/v2/workspaces/{workspace_id}/members`: cualquier Miembro `ACTIVE` lista la proyección mínima de membresías del Workspace Shared.
+- `DELETE /api/v2/workspaces/{workspace_id}/members/{user_id}`: el Propietario retira a un Miembro ordinario `ACTIVE`.
+- `POST /api/v2/workspaces/{workspace_id}/leave`: el Miembro ordinario autenticado sale voluntariamente.
+
+La proyección incluye `user_id`, nombre visible, email, rol derivado
+`Propietario`/`Miembro`, estado y fechas de ingreso/fin. No expone rol global,
+privacidad, versiones, campos de cuenta, hashes, tokens ni grafos ORM. El rol
+no se persiste: se deriva comparando `owner_user_id`.
+
+Retiro y salida bloquean primero Workspace y luego WorkspaceMember. Mutan la
+misma fila `ACTIVE` a `REMOVED` o `LEFT`, fijan `ended_at` e incrementan
+`lock_version`; no hacen hard delete ni borran `calendar_visibility`. El acceso
+se revoca inmediatamente porque toda ruta privada exige membresía `ACTIVE`.
+Una acción repetida produce conflicto y una cuenta `GLOBAL_ADMIN` carece de
+bypass. Personal no admite estas rutas colaborativas. Una invitación posterior
+puede reactivar la misma fila y restablece privacidad `HIDE`.
+
 ## Diferido
 
-Listado/selector general de Workspaces, administración general de miembros,
-privacidad, transferencia, salida, eliminación Shared, email y notificaciones no
-forman parte de Stage 3.3.
+Listado/selector general de Workspaces, interfaz de administración, privacidad,
+transferencia, eliminación Shared, tratamiento de responsabilidades futuras,
+email y notificaciones permanecen diferidos. Transferencia, eliminación y
+responsabilidades pertenecen a Stage 3.5; selector e interfaz a 3.6/13.3.

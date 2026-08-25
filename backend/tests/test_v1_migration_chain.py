@@ -1,7 +1,6 @@
 import importlib.util
 from pathlib import Path
 from unittest.mock import MagicMock
-from uuid import uuid4
 
 from alembic import command
 from alembic.config import Config
@@ -9,6 +8,9 @@ from alembic.script import ScriptDirectory
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.engine import make_url
+
+from tests.postgres_safety import alembic_config_for_test_database
+from tests.postgres_safety import disposable_postgres_database
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -24,13 +26,17 @@ def _load_reset_migration():
     return module
 
 
-def test_v1_migrations_form_one_linear_head() -> None:
+def test_migrations_form_one_linear_v2_head() -> None:
     config = Config(str(BACKEND_ROOT / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_heads() == ["d3e4f5a6b7c8"]
+    assert script.get_heads() == ["c3d172b18308"]
+    current = script.get_revision("c3d172b18308")
+    v2_reset = script.get_revision("e4f5a6b7c8d9")
     target = script.get_revision("d3e4f5a6b7c8")
     reset = script.get_revision("c2d3e4f5a6b7")
+    assert current is not None and current.down_revision == "e4f5a6b7c8d9"
+    assert v2_reset is not None and v2_reset.down_revision == "d3e4f5a6b7c8"
     assert target is not None and target.down_revision == "c2d3e4f5a6b7"
     assert reset is not None and reset.down_revision == "1b2c3d4e5f60"
 
@@ -109,7 +115,7 @@ def test_explicit_verified_local_development_reset_remains_supported(
     migration._require_explicit_development_database(bind)
 
 
-def test_fresh_local_postgresql_database_upgrades_from_base_to_v1_head(
+def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.db import session as db_session
@@ -118,48 +124,39 @@ def test_fresh_local_postgresql_database_upgrades_from_base_to_v1_head(
     if source_url.host not in {"localhost", "127.0.0.1", "::1"}:
         pytest.skip("Disposable migration-chain test requires local PostgreSQL")
 
-    database_name = f"lifemanager_stage4_bootstrap_{uuid4().hex}"
-    admin_url = source_url.set(database="postgres")
-    target_url = source_url.set(database=database_name)
-    admin_engine = sa.create_engine(admin_url, isolation_level="AUTOCOMMIT")
-    with admin_engine.connect() as connection:
-        connection.execute(sa.text(f'CREATE DATABASE "{database_name}"'))
-
-    original_url = db_session.DATABASE_URL
-    try:
-        monkeypatch.setattr(db_session, "DATABASE_URL", target_url.render_as_string(False))
+    database_name = "lifemanager_v2_test"
+    with disposable_postgres_database(
+        source_url,
+        database_name=database_name,
+        explicit_test_intent=True,
+    ) as target_url:
         monkeypatch.delenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_SCHEMA_RESET", raising=False)
-        config = Config(str(BACKEND_ROOT / "alembic.ini"))
+        monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1")
+        monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+        config = alembic_config_for_test_database(
+            target_url,
+            backend_root=BACKEND_ROOT,
+            explicit_test_intent=True,
+        )
         command.upgrade(config, "head")
 
         target_engine = sa.create_engine(target_url)
         with target_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "d3e4f5a6b7c8"
+            ).scalar_one() == "c3d172b18308"
             tables = set(sa.inspect(connection).get_table_names())
             assert {
                 "users",
                 "workspaces",
                 "workspace_members",
-                "workspace_tracking_metadata",
+                "workspace_invitations",
                 "categories",
                 "master_tasks",
                 "tasks",
                 "pending_items",
                 "projects",
-                "project_steps",
+                "project_stages",
+                "rate_limit_buckets",
             }.issubset(tables)
         target_engine.dispose()
-    finally:
-        monkeypatch.setattr(db_session, "DATABASE_URL", original_url)
-        with admin_engine.connect() as connection:
-            connection.execute(
-                sa.text(
-                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                    "WHERE datname = :database_name AND pid <> pg_backend_pid()"
-                ),
-                {"database_name": database_name},
-            )
-            connection.execute(sa.text(f'DROP DATABASE "{database_name}"'))
-        admin_engine.dispose()

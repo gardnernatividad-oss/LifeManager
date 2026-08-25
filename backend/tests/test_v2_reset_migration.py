@@ -142,6 +142,23 @@ def test_nonallowlisted_database_is_refused_before_inspection(monkeypatch) -> No
         migration._assert_safe_target(bind)
 
 
+def test_shared_local_database_is_refused_even_with_all_opt_ins(monkeypatch) -> None:
+    migration = _migration()
+    monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1")
+    monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+    monkeypatch.setenv("LIFEMANAGER_DESTRUCTIVE_DB_ALLOWLIST", "lifemanager")
+    execute = MagicMock()
+    bind = SimpleNamespace(
+        engine=SimpleNamespace(url=__import__("sqlalchemy").engine.make_url(
+            "postgresql+psycopg://redacted@127.0.0.1/lifemanager"
+        )),
+        execute=execute,
+    )
+    with pytest.raises(RuntimeError, match="not explicitly allowlisted"):
+        migration._assert_safe_target(bind)
+    execute.assert_not_called()
+
+
 @pytest.mark.parametrize("schema_defect", ["columns", "enum_types"])
 def test_unexpected_v1_shape_is_refused_before_destructive_ddl(
     monkeypatch, schema_defect: str,

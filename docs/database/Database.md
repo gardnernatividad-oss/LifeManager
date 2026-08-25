@@ -1,5 +1,26 @@
 # Base de datos de LifeManager
 
+## Seguridad de bases locales y de prueba
+
+`lifemanager` es una base local de desarrollo compartida, no una base
+desechable para automatización. Las únicas bases admitidas por el harness de
+integración destructiva son `lifemanager_test` y `lifemanager_v2_test`, siempre
+en loopback y con intención explícita. Loopback por sí solo no autoriza DDL
+destructivo. Alembic recibe el target de test mediante configuración explícita,
+sin depender de settings, engine o `SessionLocal` previamente importados.
+
+El harness falla antes de conectarse o ejecutar DDL cuando el nombre es
+`lifemanager`, el host es remoto, el nombre no está allowlisted, falta opt-in o
+el target es ambiguo. Cada base desechable se crea para la ejecución y se
+elimina al finalizar.
+
+Como defensa final para una invocación manual que el harness no puede
+interceptar, la guarda de la revisión destructiva `e4f5a6b7c8d9` acepta
+únicamente esos mismos dos nombres. Este hardening preproducción es una
+excepción explícita de seguridad sobre una migración ya confirmada: no cambia
+revision, parent ni semántica física del esquema y deja intacto el DDL
+congelado.
+
 > **ALCANCE V1/HISTÓRICO.** Este documento conserva fundamentos y evolución de la base V1. El esquema físico V1 vigente está en `V1-Target-Data-Model.md`. El diseño V2 aprobado documentalmente —todavía no implementado— está en `V2-Target-Data-Model.md`, `V2-ERD.md` y ADR-008; su transición se define en `V2-Transition-Implementation-Plan.md`. No deben inferirse tablas V2 del contenido histórico de este documento.
 
 > **Nota de alcance:** este documento contiene fundamentos e implementación histórica. El modelo funcional V1 fue redefinido por ADR-005 y `docs/requirements/Functional.md`. Las menciones a `TaskSeries` persistente, Proyectos que agrupan Tareas, cancelación y formularios diarios no son el nuevo objetivo y requieren revisión antes de crear migraciones.

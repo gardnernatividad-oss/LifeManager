@@ -463,6 +463,15 @@ de membresía y reinicia su privacidad a `HIDE`. El digest interno se conserva p
 compatibilidad física, pero V2.0.0 no entrega tokens ni implementa email o
 notificaciones en este flujo.
 
+Stage 3.4 implementa listado y finalización ordinaria de membresías Shared sin
+cambiar el esquema. El orden canónico de lock es Workspace y luego
+WorkspaceMember. Salir produce `LEFT`; el retiro por owner produce `REMOVED`;
+ambos fijan `ended_at`, incrementan `lock_version` y cortan acceso porque toda
+frontera privada exige `ACTIVE`. No se borra historia ni se altera privacidad al
+salir. Owner, Personal y `GLOBAL_ADMIN` no tienen caminos alternativos. Una
+invitación nueva reactiva la misma fila y restablece `HIDE`. Stage 3.5 conserva
+la responsabilidad de transferencia, eliminación Shared y contenido futuro.
+
 ## 32. Decisiones y límites
 
 ADRs vinculadas:
