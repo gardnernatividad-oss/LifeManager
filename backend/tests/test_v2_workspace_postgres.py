@@ -1,6 +1,8 @@
 import os
+import threading
 import uuid
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -8,6 +10,7 @@ import pytest
 import sqlalchemy as sa
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.models import User, Workspace, WorkspaceMember
@@ -19,8 +22,11 @@ from app.models.enums import (
 )
 from app.services.v2_workspace import (
     WorkspaceAccessNotFoundError,
+    create_shared_workspace,
+    require_workspace_owner,
     resolve_active_workspace_access,
 )
+from app.schemas.v2_workspace import SharedWorkspaceCreate
 
 
 def _local_test_url() -> str:
@@ -160,3 +166,128 @@ def test_access_is_workspace_scoped_and_global_admin_has_no_bypass(
         resolve_active_workspace_access(
             db, account=admin, workspace_id=workspace_a.id
         )
+
+
+def test_shared_creation_is_atomic_and_immediately_authorized(db: Session) -> None:
+    owner = _user(db, "creator")
+    other = _user(db, "other")
+    admin = _user(db, "unrelated-admin", admin=True)
+    personal, _ = _workspace(db, owner, kind=WorkspaceKind.PERSONAL)
+
+    shared = create_shared_workspace(
+        db,
+        creator=owner,
+        workspace_in=SharedWorkspaceCreate(name="Familia Pérez"),
+    )
+    db.connection().exec_driver_sql("SET CONSTRAINTS ALL IMMEDIATE")
+    db.connection().exec_driver_sql("SET CONSTRAINTS ALL DEFERRED")
+
+    assert shared.kind == WorkspaceKind.SHARED
+    assert shared.owner_user_id == owner.id
+    owner_membership = db.scalar(
+        sa.select(WorkspaceMember)
+        .where(
+            WorkspaceMember.workspace_id == shared.id,
+            WorkspaceMember.user_id == owner.id,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+        )
+    )
+    assert owner_membership is not None
+    assert owner_membership.joined_at is not None
+    assert db.scalar(
+        sa.select(sa.func.count())
+        .select_from(Workspace)
+        .where(
+            Workspace.owner_user_id == owner.id,
+            Workspace.kind == WorkspaceKind.PERSONAL,
+            Workspace.id == personal.id,
+        )
+    ) == 1
+    access = resolve_active_workspace_access(
+        db, account=owner, workspace_id=shared.id
+    )
+    assert require_workspace_owner(access).workspace.id == shared.id
+    for outsider in (other, admin):
+        with pytest.raises(WorkspaceAccessNotFoundError):
+            resolve_active_workspace_access(
+                db, account=outsider, workspace_id=shared.id
+            )
+
+
+def test_membership_failure_rolls_back_shared_workspace(db: Session) -> None:
+    owner = _user(db, "rollback-owner")
+    name = f"Rollback {uuid.uuid4()}"
+
+    def fail_membership(*_args, **_kwargs):
+        raise RuntimeError("forced membership failure")
+
+    savepoint = db.begin_nested()
+    event.listen(WorkspaceMember, "before_insert", fail_membership)
+    try:
+        with pytest.raises(RuntimeError, match="forced membership failure"):
+            create_shared_workspace(
+                db,
+                creator=owner,
+                workspace_in=SharedWorkspaceCreate(name=name),
+            )
+    finally:
+        event.remove(WorkspaceMember, "before_insert", fail_membership)
+        savepoint.rollback()
+    db.expire_all()
+
+    assert db.scalar(
+        sa.select(sa.func.count())
+        .select_from(Workspace)
+        .where(Workspace.owner_user_id == owner.id, Workspace.name == name)
+    ) == 0
+
+
+def test_concurrent_same_name_creation_produces_distinct_consistent_workspaces(
+    engine,
+) -> None:
+    with Session(engine) as setup:
+        owner = _user(setup, "concurrent-owner")
+        _workspace(setup, owner, kind=WorkspaceKind.PERSONAL)
+        owner_id = owner.id
+        setup.commit()
+
+    barrier = threading.Barrier(2)
+
+    def create_once() -> uuid.UUID:
+        with Session(engine) as session:
+            owner = session.get(User, owner_id)
+            assert owner is not None
+            barrier.wait(timeout=10)
+            workspace = create_shared_workspace(
+                session,
+                creator=owner,
+                workspace_in=SharedWorkspaceCreate(name="Familia"),
+            )
+            session.commit()
+            return workspace.id
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        identifiers = [future.result() for future in [
+            pool.submit(create_once),
+            pool.submit(create_once),
+        ]]
+
+    assert len(set(identifiers)) == 2
+    with Session(engine) as verify:
+        workspaces = list(
+            verify.scalars(
+                sa.select(Workspace).where(Workspace.id.in_(identifiers))
+            ).all()
+        )
+        assert len(workspaces) == 2
+        assert all(item.kind == WorkspaceKind.SHARED for item in workspaces)
+        assert all(item.owner_user_id == owner_id for item in workspaces)
+        assert verify.scalar(
+            sa.select(sa.func.count())
+            .select_from(WorkspaceMember)
+            .where(
+                WorkspaceMember.workspace_id.in_(identifiers),
+                WorkspaceMember.user_id == owner_id,
+                WorkspaceMember.status == MembershipStatus.ACTIVE,
+            )
+        ) == 2

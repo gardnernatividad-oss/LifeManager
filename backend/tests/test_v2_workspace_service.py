@@ -19,6 +19,7 @@ from app.services.v2_workspace import (
     WorkspaceAccessNotFoundError,
     WorkspaceInvariantError,
     WorkspaceOwnerRequiredError,
+    create_shared_workspace,
     ensure_member_addition_allowed,
     ensure_membership_can_end,
     ensure_ownership_transfer_allowed,
@@ -27,6 +28,7 @@ from app.services.v2_workspace import (
     require_workspace_owner,
     resolve_active_workspace_access,
 )
+from app.schemas.v2_workspace import SharedWorkspaceCreate
 
 
 def _account(*, global_admin: bool = False) -> User:
@@ -147,3 +149,58 @@ def test_shared_workspace_allows_future_collaboration_operations() -> None:
     ensure_workspace_can_be_deleted(workspace)
     ensure_ownership_transfer_allowed(workspace)
     ensure_workspace_kind_unchanged(workspace, kind=WorkspaceKind.SHARED)
+
+
+def test_create_shared_workspace_derives_owner_and_active_membership() -> None:
+    db = MagicMock(spec=Session)
+    creator = _account()
+
+    workspace = create_shared_workspace(
+        db,
+        creator=creator,
+        workspace_in=SharedWorkspaceCreate(name="  Familia   Pérez  "),
+    )
+
+    assert workspace.name == "Familia Pérez"
+    assert workspace.kind == WorkspaceKind.SHARED
+    assert workspace.owner_user_id == creator.id
+    assert db.add.call_args_list[0].args == (workspace,)
+    membership = db.add.call_args_list[1].args[0]
+    assert membership.workspace_id == workspace.id
+    assert membership.user_id == creator.id
+    assert membership.status == MembershipStatus.ACTIVE
+    assert db.flush.call_count == 2
+    db.commit.assert_not_called()
+    db.rollback.assert_not_called()
+
+
+def test_create_shared_workspace_flushes_workspace_before_membership() -> None:
+    db = MagicMock(spec=Session)
+    creator = _account()
+    events: list[str] = []
+    db.add.side_effect = lambda _value: events.append("add")
+    db.flush.side_effect = lambda: events.append("flush")
+
+    create_shared_workspace(
+        db,
+        creator=creator,
+        workspace_in=SharedWorkspaceCreate(name="Familia"),
+    )
+
+    assert events == ["add", "flush", "add", "flush"]
+
+
+def test_create_shared_workspace_rejects_non_active_creator() -> None:
+    db = MagicMock(spec=Session)
+    creator = _account()
+    creator.account_status = AccountStatus.DISABLED
+
+    with pytest.raises(WorkspaceAccessNotFoundError):
+        create_shared_workspace(
+            db,
+            creator=creator,
+            workspace_in=SharedWorkspaceCreate(name="Familia"),
+        )
+    db.add.assert_not_called()
+    db.flush.assert_not_called()
+    create_shared_workspace,

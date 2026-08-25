@@ -77,4 +77,4 @@ La sesión V2 usa cookie HttpOnly, CSRF y validación de cuenta ACTIVE implement
 
 `app.services.v2_workspace` concentra la resolución Workspace+membresía ACTIVE, la autoridad de owner y las guardas de invariantes. `ActiveWorkspaceMembership` y `WorkspaceOwner` exponen esa frontera a rutas V2 posteriores. El servicio usa únicamente estado persistido, scope exacto y cuenta ACTIVE; `GLOBAL_ADMIN` no participa en la decisión.
 
-Stage 3.1 no implementa creación Shared, invitaciones, aceptación, retiro de miembros ni transferencia. Esas operaciones deberán bloquear Workspace y membresías en orden determinista, reutilizar las guardas centrales y respetar el trigger diferible de owner ACTIVE.
+Stage 3.2 implementa exclusivamente la creación Shared: cualquier cuenta ACTIVE puede crear, el owner y la membresía ACTIVE se derivan server-side y la ruta realiza un solo commit. Un `GLOBAL_ADMIN` actúa como cualquier otra cuenta creadora y no obtiene acceso ajeno. Invitaciones, aceptación, listado/selector, retiro de miembros y transferencia siguen diferidos; deberán reutilizar las guardas centrales y respetar el trigger diferible de owner ACTIVE.

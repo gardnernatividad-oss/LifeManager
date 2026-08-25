@@ -449,9 +449,12 @@ bypass de contenido privado.
 Personal se aprovisiona exclusivamente durante aprobación global y queda
 protegido contra miembros ajenos, fin de la membresía propietaria, delete,
 transferencia y conversión ordinarios. Shared conserva owner+membresía ACTIVE
-y queda preparado para colaboración, pero sus rutas de creación, invitación,
-miembros y transferencia pertenecen a stages posteriores. No se introdujo
-ningún rol Workspace persistido: Propietario/Miembro siguen siendo derivados.
+y Stage 3.2 implementa su creación mediante `POST /api/v2/workspaces`. El DTO
+acepta solo el nombre; kind, owner y membership se derivan en servidor y el
+router confirma una única transacción. Invitaciones, listado/selector,
+administración de miembros y transferencia pertenecen a stages posteriores.
+No se introdujo ningún rol Workspace persistido: Propietario/Miembro siguen
+siendo derivados.
 
 ## 32. Decisiones y límites
 

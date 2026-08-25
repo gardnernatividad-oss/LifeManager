@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User, Workspace, WorkspaceMember
 from app.models.enums import AccountStatus, MembershipStatus, WorkspaceKind
+from app.schemas.v2_workspace import SharedWorkspaceCreate
 
 
 class WorkspaceAccessNotFoundError(ValueError):
@@ -33,6 +34,34 @@ class WorkspaceAccess:
     @property
     def is_owner(self) -> bool:
         return self.workspace.owner_user_id == self.membership.user_id
+
+
+def create_shared_workspace(
+    db: Session,
+    *,
+    creator: User,
+    workspace_in: SharedWorkspaceCreate,
+) -> Workspace:
+    if creator.account_status != AccountStatus.ACTIVE:
+        raise WorkspaceAccessNotFoundError("Active account required")
+
+    workspace = Workspace(
+        id=uuid.uuid4(),
+        name=workspace_in.name,
+        kind=WorkspaceKind.SHARED,
+        owner_user_id=creator.id,
+    )
+    db.add(workspace)
+    db.flush()
+    db.add(
+        WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=creator.id,
+            status=MembershipStatus.ACTIVE,
+        )
+    )
+    db.flush()
+    return workspace
 
 
 def resolve_active_workspace_access(

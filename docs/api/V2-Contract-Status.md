@@ -2,7 +2,7 @@
 
 ## Estado y autoridad
 
-**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Otras verticales continúan pendientes.
+**Implementación incremental.** Este documento es autoritativo para las convenciones transversales del API V2. Stage 2.8 implementa login, sesión cookie, CSRF, `/me`, logout e invalidación de sesiones sobre Stages 2.3–2.7; Stage 2.9 añade rate limiting compartido a las rutas de identidad protegidas. Stage 3.2 implementa la creación de Workspace Compartido. Otras verticales continúan pendientes.
 
 El comportamiento funcional proviene de [Functional-V2](../requirements/Functional-V2.md); layering, sesión y autorización provienen de [V2-Architecture-Baseline](../architecture/V2-Architecture-Baseline.md) y ADR-009–012. Las rutas `/api/v1` y sus payloads permanecen como contratos V1, no como plantilla V2.
 
@@ -116,6 +116,26 @@ Los nombres finales de actions pueden concretarse sin cambiar la familia. Regist
 `POST /api/v2/auth/login` emite una sesión de ocho horas en `lifemanager_v2_session`, cookie HttpOnly, Path `/`, SameSite explícito y Secure automático fuera de DB loopback. El JSON devuelve solo identidad segura. `GET /api/v2/me` restaura sesión y revalida cuenta ACTIVE, rol global y huella HMAC de la credencial contra DB. `POST /api/v2/auth/logout` elimina cookies. El frontend usa `credentials: include`; no recibe ni persiste JWT. Methods unsafe autenticados exigen `X-CSRF-Token`, cookie `lifemanager_v2_csrf` double-submit vinculada por digest HMAC al JWT y Origin permitido.
 
 Errores 401 incluyen semántica de sesión inválida sin distinguir firma, expiración, cuenta inexistente o deshabilitada. Los endpoints admin exigen GLOBAL_ADMIN, que no implica membership privada.
+
+### 4.1 Creación de Workspace Compartido
+
+Stage 3.2 implementa:
+
+```text
+POST /api/v2/workspaces
+```
+
+Requiere sesión de una cuenta ACTIVE y la protección Origin/CSRF de toda
+mutación autenticada. El request contiene únicamente `name`; el endpoint fija
+`kind=SHARED` y deriva owner y membresía ACTIVE de la identidad autenticada. El
+servicio hace flush sin commit y la ruta confirma una sola transacción. Responde
+201 con `id`, `name` y `kind`. No permite crear Personal ni elegir owner, kind,
+roles, estados, IDs, versiones, timestamps o relaciones. Nombres Shared
+duplicados están permitidos.
+
+El listado/selector de Workspaces, invitaciones, miembros, transferencia y
+eliminación Shared permanecen diferidos. El contrato detallado está en
+[`Workspaces.md`](Workspaces.md).
 
 ## 5. Envelope de error
 

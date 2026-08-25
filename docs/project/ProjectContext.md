@@ -59,6 +59,8 @@ Phase 1 cerró el baseline documental, los 25 modelos V2, la revisión `e4f5a6b7
 
 Stage 3.1 estableció la foundation Workspace definitiva sin cambiar el esquema ni publicar rutas nuevas. La autorización privada se deriva de cuenta `ACTIVE` y membresía `ACTIVE`, nunca de `GLOBAL_ADMIN`; el rol Propietario se deriva de `owner_user_id`. Personal mantiene un único owner, no admite miembros adicionales y no puede eliminarse, transferirse ni convertirse mediante operaciones ordinarias. La colaboración Shared, sus invitaciones, membresías y transferencia se implementarán en etapas posteriores sobre esta frontera.
 
+Stage 3.2 añadió la creación autenticada de Workspace Compartido. El cliente aporta únicamente el nombre; el backend fija `SHARED`, deriva al owner de la sesión, crea su membresía `ACTIVE` en la misma transacción y devuelve una proyección mínima. Personal continúa siendo system-only durante aprobación. Listado/selector, invitaciones, administración de miembros, transferencia y eliminación Shared siguen diferidos.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.
