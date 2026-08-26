@@ -1,7 +1,7 @@
 import uuid
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from threading import Barrier
 
@@ -16,7 +16,7 @@ from app.db import session as db_session
 from app.models import GenerationBatch, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult
 from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
-from app.services.v2_task import TaskConflictError, TaskReferenceUnavailableError, create_recurring_tasks, create_task, resolve_task, update_task
+from app.services.v2_task import TaskConflictError, TaskReferenceUnavailableError, create_recurring_tasks, create_task, delete_task, list_tasks, resolve_task, update_task
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -43,10 +43,11 @@ def test_task_lifecycle_and_integrity_on_disposable_postgres(monkeypatch: pytest
                 db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": current, "user": owner})
             db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": workspace_id, "user": member_id})
             category_id, foreign_category = uuid.uuid4(), uuid.uuid4()
-            master_id, foreign_master = uuid.uuid4(), uuid.uuid4()
+            master_id, second_master_id, foreign_master = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
             db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Casa','casa')"), {"id": category_id, "workspace": workspace_id})
             db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Otra','otra')"), {"id": foreign_category, "workspace": foreign_workspace})
             db.execute(sa.text("INSERT INTO master_tasks (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Comprar','comprar')"), {"id": master_id, "workspace": workspace_id, "category": category_id})
+            db.execute(sa.text("INSERT INTO master_tasks (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Ordenar','ordenar')"), {"id": second_master_id, "workspace": workspace_id, "category": category_id})
             db.execute(sa.text("INSERT INTO master_tasks (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Ajena','ajena')"), {"id": foreign_master, "workspace": foreign_workspace, "category": foreign_category})
             db.commit()
             owner, member = db.get(User, owner_id), db.get(User, member_id)
@@ -91,6 +92,61 @@ def test_task_lifecycle_and_integrity_on_disposable_postgres(monkeypatch: pytest
             assert len(batch_ids) == 1
             batch = db.get(GenerationBatch, batch_ids.pop())
             assert batch.entity_type == "TASK" and batch.timezone is None
+            original_batch = (batch.pattern, batch.date_from, batch.date_until, batch.weekdays, batch.month_days, batch.created_by_user_id)
+
+            first_generated = occurrences[0]
+            update_task(db, access=access, task_id=first_generated.id, task_in=TaskUpdate(planned_date=date(2027, 1, 28), lock_version=first_generated.lock_version, scope="THIS"), local_date=date(2026, 12, 31))
+            db.commit()
+            assert first_generated.planned_date == date(2027, 1, 28) and first_generated.generation_batch_id == batch.id
+            delete_task(db, access=access, task_id=first_generated.id, expected_version=first_generated.lock_version, local_date=date(2026, 12, 31), scope="THIS")
+            db.commit()
+            assert db.get(GenerationBatch, batch.id) is not None
+            assert db.get(Task, first_generated.id) is None
+
+            scope_request = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "DAILY", "date_from": "2030-01-01", "date_until": "2030-01-05"}})
+            scope_tasks = create_recurring_tasks(db, access=access, actor=owner, task_in=scope_request)
+            db.commit()
+            scope_batch = db.get(GenerationBatch, scope_tasks[0].generation_batch_id)
+            scope_batch_original = (scope_batch.pattern, scope_batch.date_from, scope_batch.date_until, scope_batch.weekdays, scope_batch.month_days, scope_batch.created_by_user_id)
+            resolved_future = scope_tasks[3]
+            resolved_future.result = TaskResult.COMPLETED
+            resolved_future.resolved_at = datetime.now(timezone.utc)
+            resolved_future.resolved_by_user_id = member_id
+            db.commit()
+            selected = db.get(Task, scope_tasks[2].id)
+            collision = create_task(db, access=access, actor=owner, task_in=TaskCreate(master_task_id=second_master_id, planned_date=date(2030, 1, 5), responsible_user_id=owner_id))
+            db.commit()
+            with pytest.raises(TaskConflictError):
+                update_task(db, access=access, task_id=selected.id, task_in=TaskUpdate(master_task_id=second_master_id, responsible_user_id=owner_id, lock_version=selected.lock_version, scope="THIS_AND_FUTURE"), local_date=date(2030, 1, 2))
+            db.rollback()
+            assert db.get(Task, selected.id).master_task_id == master_id
+            db.delete(db.get(Task, collision.id))
+            db.commit()
+            selected = db.get(Task, selected.id)
+            update_task(db, access=access, task_id=selected.id, task_in=TaskUpdate(master_task_id=second_master_id, responsible_user_id=owner_id, lock_version=selected.lock_version, scope="THIS_AND_FUTURE"), local_date=date(2030, 1, 2))
+            db.commit()
+            preserved = {item.planned_date: db.get(Task, item.id) for item in scope_tasks}
+            assert preserved[date(2030, 1, 1)].master_task_id == master_id
+            assert preserved[date(2030, 1, 2)].master_task_id == master_id
+            assert preserved[date(2030, 1, 4)].result == TaskResult.COMPLETED and preserved[date(2030, 1, 4)].master_task_id == master_id
+            assert preserved[date(2030, 1, 3)].master_task_id == second_master_id and preserved[date(2030, 1, 3)].responsible_user_id == owner_id
+            assert preserved[date(2030, 1, 5)].master_task_id == second_master_id and preserved[date(2030, 1, 5)].responsible_user_id == owner_id
+            assert (scope_batch.pattern, scope_batch.date_from, scope_batch.date_until, scope_batch.weekdays, scope_batch.month_days, scope_batch.created_by_user_id) == scope_batch_original
+            selected = db.get(Task, selected.id)
+            scope_task_ids = [item.id for item in scope_tasks]
+            delete_task(db, access=access, task_id=selected.id, expected_version=selected.lock_version, local_date=date(2030, 1, 2), scope="THIS_AND_FUTURE")
+            db.commit()
+            assert db.get(Task, scope_task_ids[0]) is not None
+            assert db.get(Task, scope_task_ids[1]) is not None
+            assert db.get(Task, scope_task_ids[2]) is None
+            assert db.get(Task, scope_task_ids[3]) is not None
+            assert db.get(Task, scope_task_ids[4]) is None
+            assert db.get(GenerationBatch, scope_batch.id) is not None
+            assert (batch.pattern, batch.date_from, batch.date_until, batch.weekdays, batch.month_days, batch.created_by_user_id) == original_batch
+
+            with pytest.raises(TaskConflictError):
+                delete_task(db, access=access, task_id=second.id, expected_version=second.lock_version, local_date=date(2026, 8, 31), scope="THIS_AND_FUTURE")
+            db.rollback()
 
             batches_before = db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch))
             tasks_before = db.scalar(sa.select(sa.func.count()).select_from(Task))
@@ -99,6 +155,40 @@ def test_task_lifecycle_and_integrity_on_disposable_postgres(monkeypatch: pytest
             db.rollback()
             assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == batches_before
             assert db.scalar(sa.select(sa.func.count()).select_from(Task)) == tasks_before
+
+            concurrent_scope_request = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "DAILY", "date_from": "2031-01-01", "date_until": "2031-01-02"}})
+            concurrent_scope_tasks = create_recurring_tasks(db, access=access, actor=owner, task_in=concurrent_scope_request)
+            db.commit()
+            concurrent_scope_task_id = concurrent_scope_tasks[0].id
+            concurrent_scope_version = concurrent_scope_tasks[0].lock_version
+            concurrent_scope_batch_id = concurrent_scope_tasks[0].generation_batch_id
+
+        scope_barrier = Barrier(2)
+
+        def update_same_future_scope() -> str:
+            with Session(engine) as concurrent_db:
+                concurrent_workspace = concurrent_db.get(Workspace, workspace_id)
+                concurrent_membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == owner_id))
+                scope_barrier.wait()
+                try:
+                    update_task(concurrent_db, access=WorkspaceAccess(workspace=concurrent_workspace, membership=concurrent_membership), task_id=concurrent_scope_task_id, task_in=TaskUpdate(responsible_user_id=owner_id, lock_version=concurrent_scope_version, scope="THIS_AND_FUTURE"), local_date=date(2030, 12, 31))
+                    concurrent_db.commit()
+                    return "updated"
+                except TaskConflictError:
+                    concurrent_db.rollback()
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            scope_outcomes = sorted(executor.map(lambda _: update_same_future_scope(), range(2)))
+        assert scope_outcomes == ["conflict", "updated"]
+        with Session(engine) as verification_db:
+            concurrent_rows = verification_db.scalars(sa.select(Task).where(Task.generation_batch_id == concurrent_scope_batch_id).order_by(Task.planned_date)).all()
+            assert len(concurrent_rows) == 2
+            assert all(row.responsible_user_id == owner_id and row.lock_version == 2 for row in concurrent_rows)
+            programmed, programmed_total = list_tasks(verification_db, workspace_id=workspace_id, page=1, page_size=100, state="PROGRAMADA", generated=True, local_date=date(2030, 12, 31))
+            assert programmed_total >= 2
+            assert all(row.result is None and row.planned_date > date(2030, 12, 31) and row.generation_batch_id is not None for row in programmed)
+            assert [row.planned_date for row in programmed] == sorted(row.planned_date for row in programmed)
 
         barrier = Barrier(2)
         concurrent_request = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "DAILY", "date_from": "2028-01-01", "date_until": "2028-01-02"}})

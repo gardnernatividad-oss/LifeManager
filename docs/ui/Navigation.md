@@ -30,8 +30,9 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 
 `Planificación → Tareas` usa el Workspace seleccionado y permite elegir entre
 una ocurrencia puntual o una repetición finita diaria, semanal o mensual. Las
-ocurrencias generadas aparecen como Tareas normales; su gestión por alcance se
-difiere a Stage 5.3. No debe confundirse con `Tablas → Tareas`, que
+ocurrencias generadas aparecen como Tareas normales. Una futura generada ofrece
+`Solo esta` y `Todas las futuras`; las independientes se editan directamente.
+No debe confundirse con `Tablas → Tareas`, que
 administra el catálogo reutilizable.
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.

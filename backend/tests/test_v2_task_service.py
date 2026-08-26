@@ -8,7 +8,7 @@ import pytest
 from app.models import Category, MasterTask, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult, WorkspaceKind
 from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
-from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, create_recurring_tasks, create_task, delete_task, resolve_task, task_projection, update_task
+from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, _mutation_scope_tasks, create_recurring_tasks, create_task, delete_task, resolve_task, task_projection, update_task
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -129,11 +129,105 @@ def test_projection_allows_edit_only_while_unresolved_task_is_future() -> None:
     task.master_task = master
     db = MagicMock()
     db.scalar.return_value = actor
-    _, state, can_edit, can_resolve, can_delete = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
-    assert (state, can_edit, can_resolve, can_delete) == ("PROGRAMADA", True, False, True)
+    _, state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
+    assert (state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future) == ("PROGRAMADA", False, True, False, False, True, False)
     task.planned_date = date(2026, 9, 1)
-    _, state, can_edit, can_resolve, can_delete = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
-    assert (state, can_edit, can_resolve, can_delete) == ("PENDIENTE", False, True, False)
+    _, state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
+    assert (state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future) == ("PENDIENTE", False, False, False, True, False, False)
+
+
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._master")
+@patch("app.services.v2_task._mutation_scope_tasks")
+def test_generated_this_edit_preserves_batch(scope_tasks, master, responsible) -> None:
+    _, access = _context()
+    batch_id = uuid.uuid4()
+    task = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 2), generation_batch_id=batch_id, lock_version=1)
+    scope_tasks.return_value = (task, [task])
+    target_master = uuid.uuid4()
+    updated = update_task(db := MagicMock(), access=access, task_id=task.id, task_in=TaskUpdate(master_task_id=target_master, planned_date=date(2026, 9, 3), lock_version=1, scope="THIS"), local_date=date(2026, 9, 1))
+    assert updated.master_task_id == target_master
+    assert updated.planned_date == date(2026, 9, 3)
+    assert updated.generation_batch_id == batch_id
+    db.flush.assert_called_once()
+
+
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._mutation_scope_tasks")
+def test_future_scope_changes_only_locked_future_unresolved_tasks(scope_tasks, responsible) -> None:
+    _, access = _context()
+    batch_id = uuid.uuid4()
+    selected = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=batch_id, lock_version=2)
+    later = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 4), generation_batch_id=batch_id, lock_version=4)
+    scope_tasks.return_value = (selected, [selected, later])
+    target = uuid.uuid4()
+    update_task(db := MagicMock(), access=access, task_id=selected.id, task_in=TaskUpdate(responsible_user_id=target, lock_version=2, scope="THIS_AND_FUTURE"), local_date=date(2026, 9, 1))
+    assert selected.responsible_user_id == target and later.responsible_user_id == target
+    assert (selected.lock_version, later.lock_version) == (3, 5)
+    assert selected.generation_batch_id == later.generation_batch_id == batch_id
+    db.flush.assert_called_once()
+
+
+@patch("app.services.v2_task._mutation_scope_tasks")
+def test_future_scope_rejects_date_change_before_flush(scope_tasks) -> None:
+    _, access = _context()
+    task = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=uuid.uuid4(), lock_version=1)
+    scope_tasks.return_value = (task, [task])
+    db = MagicMock()
+    with pytest.raises(TaskConflictError):
+        update_task(db, access=access, task_id=task.id, task_in=TaskUpdate(planned_date=date(2026, 9, 4), lock_version=1, scope="THIS_AND_FUTURE"), local_date=date(2026, 9, 1))
+    db.flush.assert_not_called()
+
+
+@patch("app.services.v2_task._mutation_scope_tasks")
+def test_this_scope_rejects_moving_occurrence_to_today_or_past(scope_tasks) -> None:
+    _, access = _context()
+    task = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=uuid.uuid4(), lock_version=1)
+    scope_tasks.return_value = (task, [task])
+    db = MagicMock()
+    with pytest.raises(TaskConflictError):
+        update_task(db, access=access, task_id=task.id, task_in=TaskUpdate(planned_date=date(2026, 9, 1), lock_version=1, scope="THIS"), local_date=date(2026, 9, 1))
+    db.flush.assert_not_called()
+
+
+@patch("app.services.v2_task._mutation_scope_tasks")
+def test_future_scope_delete_deletes_only_returned_scope(scope_tasks) -> None:
+    _, access = _context()
+    selected = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=uuid.uuid4(), lock_version=1)
+    later = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 4), generation_batch_id=selected.generation_batch_id, lock_version=1)
+    scope_tasks.return_value = (selected, [selected, later])
+    db = MagicMock()
+    delete_task(db, access=access, task_id=selected.id, expected_version=1, local_date=date(2026, 9, 1), scope="THIS_AND_FUTURE")
+    assert [call.args[0] for call in db.delete.call_args_list] == [selected, later]
+    db.flush.assert_called_once()
+
+
+@patch("app.services.v2_task._task")
+def test_scope_locking_preserves_past_today_and_resolved(task_lookup) -> None:
+    _, access = _context()
+    batch_id = uuid.uuid4()
+    selected = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=batch_id, lock_version=1)
+    past = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 8, 31), generation_batch_id=batch_id, lock_version=1)
+    today = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 1), generation_batch_id=batch_id, lock_version=1)
+    resolved = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 4), generation_batch_id=batch_id, result=TaskResult.COMPLETED, resolved_at=datetime.now(timezone.utc), resolved_by_user_id=selected.responsible_user_id, lock_version=1)
+    future = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=selected.master_task_id, responsible_user_id=selected.responsible_user_id, created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 5), generation_batch_id=batch_id, lock_version=1)
+    task_lookup.return_value = selected
+    db = MagicMock()
+    db.scalars.return_value.all.return_value = [past, today, selected, resolved, future]
+    locked_selected, affected = _mutation_scope_tasks(db, workspace_id=access.workspace.id, task_id=selected.id, scope="THIS_AND_FUTURE", local_date=date(2026, 9, 1))
+    assert locked_selected is selected
+    assert affected == [selected, future]
+    statement = db.scalars.call_args.args[0]
+    assert "FOR UPDATE" in str(statement)
+    assert "ORDER BY tasks.planned_date, tasks.id" in str(statement)
+
+
+@patch("app.services.v2_task._task")
+def test_standalone_rejects_future_scope(task_lookup) -> None:
+    _, access = _context()
+    task_lookup.return_value = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=uuid.uuid4(), created_by_user_id=uuid.uuid4(), planned_date=date(2026, 9, 3), generation_batch_id=None, lock_version=1)
+    with pytest.raises(TaskConflictError):
+        _mutation_scope_tasks(MagicMock(), workspace_id=access.workspace.id, task_id=task_lookup.return_value.id, scope="THIS_AND_FUTURE", local_date=date(2026, 9, 1))
 
 
 @patch("app.services.v2_task._task")

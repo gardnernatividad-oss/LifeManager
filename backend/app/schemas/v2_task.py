@@ -10,6 +10,7 @@ from app.models.enums import GenerationPattern, TaskResult
 
 
 TaskState = Literal["PROGRAMADA", "PENDIENTE", "COMPLETADA", "NO_REALIZADA"]
+TaskMutationScope = Literal["THIS", "THIS_AND_FUTURE"]
 
 
 class _StrictModel(BaseModel):
@@ -52,6 +53,7 @@ class TaskUpdate(_StrictModel):
     planned_date: date | None = None
     responsible_user_id: uuid.UUID | None = None
     lock_version: int = Field(ge=1)
+    scope: TaskMutationScope = "THIS"
 
     @model_validator(mode="before")
     @classmethod
@@ -85,6 +87,11 @@ class TaskRead(_StrictModel):
     resolved_at: datetime | None
     resolved_by_user_id: uuid.UUID | None
     lock_version: int
+    is_generated: bool
+    can_edit_this: bool
+    can_edit_future: bool
+    can_delete_this: bool
+    can_delete_future: bool
     can_edit: bool
     can_resolve: bool
     can_delete: bool

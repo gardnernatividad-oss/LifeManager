@@ -98,8 +98,16 @@ fallback 29/30/31 al último día del mes. Las fechas convergentes se deduplican
 antes de persistir. Cada solicitud crea un único `GenerationBatch` inmutable y
 sus ocurrencias en una transacción; cualquier conflicto existente revierte el
 lote completo. Un límite técnico de 1000 ocurrencias por solicitud evita
-amplificación accidental. La edición o eliminación por alcance de ocurrencias
-generadas permanece diferida a Stage 5.3.
+amplificación accidental.
+
+Stage 5.3 añade los alcances `Solo esta` y `Todas las futuras` para ocurrencias
+generadas futuras no resueltas. El alcance futuro incluye la seleccionada y las
+posteriores no resueltas del mismo `GenerationBatch`; preserva anteriores,
+hoy/pasado y resueltas. El batch permanece como procedencia inmutable. También
+se incorporaron filtros por estado derivado y origen, orden cronológico
+determinista y tarjetas móviles. Cambiar el patrón y regenerar fechas sigue
+diferido porque aún no existe un contrato concreto; Stage 5.4 conserva el gate
+final.
 
 Stage 3.3 añadió el lifecycle autenticado de invitaciones Shared para cuentas `ACTIVE` existentes. Solo el propietario crea y cancela; solo el destinatario vinculado acepta o rechaza. La aceptación crea una membresía ordinaria o reactiva la fila histórica `LEFT`/`REMOVED`, reiniciando `joined_at`, limpiando `ended_at` y restableciendo `calendar_visibility=HIDE`. No se entrega token, no se envía email y no se crea notificación en esta etapa.
 

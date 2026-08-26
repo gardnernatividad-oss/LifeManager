@@ -114,9 +114,10 @@ Responsable y Tarea de catálogo sin cambios y solo admite resolución por su
 Responsable actual. Propietario y Miembro tienen la
 misma autoridad sobre estas operaciones; `GLOBAL_ADMIN` no tiene bypass. En
 Personal, el Responsable se deriva como su propietario y la interfaz no muestra
-selector. Cualquier Miembro `ACTIVE` puede eliminar una Tarea independiente no
-resuelta únicamente cuando su fecha es futura; hoy, fechas anteriores,
-resultados terminales y ocurrencias generadas no admiten este hard delete.
+selector. Cualquier Miembro `ACTIVE` puede editar o eliminar una Tarea no
+resuelta únicamente cuando su fecha es futura. En una ocurrencia generada debe
+elegir `Solo esta` o `Todas las futuras`; hoy, fechas anteriores y resultados
+terminales permanecen inmutables.
 
 ### 4.5 Creación recurrente finita
 
@@ -133,8 +134,13 @@ La creación se materializa inmediatamente y de forma atómica: un único
 referencian. Una colisión con una Tarea ya persistida rechaza y revierte el lote
 completo; no se omiten fechas silenciosamente. El backend limita cada solicitud
 a 1000 ocurrencias como salvaguarda técnica contra amplificación, sin convertir
-ese límite en recurrencia abierta. El batch no es una serie editable; su gestión
-por ocurrencia o por alcance futuro corresponde a Stage 5.3.
+ese límite en recurrencia abierta. El batch no es una serie editable. `Solo
+esta` modifica o elimina exclusivamente la ocurrencia seleccionada y conserva
+su procedencia. `Todas las futuras` cambia Tarea maestra o Responsable, o elimina
+la seleccionada y las posteriores futuras no resueltas del mismo batch. No
+incluye anteriores, hoy/pasado ni resueltas. El patrón original no se muta y el
+cambio/regeneración de calendario queda diferido hasta aprobar un contrato
+específico que cree nueva procedencia sin falsificar la historia.
 
 ## 5. Pendientes
 

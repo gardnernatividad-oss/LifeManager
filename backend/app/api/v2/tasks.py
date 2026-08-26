@@ -10,7 +10,7 @@ from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import Task, User
 from app.models.enums import TaskResult
-from app.schemas.v2_task import RecurringTaskCreate, RecurringTaskCreateResponse, TaskCreate, TaskListResponse, TaskRead, TaskUpdate, TaskVersionRequest
+from app.schemas.v2_task import RecurringTaskCreate, RecurringTaskCreateResponse, TaskCreate, TaskListResponse, TaskMutationScope, TaskRead, TaskState, TaskUpdate, TaskVersionRequest
 from app.services.v2_task import (
     TaskConflictError,
     TaskNotFoundError,
@@ -44,7 +44,7 @@ def _raise_domain_error(error: ValueError) -> None:
 
 
 def _read(db: SessionDependency, task: Task, account: User, today: date) -> TaskRead:
-    responsible, state, can_edit, can_resolve, can_delete = task_projection(
+    responsible, state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future = task_projection(
         db, task=task, actor_id=account.id, local_date=today
     )
     master = task.master_task
@@ -64,9 +64,14 @@ def _read(db: SessionDependency, task: Task, account: User, today: date) -> Task
         resolved_at=task.resolved_at,
         resolved_by_user_id=task.resolved_by_user_id,
         lock_version=task.lock_version,
-        can_edit=can_edit,
+        is_generated=is_generated,
+        can_edit_this=can_edit_this,
+        can_edit_future=can_edit_future,
+        can_delete_this=can_delete_this,
+        can_delete_future=can_delete_future,
+        can_edit=can_edit_this,
         can_resolve=can_resolve,
-        can_delete=can_delete,
+        can_delete=can_delete_this,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -132,10 +137,13 @@ def index(
     category_id: uuid.UUID | None = None,
     result: TaskResult | None = None,
     unresolved: bool | None = None,
+    state: TaskState | None = None,
+    generated: bool | None = None,
 ) -> TaskListResponse:
     del access
     if planned_from is not None and planned_until is not None and planned_from > planned_until:
         raise V2APIError(status_code=422, code="INVALID_DATE_RANGE", message="El rango de fechas no es válido.")
+    today = local_today(account.timezone)
     items, total = list_tasks(
         db,
         workspace_id=workspace_id,
@@ -148,8 +156,10 @@ def index(
         category_id=category_id,
         result=result,
         unresolved=unresolved,
+        state=state,
+        generated=generated,
+        local_date=today,
     )
-    today = local_today(account.timezone)
     return TaskListResponse(
         items=[_read(db, item, account, today) for item in items],
         total=total,
@@ -203,7 +213,7 @@ def not_complete(workspace_id: uuid.UUID, task_id: uuid.UUID, resolution_in: Tas
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove(workspace_id: uuid.UUID, task_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, lock_version: int = Query(ge=1)) -> Response:
+def remove(workspace_id: uuid.UUID, task_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, lock_version: int = Query(ge=1), scope: TaskMutationScope = Query(default="THIS")) -> Response:
     del workspace_id
-    _write(db, lambda: delete_task(db, access=access, task_id=task_id, expected_version=lock_version, local_date=local_today(account.timezone)))
+    _write(db, lambda: delete_task(db, access=access, task_id=task_id, expected_version=lock_version, local_date=local_today(account.timezone), scope=scope))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

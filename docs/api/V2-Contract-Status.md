@@ -338,6 +338,16 @@ Acepta el siguiente contrato estricto:
 
 GenerationBatch conserva procedencia; no se expone como TaskSeries editable. `Solo esta` opera por occurrence ID. `Todas las futuras` es una action sobre occurrence/batch autorizado y no reescribe pasado.
 
+Stage 5.3 concreta la mutación sin exponer el batch:
+
+- `PATCH /api/v2/workspaces/{workspace_id}/tasks/{task_id}` acepta `scope=THIS|THIS_AND_FUTURE` dentro del DTO;
+- `DELETE /api/v2/workspaces/{workspace_id}/tasks/{task_id}` acepta el mismo `scope` como query parameter;
+- `THIS_AND_FUTURE` se rechaza en Tareas independientes;
+- el alcance futuro permite cambiar `master_task_id` y/o `responsible_user_id`, pero no `planned_date` ni el patrón;
+- la respuesta proyecta `is_generated` y capacidades `can_*_this/future`, sin `generation_batch_id`;
+- el listado acepta `state=PROGRAMADA|PENDIENTE|COMPLETADA|NO_REALIZADA` y `generated=true|false`, además de sus filtros previos;
+- toda operación es atómica, usa locking determinista por `planned_date,id` y retorna 409 ante versión o unicidad incompatible.
+
 Task usa DATE. Activity añade hora local y timezone IANA; backend rechaza horas DST inexistentes o ambiguas y retorna instantes UTC.
 
 ## 10. Activity y Calendar

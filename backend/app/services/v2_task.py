@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.recurrence import recurrence_dates
 from app.models import GenerationBatch, MasterTask, Task, User, WorkspaceMember
 from app.models.enums import AccountStatus, GenerationEntityType, MembershipStatus, TaskResult, WorkspaceKind
-from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
+from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskMutationScope, TaskState, TaskUpdate
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -175,6 +175,9 @@ def list_tasks(
     category_id: uuid.UUID | None = None,
     result: TaskResult | None = None,
     unresolved: bool | None = None,
+    state: TaskState | None = None,
+    generated: bool | None = None,
+    local_date: date | None = None,
 ) -> tuple[list[Task], int]:
     filters = [Task.workspace_id == workspace_id]
     if planned_from is not None:
@@ -193,6 +196,21 @@ def list_tasks(
         filters.append(Task.result.is_(None))
     elif unresolved is False:
         filters.append(Task.result.is_not(None))
+    if state is not None:
+        if local_date is None:
+            raise ValueError("local_date is required for state filtering")
+        if state == "PROGRAMADA":
+            filters.extend((Task.result.is_(None), Task.planned_date > local_date))
+        elif state == "PENDIENTE":
+            filters.extend((Task.result.is_(None), Task.planned_date <= local_date))
+        elif state == "COMPLETADA":
+            filters.append(Task.result == TaskResult.COMPLETED)
+        else:
+            filters.append(Task.result == TaskResult.NOT_COMPLETED)
+    if generated is True:
+        filters.append(Task.generation_batch_id.is_not(None))
+    elif generated is False:
+        filters.append(Task.generation_batch_id.is_(None))
     joined = category_id is not None
     count_statement = select(func.count()).select_from(Task)
     items_statement = select(Task).options(selectinload(Task.master_task).selectinload(MasterTask.category))
@@ -200,7 +218,7 @@ def list_tasks(
         count_statement = count_statement.join(MasterTask, Task.master_task_id == MasterTask.id)
         items_statement = items_statement.join(MasterTask, Task.master_task_id == MasterTask.id)
     total = db.scalar(count_statement.where(*filters)) or 0
-    items = list(db.scalars(items_statement.where(*filters).order_by(Task.planned_date.desc(), Task.id).offset((page - 1) * page_size).limit(page_size)).all())
+    items = list(db.scalars(items_statement.where(*filters).order_by(Task.planned_date, Task.id).offset((page - 1) * page_size).limit(page_size)).all())
     return items, total
 
 
@@ -223,23 +241,30 @@ def update_task(
     task_in: TaskUpdate,
     local_date: date,
 ) -> Task:
-    task = _task(db, workspace_id=access.workspace.id, task_id=task_id, lock=True)
-    if (
-        task.result is not None
-        or task.generation_batch_id is not None
-        or task.planned_date <= local_date
-    ):
+    task, affected = _mutation_scope_tasks(
+        db,
+        workspace_id=access.workspace.id,
+        task_id=task_id,
+        scope=task_in.scope,
+        local_date=local_date,
+    )
+    if task.result is not None or task.planned_date <= local_date:
         raise TaskConflictError("Task cannot be edited")
     if task.lock_version != task_in.lock_version:
         raise TaskConflictError("Task version conflict")
-    values = task_in.model_dump(exclude_unset=True, exclude={"lock_version"})
+    values = task_in.model_dump(exclude_unset=True, exclude={"lock_version", "scope"})
+    if task_in.scope == "THIS_AND_FUTURE" and "planned_date" in values:
+        raise TaskConflictError("Future recurrence schedule editing is not supported")
+    if "planned_date" in values and values["planned_date"] <= local_date:
+        raise TaskConflictError("Task must remain in the future")
     if "master_task_id" in values:
         _master(db, workspace_id=access.workspace.id, master_task_id=values["master_task_id"], assignable=True)
     if "responsible_user_id" in values:
         _responsible(db, workspace_id=access.workspace.id, user_id=values["responsible_user_id"])
-    for field, value in values.items():
-        setattr(task, field, value)
-    task.lock_version += 1
+    for affected_task in affected:
+        for field, value in values.items():
+            setattr(affected_task, field, value)
+        affected_task.lock_version += 1
     _flush(db)
     return task
 
@@ -268,17 +293,70 @@ def resolve_task(
     return task
 
 
-def delete_task(db: Session, *, access: WorkspaceAccess, task_id: uuid.UUID, expected_version: int, local_date: date) -> None:
-    task = _task(db, workspace_id=access.workspace.id, task_id=task_id, lock=True)
+def _mutation_scope_tasks(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    task_id: uuid.UUID,
+    scope: TaskMutationScope,
+    local_date: date,
+) -> tuple[Task, list[Task]]:
+    if scope == "THIS":
+        task = _task(db, workspace_id=workspace_id, task_id=task_id, lock=True)
+        return task, [task]
+    identified = _task(db, workspace_id=workspace_id, task_id=task_id)
+    if identified.generation_batch_id is None:
+        raise TaskConflictError("Standalone Task does not support future scope")
+    batch_tasks = list(
+        db.scalars(
+            select(Task)
+            .where(Task.workspace_id == workspace_id, Task.generation_batch_id == identified.generation_batch_id)
+            .order_by(Task.planned_date, Task.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).all()
+    )
+    task = next((candidate for candidate in batch_tasks if candidate.id == task_id), None)
+    if task is None:
+        raise TaskConflictError("Task changed during scope selection")
+    affected = [
+        candidate
+        for candidate in batch_tasks
+        if candidate.planned_date >= task.planned_date
+        and candidate.planned_date > local_date
+        and candidate.result is None
+    ]
+    if task not in affected:
+        raise TaskConflictError("Task cannot initiate a future scope operation")
+    return task, affected
+
+
+def delete_task(
+    db: Session,
+    *,
+    access: WorkspaceAccess,
+    task_id: uuid.UUID,
+    expected_version: int,
+    local_date: date,
+    scope: TaskMutationScope = "THIS",
+) -> None:
+    task, affected = _mutation_scope_tasks(
+        db,
+        workspace_id=access.workspace.id,
+        task_id=task_id,
+        scope=scope,
+        local_date=local_date,
+    )
     if task.lock_version != expected_version:
         raise TaskConflictError("Task version conflict")
-    if task.result is not None or task.generation_batch_id is not None or task.planned_date <= local_date:
+    if task.result is not None or task.planned_date <= local_date:
         raise TaskConflictError("Task cannot be deleted")
-    db.delete(task)
+    for affected_task in affected:
+        db.delete(affected_task)
     _flush(db)
 
 
-def task_projection(db: Session, *, task: Task, actor_id: uuid.UUID, local_date: date) -> tuple[User, str, bool, bool, bool]:
+def task_projection(db: Session, *, task: Task, actor_id: uuid.UUID, local_date: date) -> tuple[User, str, bool, bool, bool, bool, bool, bool]:
     master = task.master_task if "master_task" in task.__dict__ else db.scalar(select(MasterTask).options(selectinload(MasterTask.category)).where(MasterTask.id == task.master_task_id))
     if master is None:
         raise TaskNotFoundError("Task not found")
@@ -287,7 +365,7 @@ def task_projection(db: Session, *, task: Task, actor_id: uuid.UUID, local_date:
     if responsible is None:
         raise TaskNotFoundError("Task not found")
     state = "COMPLETADA" if task.result == TaskResult.COMPLETED else "NO_REALIZADA" if task.result == TaskResult.NOT_COMPLETED else "PROGRAMADA" if task.planned_date > local_date else "PENDIENTE"
-    unresolved_standalone = task.result is None and task.generation_batch_id is None
-    future_standalone = unresolved_standalone and task.planned_date > local_date
+    is_generated = task.generation_batch_id is not None
+    future_unresolved = task.result is None and task.planned_date > local_date
     can_resolve = task.result is None and task.planned_date <= local_date and task.responsible_user_id == actor_id
-    return responsible, state, future_standalone, can_resolve, future_standalone
+    return responsible, state, is_generated, future_unresolved, future_unresolved and is_generated, can_resolve, future_unresolved, future_unresolved and is_generated

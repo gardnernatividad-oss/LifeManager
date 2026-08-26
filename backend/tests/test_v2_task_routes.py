@@ -22,7 +22,7 @@ USER_ID = uuid.uuid4()
 
 def _read() -> TaskRead:
     now = datetime(2026, 8, 25, tzinfo=timezone.utc)
-    return TaskRead(id=TASK_ID, workspace_id=WORKSPACE_ID, master_task_id=uuid.uuid4(), master_task_name="Comprar pan", category_id=uuid.uuid4(), category_name="Casa", responsible_user_id=USER_ID, responsible_display_name="Ana Uno", responsible_email="ana@example.com", planned_date=date(2026, 8, 26), state="PROGRAMADA", result=None, resolved_at=None, resolved_by_user_id=None, lock_version=1, can_edit=True, can_resolve=True, can_delete=True, created_at=now, updated_at=now)
+    return TaskRead(id=TASK_ID, workspace_id=WORKSPACE_ID, master_task_id=uuid.uuid4(), master_task_name="Comprar pan", category_id=uuid.uuid4(), category_name="Casa", responsible_user_id=USER_ID, responsible_display_name="Ana Uno", responsible_email="ana@example.com", planned_date=date(2026, 8, 26), state="PROGRAMADA", result=None, resolved_at=None, resolved_by_user_id=None, lock_version=1, is_generated=False, can_edit_this=True, can_edit_future=False, can_delete_this=True, can_delete_future=False, can_edit=True, can_resolve=False, can_delete=True, created_at=now, updated_at=now)
 
 
 @pytest.fixture
@@ -113,6 +113,44 @@ def test_conflict_is_409_and_rolls_back(update, client) -> None:
 
 @patch("app.api.v2.tasks._read", return_value=_read())
 @patch("app.api.v2.tasks.update_task", return_value=Task())
+def test_future_scope_patch_is_explicit_and_commits_once(update, projection, client) -> None:
+    http, db, *_ = client
+    response = http.patch(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks/{TASK_ID}", json={"responsible_user_id": str(USER_ID), "lock_version": 1, "scope": "THIS_AND_FUTURE"})
+    assert response.status_code == 200
+    assert update.call_args.kwargs["task_in"].scope == "THIS_AND_FUTURE"
+    db.commit.assert_called_once()
+
+
+@patch("app.api.v2.tasks.delete_task")
+def test_future_scope_delete_is_explicit_and_commits_once(remove, client) -> None:
+    http, db, *_ = client
+    response = http.delete(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks/{TASK_ID}?lock_version=1&scope=THIS_AND_FUTURE")
+    assert response.status_code == 204
+    assert remove.call_args.kwargs["scope"] == "THIS_AND_FUTURE"
+    db.commit.assert_called_once()
+
+
+def test_invalid_scope_is_rejected_without_writes(client) -> None:
+    http, db, *_ = client
+    response = http.delete(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks/{TASK_ID}?lock_version=1&scope=FORGED")
+    assert response.status_code == 422
+    db.commit.assert_not_called()
+
+
+@patch("app.api.v2.tasks.list_tasks", return_value=([], 0))
+@patch("app.api.v2.tasks.local_today", return_value=date(2026, 8, 25))
+def test_list_forwards_derived_state_and_generated_filters(today, listing, client) -> None:
+    http, db, *_ = client
+    response = http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks?state=PENDIENTE&generated=true&page=1&page_size=25")
+    assert response.status_code == 200
+    assert listing.call_args.kwargs["state"] == "PENDIENTE"
+    assert listing.call_args.kwargs["generated"] is True
+    assert listing.call_args.kwargs["local_date"] == date(2026, 8, 25)
+    db.commit.assert_not_called()
+
+
+@patch("app.api.v2.tasks._read", return_value=_read())
+@patch("app.api.v2.tasks.update_task", return_value=Task())
 @patch("app.api.v2.tasks.local_today", return_value=date(2026, 8, 25))
 def test_patch_supplies_authoritative_user_local_date(local_date, update, projection, client) -> None:
     http, db, *_ = client
@@ -130,3 +168,5 @@ def test_openapi_exposes_explicit_task_contracts() -> None:
     assert set(schema["properties"]) == {"master_task_id", "planned_date", "responsible_user_id"}
     recurring = document["components"]["schemas"]["RecurringTaskCreate"]
     assert set(recurring["properties"]) == {"master_task_id", "responsible_user_id", "recurrence"}
+    update = document["components"]["schemas"]["TaskUpdate"]
+    assert set(update["properties"]) == {"master_task_id", "planned_date", "responsible_user_id", "lock_version", "scope"}

@@ -677,7 +677,7 @@ p {
 .planning-weekdays legend { padding: 0 0.3rem; font-weight: 700; }
 .planning-weekdays label { display: flex; align-items: center; gap: 0.3rem; }
 .planning-summary { width: 100%; margin: 0; color: var(--color-muted); font-size: 0.88rem; }
-.planning-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.65rem; }
+.planning-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.65rem; }
 .planning-selection, .planning-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0.65rem; }
 .planning-selection span { margin-right: auto; color: var(--color-muted); font-size: 0.85rem; }
 .planning-table { display: grid; gap: 0.25rem; }
@@ -1915,6 +1915,14 @@ div.settings-toggles { border: 0; padding: 0; }
   .planning-filters { grid-template-columns: 1fr; }
   .planning-create form > label, .planning-create form > button { width: 100%; }
   .task-recurrence-fields > label { width: 100%; }
+  .v2-task-list { overflow-x: visible; }
+  .v2-task-row, .v2-task-row--personal { min-width: 0; grid-template-columns: 1fr; gap: 0.45rem; padding: 0.85rem; }
+  .v2-task-row--head { display: none; }
+  .v2-task-row > span { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: start; gap: 0.5rem; }
+  .v2-task-row > span::before { content: attr(data-label); color: var(--color-muted); font-size: 0.75rem; font-weight: 700; }
+  .v2-task-row > span:nth-child(2) { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); }
+  .v2-task-row > span:nth-child(2)::before { grid-row: 1 / span 2; }
+  .v2-task-row .planning-actions { justify-content: flex-start; }
 
   .pending-planning-form, .pending-planning-filters { grid-template-columns: 1fr; }
   .pending-planning-pagination { align-items: stretch; flex-direction: column; }

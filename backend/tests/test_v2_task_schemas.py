@@ -17,9 +17,12 @@ def test_task_create_accepts_only_planning_fields() -> None:
 
 def test_task_update_requires_version_and_an_editable_non_null_field() -> None:
     assert TaskUpdate(planned_date=date(2026, 9, 2), lock_version=1).planned_date == date(2026, 9, 2)
+    assert TaskUpdate(responsible_user_id=uuid.uuid4(), lock_version=1, scope="THIS_AND_FUTURE").scope == "THIS_AND_FUTURE"
     for payload in ({"lock_version": 1}, {"planned_date": None, "lock_version": 1}):
         with pytest.raises(ValidationError):
             TaskUpdate.model_validate(payload)
+    with pytest.raises(ValidationError):
+        TaskUpdate.model_validate({"responsible_user_id": str(uuid.uuid4()), "lock_version": 1, "scope": "FORGED", "generation_batch_id": str(uuid.uuid4())})
 
 
 def test_task_version_is_positive() -> None:
