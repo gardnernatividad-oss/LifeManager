@@ -55,6 +55,26 @@ def test_create_is_workspace_scoped_and_commits_once(create, projection, client)
     db.rollback.assert_not_called()
 
 
+@patch("app.api.v2.tasks._read", return_value=_read())
+@patch("app.api.v2.tasks.create_recurring_tasks", return_value=[Task(), Task()])
+def test_recurring_create_commits_one_atomic_batch(recurring, projection, client) -> None:
+    http, db, user, access = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks/recurring", json={"master_task_id": str(uuid.uuid4()), "responsible_user_id": str(USER_ID), "recurrence": {"pattern": "WEEKLY", "date_from": "2026-09-01", "date_until": "2026-09-30", "weekdays": [0, 2]}})
+    assert response.status_code == 201
+    assert response.json()["created_count"] == 2
+    assert recurring.call_args.kwargs["access"] is access
+    assert recurring.call_args.kwargs["actor"] is user
+    db.commit.assert_called_once()
+    assert db.refresh.call_count == 2
+
+
+def test_recurring_create_rejects_internal_provenance_fields(client) -> None:
+    http, db, *_ = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks/recurring", json={"master_task_id": str(uuid.uuid4()), "generation_batch_id": str(uuid.uuid4()), "entity_type": "TASK", "recurrence": {"pattern": "DAILY", "date_from": "2026-09-01", "date_until": "2026-09-02"}})
+    assert response.status_code == 422
+    db.commit.assert_not_called()
+
+
 def test_create_rejects_mass_assignment(client) -> None:
     http, db, *_ = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/tasks", json={"master_task_id": str(uuid.uuid4()), "planned_date": "2026-08-26", "workspace_id": str(WORKSPACE_ID), "result": "COMPLETED"})
@@ -108,3 +128,5 @@ def test_openapi_exposes_explicit_task_contracts() -> None:
     assert set(path) == {"get", "post"}
     schema = document["components"]["schemas"]["TaskCreate"]
     assert set(schema["properties"]) == {"master_task_id", "planned_date", "responsible_user_id"}
+    recurring = document["components"]["schemas"]["RecurringTaskCreate"]
+    assert set(recurring["properties"]) == {"master_task_id", "responsible_user_id", "recurrence"}

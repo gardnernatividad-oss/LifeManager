@@ -1,7 +1,9 @@
 import uuid
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 import sqlalchemy as sa
@@ -11,10 +13,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import Task, User, Workspace, WorkspaceMember
+from app.models import GenerationBatch, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult
-from app.schemas.v2_task import TaskCreate, TaskUpdate
-from app.services.v2_task import TaskConflictError, TaskReferenceUnavailableError, create_task, resolve_task, update_task
+from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
+from app.services.v2_task import TaskConflictError, TaskReferenceUnavailableError, create_recurring_tasks, create_task, resolve_task, update_task
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -73,4 +75,53 @@ def test_task_lifecycle_and_integrity_on_disposable_postgres(monkeypatch: pytest
                 update_task(db, access=access, task_id=task.id, task_in=TaskUpdate(planned_date=date(2026, 9, 3), lock_version=task.lock_version), local_date=date(2026, 9, 2))
             db.rollback()
             assert second.responsible_user_id == owner_id
+
+            standalone_collision = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "DAILY", "date_from": "2026-09-02", "date_until": "2026-09-02"}})
+            batches_before_collision = db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch))
+            with pytest.raises(TaskConflictError):
+                create_recurring_tasks(db, access=access, actor=owner, task_in=standalone_collision)
+            db.rollback()
+            assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == batches_before_collision
+
+            recurring = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "MONTHLY", "date_from": "2027-01-29", "date_until": "2027-03-31", "month_days": [29, 30, 31]}})
+            occurrences = create_recurring_tasks(db, access=access, actor=owner, task_in=recurring)
+            db.commit()
+            assert [item.planned_date for item in occurrences] == [date(2027, 1, 29), date(2027, 1, 30), date(2027, 1, 31), date(2027, 2, 28), date(2027, 3, 29), date(2027, 3, 30), date(2027, 3, 31)]
+            batch_ids = {item.generation_batch_id for item in occurrences}
+            assert len(batch_ids) == 1
+            batch = db.get(GenerationBatch, batch_ids.pop())
+            assert batch.entity_type == "TASK" and batch.timezone is None
+
+            batches_before = db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch))
+            tasks_before = db.scalar(sa.select(sa.func.count()).select_from(Task))
+            with pytest.raises(TaskConflictError):
+                create_recurring_tasks(db, access=access, actor=owner, task_in=recurring)
+            db.rollback()
+            assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == batches_before
+            assert db.scalar(sa.select(sa.func.count()).select_from(Task)) == tasks_before
+
+        barrier = Barrier(2)
+        concurrent_request = RecurringTaskCreate.model_validate({"master_task_id": str(master_id), "responsible_user_id": str(member_id), "recurrence": {"pattern": "DAILY", "date_from": "2028-01-01", "date_until": "2028-01-02"}})
+
+        def submit_same_recurrence() -> str:
+            with Session(engine) as concurrent_db:
+                concurrent_owner = concurrent_db.get(User, owner_id)
+                concurrent_workspace = concurrent_db.get(Workspace, workspace_id)
+                concurrent_membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == owner_id))
+                barrier.wait()
+                try:
+                    create_recurring_tasks(concurrent_db, access=WorkspaceAccess(workspace=concurrent_workspace, membership=concurrent_membership), actor=concurrent_owner, task_in=concurrent_request)
+                    concurrent_db.commit()
+                    return "created"
+                except TaskConflictError:
+                    concurrent_db.rollback()
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = sorted(executor.map(lambda _: submit_same_recurrence(), range(2)))
+        assert outcomes == ["conflict", "created"]
+        with Session(engine) as verification_db:
+            assert verification_db.scalar(sa.select(sa.func.count()).select_from(Task).where(Task.planned_date.in_([date(2028, 1, 1), date(2028, 1, 2)]))) == 2
+            batch_ids = verification_db.scalars(sa.select(Task.generation_batch_id).where(Task.planned_date.in_([date(2028, 1, 1), date(2028, 1, 2)]))).all()
+            assert len(set(batch_ids)) == 1
         engine.dispose()

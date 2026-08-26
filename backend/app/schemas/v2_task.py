@@ -5,7 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import TaskResult
+from app.core.recurrence import recurrence_dates
+from app.models.enums import GenerationPattern, TaskResult
 
 
 TaskState = Literal["PROGRAMADA", "PENDIENTE", "COMPLETADA", "NO_REALIZADA"]
@@ -19,6 +20,31 @@ class TaskCreate(_StrictModel):
     master_task_id: uuid.UUID
     planned_date: date
     responsible_user_id: uuid.UUID | None = None
+
+
+class TaskRecurrence(_StrictModel):
+    pattern: GenerationPattern
+    date_from: date
+    date_until: date
+    weekdays: list[int] | None = None
+    month_days: list[int] | None = None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "TaskRecurrence":
+        recurrence_dates(
+            pattern=self.pattern,
+            date_from=self.date_from,
+            date_until=self.date_until,
+            weekdays=self.weekdays,
+            month_days=self.month_days,
+        )
+        return self
+
+
+class RecurringTaskCreate(_StrictModel):
+    master_task_id: uuid.UUID
+    responsible_user_id: uuid.UUID | None = None
+    recurrence: TaskRecurrence
 
 
 class TaskUpdate(_StrictModel):
@@ -72,3 +98,8 @@ class TaskListResponse(_StrictModel):
     page: int = Field(ge=1)
     page_size: int = Field(ge=1)
     total_pages: int = Field(ge=0)
+
+
+class RecurringTaskCreateResponse(_StrictModel):
+    created_count: int = Field(ge=1)
+    items: list[TaskRead]

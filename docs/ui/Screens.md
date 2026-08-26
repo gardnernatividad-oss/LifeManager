@@ -19,7 +19,7 @@ Las pantallas implementadas son Login, Registro, Inicio, Revisión, Planificaci�
 | Global | Inicio | Resumen conciso del día entre Workspaces. |
 | Global | Revisión | Guardado independiente de Tareas, Pendientes y Etapas asignadas. |
 | Global | Mi calendario | Actividades del usuario entre todos los Workspaces. |
-| Workspace | Planificación · Tareas | Crear y listar Tareas puntuales; editar o eliminar solo futuras no resueltas, y resolver las Pendientes sin reprogramarlas. La recurrencia sigue diferida. |
+| Workspace | Planificación · Tareas | Crear y listar Tareas puntuales o recurrencias finitas DAILY/WEEKLY/MONTHLY; editar o eliminar solo futuras independientes no resueltas, y resolver las Pendientes sin reprogramarlas. |
 | Workspace | Planificación · Pendientes | Crear, asignar y mantener planificación. |
 | Workspace | Planificación · Proyectos | Mantener Proyecto, Líder y Etapas. |
 | Workspace | Seguimiento · Tareas | Registro y correcciones aprobadas. |

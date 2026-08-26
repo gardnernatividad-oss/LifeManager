@@ -357,4 +357,5 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
             ("DELETE", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}"),
             ("POST", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/complete"),
             ("POST", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete"),
+            ("POST", "/api/v2/workspaces/{workspace_id}/tasks/recurring"),
         }

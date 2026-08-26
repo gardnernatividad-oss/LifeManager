@@ -128,6 +128,14 @@ Se soporta creación diaria, semanal y mensual, siempre con Desde y Hasta obliga
 
 Para los días 29, 30 o 31 inexistentes en un mes se usa el último día calendario y se muestra una advertencia explicativa. Si varios días configurados colapsan en la misma fecha, se crea una sola ocurrencia para la misma combinación de catálogo, fecha y Responsable.
 
+La creación se materializa inmediatamente y de forma atómica: un único
+`GenerationBatch` conserva procedencia y todas las Tareas generadas lo
+referencian. Una colisión con una Tarea ya persistida rechaza y revierte el lote
+completo; no se omiten fechas silenciosamente. El backend limita cada solicitud
+a 1000 ocurrencias como salvaguarda técnica contra amplificación, sin convertir
+ese límite en recurrencia abierta. El batch no es una serie editable; su gestión
+por ocurrencia o por alcance futuro corresponde a Stage 5.3.
+
 ## 5. Pendientes
 
 Un Pendiente representa un asunto con seguimiento prolongado. Incluye Vigencia, nombre, Categoría, Responsable, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y acciones.

@@ -6,9 +6,10 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import MasterTask, Task, User, WorkspaceMember
-from app.models.enums import AccountStatus, MembershipStatus, TaskResult, WorkspaceKind
-from app.schemas.v2_task import TaskCreate, TaskUpdate
+from app.core.recurrence import recurrence_dates
+from app.models import GenerationBatch, MasterTask, Task, User, WorkspaceMember
+from app.models.enums import AccountStatus, GenerationEntityType, MembershipStatus, TaskResult, WorkspaceKind
+from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -26,6 +27,13 @@ class TaskPermissionError(ValueError):
 
 class TaskReferenceUnavailableError(ValueError):
     pass
+
+
+class TaskRecurrenceError(ValueError):
+    pass
+
+
+MAX_RECURRING_TASK_OCCURRENCES = 1000
 
 
 def _translate_integrity(error: IntegrityError) -> None:
@@ -101,6 +109,57 @@ def create_task(db: Session, *, access: WorkspaceAccess, actor: User, task_in: T
     db.add(task)
     _flush(db)
     return task
+
+
+def create_recurring_tasks(
+    db: Session,
+    *,
+    access: WorkspaceAccess,
+    actor: User,
+    task_in: RecurringTaskCreate,
+) -> list[Task]:
+    _master(db, workspace_id=access.workspace.id, master_task_id=task_in.master_task_id, assignable=True)
+    responsible_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (task_in.responsible_user_id or actor.id)
+    _responsible(db, workspace_id=access.workspace.id, user_id=responsible_id)
+    recurrence = task_in.recurrence
+    dates = recurrence_dates(
+        pattern=recurrence.pattern,
+        date_from=recurrence.date_from,
+        date_until=recurrence.date_until,
+        weekdays=recurrence.weekdays,
+        month_days=recurrence.month_days,
+    )
+    if not dates:
+        raise TaskRecurrenceError("Recurrence must generate at least one occurrence")
+    if len(dates) > MAX_RECURRING_TASK_OCCURRENCES:
+        raise TaskRecurrenceError("Recurrence exceeds occurrence limit")
+    batch = GenerationBatch(
+        workspace_id=access.workspace.id,
+        entity_type=GenerationEntityType.TASK,
+        pattern=recurrence.pattern,
+        date_from=recurrence.date_from,
+        date_until=recurrence.date_until,
+        weekdays=recurrence.weekdays,
+        month_days=recurrence.month_days,
+        timezone=None,
+        created_by_user_id=actor.id,
+    )
+    db.add(batch)
+    _flush(db)
+    tasks = [
+        Task(
+            workspace_id=access.workspace.id,
+            master_task_id=task_in.master_task_id,
+            responsible_user_id=responsible_id,
+            planned_date=planned_date,
+            created_by_user_id=actor.id,
+            generation_batch_id=batch.id,
+        )
+        for planned_date in dates
+    ]
+    db.add_all(tasks)
+    _flush(db)
+    return tasks
 
 
 def list_tasks(

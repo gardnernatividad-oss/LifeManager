@@ -189,6 +189,7 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/workspaces/{workspace_id}/tasks/{task_id}",
             "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/complete",
             "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete",
+            "/api/v2/workspaces/{workspace_id}/tasks/recurring",
         }
     serialized = str(document).lower()
     for forbidden in (

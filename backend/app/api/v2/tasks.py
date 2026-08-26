@@ -10,13 +10,15 @@ from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import Task, User
 from app.models.enums import TaskResult
-from app.schemas.v2_task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate, TaskVersionRequest
+from app.schemas.v2_task import RecurringTaskCreate, RecurringTaskCreateResponse, TaskCreate, TaskListResponse, TaskRead, TaskUpdate, TaskVersionRequest
 from app.services.v2_task import (
     TaskConflictError,
     TaskNotFoundError,
     TaskPermissionError,
     TaskReferenceUnavailableError,
+    TaskRecurrenceError,
     create_task,
+    create_recurring_tasks,
     delete_task,
     get_task,
     list_tasks,
@@ -36,6 +38,8 @@ def _raise_domain_error(error: ValueError) -> None:
         raise V2APIError(status_code=404, code="TASK_REFERENCE_UNAVAILABLE", message="La referencia de la tarea no está disponible.") from error
     if isinstance(error, TaskPermissionError):
         raise V2APIError(status_code=403, code="TASK_PERMISSION_DENIED", message="No tienes permiso para resolver esta tarea.") from error
+    if isinstance(error, TaskRecurrenceError):
+        raise V2APIError(status_code=422, code="TASK_RECURRENCE_INVALID", message="La recurrencia no es válida o supera el límite de 1000 tareas.") from error
     raise V2APIError(status_code=409, code="TASK_CONFLICT", message="La tarea cambió o no admite esta acción.") from error
 
 
@@ -72,10 +76,13 @@ def _write(db: SessionDependency, operation):
     try:
         task = operation()
         db.commit()
-        if task is not None:
+        if isinstance(task, list):
+            for item in task:
+                db.refresh(item)
+        elif task is not None:
             db.refresh(task)
         return task
-    except (TaskNotFoundError, TaskConflictError, TaskPermissionError, TaskReferenceUnavailableError) as error:
+    except (TaskNotFoundError, TaskConflictError, TaskPermissionError, TaskReferenceUnavailableError, TaskRecurrenceError) as error:
         db.rollback()
         _raise_domain_error(error)
     except Exception:
@@ -94,6 +101,20 @@ def create(
     del workspace_id
     task = _write(db, lambda: create_task(db, access=access, actor=account, task_in=task_in))
     return _read(db, task, account, local_today(account.timezone))
+
+
+@router.post("/recurring", response_model=RecurringTaskCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_recurring(
+    workspace_id: uuid.UUID,
+    task_in: RecurringTaskCreate,
+    db: SessionDependency,
+    account: UsableAccount,
+    access: ActiveWorkspaceMembership,
+) -> RecurringTaskCreateResponse:
+    del workspace_id
+    tasks = _write(db, lambda: create_recurring_tasks(db, access=access, actor=account, task_in=task_in))
+    today = local_today(account.timezone)
+    return RecurringTaskCreateResponse(created_count=len(tasks), items=[_read(db, task, account, today) for task in tasks])
 
 
 @router.get("", response_model=TaskListResponse)

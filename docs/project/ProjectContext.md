@@ -90,8 +90,16 @@ Una Tarea Programada no se resuelve anticipadamente; una Tarea de hoy o vencida
 ya es Pendiente y solo la persona responsable actual puede resolverla.
 La propiedad del Workspace no concede autoridad especial de ejecución. El
 estado Programada/Pendiente se deriva de `planned_date` y la fecha local de la
-cuenta; las Tareas resueltas son inmutables. Recurrencia y gestión de
-ocurrencias generadas permanecen diferidas a Stages 5.2 y 5.3.
+cuenta; las Tareas resueltas son inmutables.
+
+Stage 5.2 añade creación recurrente finita DAILY/WEEKLY/MONTHLY con límites
+inclusivos obligatorios, lunes=0, múltiples días semanales o mensuales y
+fallback 29/30/31 al último día del mes. Las fechas convergentes se deduplican
+antes de persistir. Cada solicitud crea un único `GenerationBatch` inmutable y
+sus ocurrencias en una transacción; cualquier conflicto existente revierte el
+lote completo. Un límite técnico de 1000 ocurrencias por solicitud evita
+amplificación accidental. La edición o eliminación por alcance de ocurrencias
+generadas permanece diferida a Stage 5.3.
 
 Stage 3.3 añadió el lifecycle autenticado de invitaciones Shared para cuentas `ACTIVE` existentes. Solo el propietario crea y cancela; solo el destinatario vinculado acepta o rechaza. La aceptación crea una membresía ordinaria o reactiva la fila histórica `LEFT`/`REMOVED`, reiniciando `joined_at`, limpiando `ended_at` y restableciendo `calendar_visibility=HIDE`. No se entrega token, no se envía email y no se crea notificación en esta etapa.
 

@@ -28,8 +28,10 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 
 - Planificación: Tareas, Pendientes y Proyectos.
 
-`Planificación → Tareas` usa el Workspace seleccionado y en Stage 5.1 gestiona
-solo ocurrencias puntuales. No debe confundirse con `Tablas → Tareas`, que
+`Planificación → Tareas` usa el Workspace seleccionado y permite elegir entre
+una ocurrencia puntual o una repetición finita diaria, semanal o mensual. Las
+ocurrencias generadas aparecen como Tareas normales; su gestión por alcance se
+difiere a Stage 5.3. No debe confundirse con `Tablas → Tareas`, que
 administra el catálogo reutilizable.
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.

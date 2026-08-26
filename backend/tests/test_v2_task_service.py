@@ -7,8 +7,8 @@ import pytest
 
 from app.models import Category, MasterTask, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult, WorkspaceKind
-from app.schemas.v2_task import TaskCreate, TaskUpdate
-from app.services.v2_task import TaskConflictError, TaskPermissionError, create_task, delete_task, resolve_task, task_projection, update_task
+from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
+from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, create_recurring_tasks, create_task, delete_task, resolve_task, task_projection, update_task
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -145,3 +145,36 @@ def test_future_programmed_task_cannot_be_resolved_early(task_lookup) -> None:
     with pytest.raises(TaskConflictError):
         resolve_task(db, access=access, actor=actor, task_id=task.id, expected_version=1, result=TaskResult.COMPLETED, local_date=date(2026, 9, 1))
     db.flush.assert_not_called()
+
+
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._master")
+def test_recurring_creation_uses_one_batch_and_deduplicated_dates(master, responsible) -> None:
+    actor, access = _context()
+    db = MagicMock()
+    recurring = RecurringTaskCreate.model_validate({"master_task_id": str(uuid.uuid4()), "responsible_user_id": str(actor.id), "recurrence": {"pattern": "MONTHLY", "date_from": "2027-02-01", "date_until": "2027-02-28", "month_days": [29, 30, 31]}})
+    # SQLAlchemy UUID defaults normally materialize on flush; emulate that boundary.
+    def flush() -> None:
+        batch = db.add.call_args.args[0]
+        if getattr(batch, "id", None) is None:
+            batch.id = uuid.uuid4()
+    db.flush.side_effect = flush
+    tasks = create_recurring_tasks(db, access=access, actor=actor, task_in=recurring)
+    assert [task.planned_date for task in tasks] == [date(2027, 2, 28)]
+    assert tasks[0].generation_batch_id == db.add.call_args.args[0].id
+    db.add_all.assert_called_once_with(tasks)
+    assert db.flush.call_count == 2
+    db.commit.assert_not_called()
+
+
+@patch("app.services.v2_task.recurrence_dates", return_value=[date(2026, 1, 1)] * (MAX_RECURRING_TASK_OCCURRENCES + 1))
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._master")
+def test_recurring_creation_enforces_occurrence_cap_before_writes(master, responsible, dates) -> None:
+    actor, access = _context()
+    value = RecurringTaskCreate.model_validate({"master_task_id": str(uuid.uuid4()), "recurrence": {"pattern": "DAILY", "date_from": "2026-01-01", "date_until": "2026-01-01"}})
+    db = MagicMock()
+    with pytest.raises(TaskRecurrenceError):
+        create_recurring_tasks(db, access=access, actor=actor, task_in=value)
+    db.add.assert_not_called()
+    db.add_all.assert_not_called()

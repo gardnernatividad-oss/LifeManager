@@ -304,27 +304,37 @@ Tracking/correction actions mutan estado corriente e insertan history internamen
 
 ## 9. Recurrencia finita
 
-Create/generation actions aceptan un objeto opcional:
+Stage 5.2 expone una acción explícita separada de la creación puntual:
+
+`POST /api/v2/workspaces/{workspace_id}/tasks/recurring`
+
+Acepta el siguiente contrato estricto:
 
 ```json
 {
-  "pattern": "NONE | DAILY | WEEKLY | MONTHLY",
-  "from": "yyyy-mm-dd",
-  "until": "yyyy-mm-dd",
-  "weekdays": [0, 2, 4],
-  "month_days": [1, 15, 31]
+  "master_task_id": "uuid",
+  "responsible_user_id": "uuid opcional en Personal",
+  "recurrence": {
+    "pattern": "DAILY | WEEKLY | MONTHLY",
+    "date_from": "yyyy-mm-dd",
+    "date_until": "yyyy-mm-dd",
+    "weekdays": [0, 2, 4],
+    "month_days": [1, 15, 31]
+  }
 }
 ```
 
-- NONE crea una sola occurrence y no crea GenerationBatch;
+- la ruta puntual existente conserva `planned_date` y no crea GenerationBatch;
 - DAILY no admite arrays;
 - WEEKLY exige weekdays únicos 0=Monday…6=Sunday y prohíbe month_days;
 - MONTHLY exige month_days únicos 1–31 y prohíbe weekdays;
-- `from <= until`; ambos son obligatorios para recurrence;
+- `date_from <= date_until`; ambos son obligatorios;
 - 29/30/31 cae al último día del mes sin cambiar el ancla;
 - colisiones resultantes se deduplican antes de insertar;
-- materialización es finita, atómica e idempotente;
-- respuesta puede incluir `generation_batch_id`, count e IDs creados según vertical.
+- materialización es finita y atómica;
+- una colisión con identidad ya persistida retorna 409 y revierte batch y ocurrencias;
+- se admiten como máximo 1000 ocurrencias por solicitud;
+- la respuesta contiene `created_count` e `items`, sin exponer el batch interno.
 
 GenerationBatch conserva procedencia; no se expone como TaskSeries editable. `Solo esta` opera por occurrence ID. `Todas las futuras` es una action sobre occurrence/batch autorizado y no reescribe pasado.
 

@@ -29,7 +29,16 @@ from app.schemas.v2_catalog import (
     CategoryRead,
     CategoryUpdate,
 )
-from app.schemas.v2_task import TaskCreate, TaskListResponse, TaskRead, TaskUpdate, TaskVersionRequest
+from app.schemas.v2_task import (
+    RecurringTaskCreate,
+    RecurringTaskCreateResponse,
+    TaskCreate,
+    TaskListResponse,
+    TaskRead,
+    TaskRecurrence,
+    TaskUpdate,
+    TaskVersionRequest,
+)
 
 __all__ = [
     "CatalogItemCreate",
@@ -43,8 +52,11 @@ __all__ = [
     "CategoryRead",
     "CategoryUpdate",
     "TaskCreate",
+    "RecurringTaskCreate",
+    "RecurringTaskCreateResponse",
     "TaskListResponse",
     "TaskRead",
+    "TaskRecurrence",
     "TaskUpdate",
     "TaskVersionRequest",
     "AdminAccountSummary",
