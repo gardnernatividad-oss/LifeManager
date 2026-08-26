@@ -349,5 +349,12 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
         ("DELETE", "/api/v2/workspaces/{workspace_id}/activity-masters/{item_id}"),
         ("GET", "/api/v2/workspaces/{workspace_id}/selectors/categories"),
         ("GET", "/api/v2/workspaces/{workspace_id}/selectors/tasks"),
-        ("GET", "/api/v2/workspaces/{workspace_id}/selectors/activities"),
-    }
+            ("GET", "/api/v2/workspaces/{workspace_id}/selectors/activities"),
+            ("GET", "/api/v2/workspaces/{workspace_id}/tasks"),
+            ("POST", "/api/v2/workspaces/{workspace_id}/tasks"),
+            ("GET", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}"),
+            ("PATCH", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}"),
+            ("DELETE", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}"),
+            ("POST", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/complete"),
+            ("POST", "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete"),
+        }

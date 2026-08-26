@@ -2,41 +2,47 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as api from "../../api/planningTaskApi";
-import type { PlanningTask, PlanningTaskListResponse } from "../../types/planningTask";
+
+import * as taskApi from "../../api/v2TaskApi";
+import * as workspaceApi from "../../api/workspaceApi";
 import { PlanningTasksPage } from "./PlanningTasksPage";
 
-vi.mock("../../api/planningTaskApi", () => ({ listAllMasterTasks: vi.fn(), listPlanningTasks: vi.fn(), createPlanningTask: vi.fn(), createPlanningTasksBulk: vi.fn(), updatePlanningTask: vi.fn(), deletePlanningTask: vi.fn(), deletePlanningTasksBulk: vi.fn() }));
-const master = { id: "master-1", name: "Salir a correr", category_id: "category-1", category: { id: "category-1", name: "Actividad" }, created_at: "", updated_at: "" };
-const makeTask = (id: string, status: PlanningTask["status"], name = "Salir a correr"): PlanningTask => ({ id, master_task_id: master.id, planned_date: "2026-08-20", status, result: null, resolved_at: null, resolved_by_id: null, master_task: { ...master, name }, lock_version: 2, created_at: "", updated_at: "" });
-const list: PlanningTaskListResponse = { items: [makeTask("scheduled", "PROGRAMADA"), makeTask("pending", "PENDIENTE", "Leer"), makeTask("done", "COMPLETADA", "Ordenar"), makeTask("missed", "NO_REALIZADA", "Llamar")], total: 4, page: 1, page_size: 25, total_pages: 1 };
-function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); render(<QueryClientProvider client={client}><PlanningTasksPage /></QueryClientProvider>); return client; }
+vi.mock("../../api/v2TaskApi", () => ({ listV2Tasks: vi.fn(), createV2Task: vi.fn(), updateV2Task: vi.fn(), resolveV2Task: vi.fn(), deleteV2Task: vi.fn() }));
+vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
+vi.mock("../../components/common/V2CatalogSelector", () => ({ TaskCatalogSelector: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <label>Tarea<select aria-label="Tarea" value={value} onChange={(event) => onChange(event.target.value)}><option value="">Selecciona</option><option value="master-1">Comprar pan</option></select></label> }));
+const auth = { user: { id: "user-1", email: "ana@example.com", first_name: "Ana", last_name: "Uno", timezone: "America/Lima" }, workspace: { id: "workspace-a", name: "Familia", kind: "SHARED" as const, timezone: "America/Lima" } };
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => auth }));
 
-describe("PlanningTasksPage", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.mocked(api.listAllMasterTasks).mockResolvedValue([master]); vi.mocked(api.listPlanningTasks).mockResolvedValue(list); vi.mocked(api.createPlanningTask).mockResolvedValue(list.items[0]); vi.mocked(api.createPlanningTasksBulk).mockResolvedValue({ created_count: 2, items: [] }); vi.mocked(api.updatePlanningTask).mockResolvedValue(list.items[0]); vi.mocked(api.deletePlanningTasksBulk).mockResolvedValue({ deleted_count: 1 }); vi.spyOn(window, "confirm").mockReturnValue(true); });
-  it("renders target register fields, statuses and only scheduled mutation controls", async () => {
-    renderPage(); expect(await screen.findByRole("option", { name: "Salir a correr — Actividad" })).toBeInTheDocument();
-    const register = screen.getByRole("table", { name: "Registro de tareas planificadas" });
-    for (const status of ["Programada", "Pendiente", "Completada", "No realizada"]) expect(within(register).getByText(status)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Editar fecha de Salir a correr" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Editar fecha de Leer" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Seleccionar Leer")).toBeDisabled();
+const task = { id: "task-1", workspace_id: "workspace-a", master_task_id: "master-1", master_task_name: "Comprar pan", category_id: "category-1", category_name: "Casa", responsible_user_id: "user-1", responsible_display_name: "Ana Uno", responsible_email: "ana@example.com", planned_date: "2026-08-26", state: "PROGRAMADA" as const, result: null, resolved_at: null, resolved_by_user_id: null, lock_version: 1, can_edit: true, can_resolve: false, can_delete: true, created_at: "2026-08-25T00:00:00Z", updated_at: "2026-08-25T00:00:00Z" };
+
+function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<QueryClientProvider client={client}><PlanningTasksPage /></QueryClientProvider>); }
+
+describe("V2 PlanningTasksPage", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: "user-1", display_name: "Ana Uno", email: "ana@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }, { user_id: "user-2", display_name: "Luis Dos", email: "luis@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }]); vi.mocked(taskApi.listV2Tasks).mockResolvedValue({ items: [task], total: 1, page: 1, page_size: 25, total_pages: 1 }); vi.mocked(taskApi.createV2Task).mockResolvedValue(task); vi.mocked(taskApi.updateV2Task).mockResolvedValue(task); vi.mocked(taskApi.resolveV2Task).mockResolvedValue({ ...task, state: "COMPLETADA", result: "COMPLETED" }); vi.mocked(taskApi.deleteV2Task).mockResolvedValue(); vi.spyOn(window, "confirm").mockReturnValue(true); });
+
+  it("creates a Shared Task with workspace-scoped MasterTask and responsible member", async () => { const user = userEvent.setup(); renderPage(); const form = screen.getByRole("heading", { name: "Crear tarea" }).closest("section")!; await user.selectOptions(within(form).getByLabelText("Tarea"), "master-1"); await user.type(within(form).getByLabelText("Fecha"), "2026-08-26"); await user.selectOptions(await within(form).findByLabelText("Responsable"), "user-2"); await user.click(within(form).getByRole("button", { name: "Crear" })); await waitFor(() => expect(taskApi.createV2Task).toHaveBeenCalledWith("workspace-a", { master_task_id: "master-1", planned_date: "2026-08-26", responsible_user_id: "user-2" })); });
+
+  it("renders a future derived state without premature resolution actions", async () => { renderPage(); const table = await screen.findByRole("table", { name: "Tareas planificadas" }); expect(within(table).getByText("Programada")).toBeInTheDocument(); expect(within(table).getByText("Ana Uno")).toBeInTheDocument(); expect(within(table).queryByRole("button", { name: "Completado" })).not.toBeInTheDocument(); });
+
+  it("edits all approved standalone fields with lock_version", async () => { const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Comprar pan" })); await user.selectOptions(screen.getAllByLabelText("Responsable").at(-1)!, "user-2"); await user.click(screen.getByRole("button", { name: "Guardar" })); await waitFor(() => expect(taskApi.updateV2Task).toHaveBeenCalledWith("workspace-a", "task-1", { master_task_id: "master-1", planned_date: "2026-08-26", responsible_user_id: "user-2", lock_version: 1 })); });
+
+  it("uses workspace-scoped cache and clears edit state on conflict", async () => { vi.mocked(taskApi.updateV2Task).mockRejectedValue({ isAxiosError: true, response: { status: 409 } }); const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Comprar pan" })); await user.click(screen.getByRole("button", { name: "Guardar" })); expect(await screen.findByRole("alert")).toHaveTextContent("La tarea cambió"); await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument()); expect(taskApi.listV2Tasks).toHaveBeenCalledWith("workspace-a", { page: 1, page_size: 25 }); });
+
+  it("deletes only when server-projected action is available", async () => { const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Eliminar Comprar pan" })); await waitFor(() => expect(taskApi.deleteV2Task).toHaveBeenCalledWith("workspace-a", "task-1", 1)); });
+
+  it("shows Editar only for future Programada tasks and keeps Pendiente resolution actions", async () => {
+    vi.mocked(taskApi.listV2Tasks).mockResolvedValue({
+      items: [
+        task,
+        { ...task, id: "today", master_task_name: "Tarea de hoy", planned_date: "2026-08-25", state: "PENDIENTE", can_edit: false, can_resolve: true, can_delete: false },
+        { ...task, id: "overdue", master_task_name: "Tarea vencida", planned_date: "2026-08-24", state: "PENDIENTE", can_edit: false, can_resolve: true, can_delete: false }
+      ],
+      total: 3, page: 1, page_size: 25, total_pages: 1
+    });
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Editar Comprar pan" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar Tarea de hoy" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar Tarea vencida" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Completado" })).toHaveLength(2);
   });
-  it("creates a single occurrence with only MasterTask and date", async () => {
-    const user = userEvent.setup(); renderPage(); const creation = (await screen.findByRole("heading", { name: "Crear tareas" })).closest<HTMLElement>("section")!; await within(creation).findByRole("option", { name: "Salir a correr — Actividad" });
-    await user.selectOptions(within(creation).getByLabelText("Tarea"), master.id); await user.type(within(creation).getByLabelText("Fecha"), "2026-08-25"); await user.click(within(creation).getByRole("button", { name: "Crear" }));
-    await waitFor(() => expect(api.createPlanningTask).toHaveBeenCalledWith({ master_task_id: master.id, planned_date: "2026-08-25" }));
-  });
-  it("creates finite weekly occurrences with Monday=0 and has no monthly/persistent-series UI", async () => {
-    const user = userEvent.setup(); renderPage(); const creation = (await screen.findByRole("heading", { name: "Crear tareas" })).closest<HTMLElement>("section")!; await within(creation).findByRole("option", { name: "Salir a correr — Actividad" }); await user.selectOptions(within(creation).getByLabelText("Tarea"), master.id); await user.selectOptions(within(creation).getByLabelText("Tipo de creación"), "bulk"); await user.type(within(creation).getByLabelText("Fecha inicial"), "2026-08-17"); await user.type(within(creation).getByLabelText("Fecha final"), "2026-08-24"); await user.selectOptions(within(creation).getByLabelText("Patrón"), "WEEKLY"); await user.click(within(creation).getByLabelText("Lunes")); await user.click(within(creation).getByLabelText("Miércoles")); await user.click(within(creation).getByRole("button", { name: "Crear" }));
-    await waitFor(() => expect(api.createPlanningTasksBulk).toHaveBeenCalledWith({ master_task_id: master.id, start_date: "2026-08-17", end_date: "2026-08-24", pattern: "WEEKLY", weekdays: [0, 2] }));
-    expect(screen.queryByText(/Mensual|TaskSeries|serie persistente/i)).not.toBeInTheDocument();
-  });
-  it("edits planned date only with lock version", async () => { const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar fecha de Salir a correr" })); const date = screen.getByLabelText("Nueva fecha de Salir a correr"); await user.clear(date); await user.type(date, "2026-08-26"); await user.click(screen.getByRole("button", { name: "Guardar fecha de Salir a correr" })); await waitFor(() => expect(api.updatePlanningTask).toHaveBeenCalledWith("scheduled", { planned_date: "2026-08-26", lock_version: 2 })); });
-  it("closes stale date editing after a failed update", async () => { vi.mocked(api.updatePlanningTask).mockRejectedValue({ isAxiosError: true, response: { status: 409 } }); const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar fecha de Salir a correr" })); await user.click(screen.getByRole("button", { name: "Guardar fecha de Salir a correr" })); expect(await screen.findByRole("alert")).toHaveTextContent("cambió desde la última carga"); await waitFor(() => expect(screen.queryByLabelText("Nueva fecha de Salir a correr")).not.toBeInTheDocument()); expect(screen.getByRole("button", { name: "Editar fecha de Salir a correr" })).toBeInTheDocument(); });
-  it("bulk deletes only selected scheduled rows in one request", async () => { const user = userEvent.setup(); renderPage(); await user.click(await screen.findByLabelText("Seleccionar Salir a correr")); await user.click(screen.getByRole("button", { name: "Eliminar seleccionadas" })); await waitFor(() => expect(api.deletePlanningTasksBulk).toHaveBeenCalledWith([{ id: "scheduled", lock_version: 2 }])); expect(api.deletePlanningTask).not.toHaveBeenCalled(); });
-  it("clears stale selected lock versions after failed bulk deletion", async () => { vi.mocked(api.deletePlanningTasksBulk).mockRejectedValue({ isAxiosError: true, response: { status: 409 } }); const user = userEvent.setup(); renderPage(); const checkbox = await screen.findByLabelText("Seleccionar Salir a correr"); await user.click(checkbox); expect(screen.getByText("1 seleccionadas")).toBeInTheDocument(); await user.click(screen.getByRole("button", { name: "Eliminar seleccionadas" })); expect(await screen.findByRole("alert")).toHaveTextContent("cambió desde la última carga"); await waitFor(() => expect(checkbox).not.toBeChecked()); expect(screen.getByText("0 seleccionadas")).toBeInTheDocument(); expect(screen.getByRole("button", { name: "Eliminar seleccionadas" })).toBeDisabled(); });
-  it("clears selected lock versions after failed single deletion", async () => { vi.mocked(api.deletePlanningTask).mockRejectedValue({ isAxiosError: true, response: { status: 409 } }); const user = userEvent.setup(); renderPage(); const checkbox = await screen.findByLabelText("Seleccionar Salir a correr"); await user.click(checkbox); await user.click(screen.getByRole("button", { name: "Eliminar Salir a correr" })); expect(await screen.findByRole("alert")).toHaveTextContent("cambió desde la última carga"); await waitFor(() => expect(checkbox).not.toBeChecked()); expect(screen.getByText("0 seleccionadas")).toBeInTheDocument(); });
-  it("uses server filters and pagination defaults", async () => { const user = userEvent.setup(); renderPage(); await screen.findByText("Programada"); expect(api.listPlanningTasks).toHaveBeenCalledWith({ page: 1, page_size: 25 }); await user.selectOptions(screen.getByLabelText("Estado"), "PENDIENTE"); await waitFor(() => expect(api.listPlanningTasks).toHaveBeenCalledWith(expect.objectContaining({ page: 1, page_size: 25, status: "PENDIENTE" }))); expect(screen.getByLabelText("Por página")).toHaveValue("25"); expect(within(screen.getByLabelText("Por página")).getAllByRole("option").map((x) => x.textContent)).toEqual(["25","50","100"]); });
-  it("shows the neutral no-MasterTask state without free text fallback", async () => { vi.mocked(api.listAllMasterTasks).mockResolvedValue([]); renderPage(); expect(await screen.findByText("Aún no hay tareas configuradas en Tablas > Tareas.")).toBeInTheDocument(); expect(screen.queryByLabelText("Nombre de tarea")).not.toBeInTheDocument(); });
 });

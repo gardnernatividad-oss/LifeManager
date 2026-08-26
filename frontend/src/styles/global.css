@@ -680,6 +680,13 @@ p {
 .planning-table { display: grid; gap: 0.25rem; }
 .planning-row { padding: 0.5rem; display: grid; grid-template-columns: 2.2rem 8rem minmax(10rem, 1fr) minmax(7rem, .7fr) 7rem 5rem; align-items: center; gap: 0.5rem; border: 1px solid var(--color-border); border-radius: 0.45rem; }
 .planning-row--head { border: 0; color: var(--color-muted); background: transparent; font-size: 0.78rem; font-weight: 700; }
+.v2-task-list { display: grid; gap: 0.45rem; overflow-x: auto; }
+.v2-task-row { display: grid; grid-template-columns: 8rem minmax(12rem, 1.4fr) minmax(9rem, 1fr) 8rem minmax(12rem, auto); gap: 0.7rem; align-items: center; min-width: 48rem; padding: 0.65rem; border: 1px solid var(--color-border); border-radius: 0.45rem; }
+.v2-task-row--personal { grid-template-columns: 8rem minmax(12rem, 1.4fr) 8rem minmax(12rem, auto); min-width: 39rem; }
+.v2-task-row > span:nth-child(2) { display: grid; gap: 0.15rem; }
+.v2-task-row small { color: var(--color-muted); }
+.v2-task-row--head { border: 0; color: var(--color-muted); font-size: 0.78rem; font-weight: 700; }
+.modal-card form { display: grid; gap: 0.8rem; }
 .planning-actions { display: flex; gap: 0.25rem; }
 .planning-actions button { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--color-border); border-radius: 0.35rem; color: var(--color-primary); background: var(--color-surface); cursor: pointer; }
 .planning-loading { min-height: 8rem; padding: 1rem; border-radius: 0.55rem; color: var(--color-muted); background: linear-gradient(90deg, #e8ece9 25%, #f4f6f4 50%, #e8ece9 75%); background-size: 200% 100%; animation: skeleton-pulse 1.4s ease-in-out infinite; }

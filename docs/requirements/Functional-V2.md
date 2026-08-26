@@ -97,6 +97,27 @@ La constraint V1 que omite Responsable no es el objetivo V2.
 
 Una Tarea pasa de Programada a Pendiente cuando llega su fecha. El usuario registra Completada o No Realizada. No se requiere historial de progreso o comentarios por Tarea. Los datos pasados se conservan salvo las correcciones y reclasificaciones expresamente aprobadas.
 
+En Stage 5.1, Programada y Pendiente son estados derivados, nunca persistidos:
+una ocurrencia sin resultado es Programada si `planned_date` es posterior a la
+fecha local actual de la cuenta y Pendiente si es igual o anterior. Los únicos
+resultados terminales son Completada y No Realizada. Una Tarea Programada no
+admite resolución anticipada. Solo la persona responsable actual puede resolver
+una Tarea Pendiente; una Tarea resuelta es inmutable y no existe todavía una
+operación ordinaria de reapertura o corrección.
+
+Cualquier Miembro `ACTIVE` de un Workspace `ACTIVE` puede crear una Tarea y
+editar o reasignar una Tarea independiente no resuelta solo mientras
+`planned_date` sea posterior a la fecha local actual. Puede cambiar fecha,
+Responsable y entrada de Tarea activa del mismo Workspace únicamente durante
+ese estado Programada. Al llegar su fecha pasa a Pendiente: conserva fecha,
+Responsable y Tarea de catálogo sin cambios y solo admite resolución por su
+Responsable actual. Propietario y Miembro tienen la
+misma autoridad sobre estas operaciones; `GLOBAL_ADMIN` no tiene bypass. En
+Personal, el Responsable se deriva como su propietario y la interfaz no muestra
+selector. Cualquier Miembro `ACTIVE` puede eliminar una Tarea independiente no
+resuelta únicamente cuando su fecha es futura; hoy, fechas anteriores,
+resultados terminales y ocurrencias generadas no admiten este hard delete.
+
 ### 4.5 Creación recurrente finita
 
 Se soporta creación diaria, semanal y mensual, siempre con Desde y Hasta obligatorios; no hay generación abierta o perpetua.

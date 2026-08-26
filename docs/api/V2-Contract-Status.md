@@ -1,5 +1,25 @@
 # Contrato API objetivo de LifeManager V2.0.0
 
+## Stage 5.1
+
+La API V2 expone `POST/GET /api/v2/workspaces/{workspace_id}/tasks`,
+`GET/PATCH/DELETE /api/v2/workspaces/{workspace_id}/tasks/{task_id}` y las
+acciones `complete` y `not-complete`. Los cuerpos son estrictos: el alcance,
+actor, procedencia, resultado y timestamps se derivan en servidor. Las
+mutaciones condicionales usan `lock_version`; los conflictos devuelven 409 y
+las referencias externas al Workspace se ocultan con 404. La lista admite
+paginación y filtros acotados por fecha, Responsable, Tarea, Categoría y
+resultado. `generation_batch_id` permanece nulo para creación puntual y no se
+expone en los DTO.
+
+`PATCH` solo admite una Tarea puntual no resuelta cuya `planned_date` sea
+posterior a la fecha local actual de la cuenta. Cuando la fecha llega, la Tarea
+es Pendiente y ya no puede reprogramarse, reasignarse ni cambiar de entrada de
+catálogo; únicamente su Responsable actual puede resolverla. Una Tarea
+Programada futura no admite resolución anticipada. Las proyecciones
+`can_edit` y `can_delete` reflejan esta regla, pero el backend la revalida bajo
+bloqueo como autoridad final.
+
 ## Stage 4.1
 
 Los catálogos de Categorías, Tareas y Actividades están disponibles bajo `/api/v2/workspaces/{workspace_id}`. Exponen listado, creación, lectura, actualización y operaciones dedicadas de activación/desactivación. Los DTO son estrictos, el servidor deriva normalización y alcance, y toda mutación exige `lock_version`. Stage 4.2 añadió hard delete únicamente para registros sin referencias, revalidado por servidor y protegido por FK `RESTRICT`.
