@@ -142,6 +142,13 @@ incluye anteriores, hoy/pasado ni resueltas. El patrón original no se muta y el
 cambio/regeneración de calendario queda diferido hasta aprobar un contrato
 específico que cree nueva procedencia sin falsificar la historia.
 
+Stage 5.4 valida y cierra esta vertical. Programada/Pendiente sigue siendo una
+proyección de fecha local; una Pendiente no puede editarse, eliminarse ni
+reprogramarse, y una Programada no puede resolverse anticipadamente. Las
+capacidades devueltas por el servidor reflejan exactamente esas reglas. El gate
+completo de autorización, IDOR, concurrencia, recurrencia y UX se conserva en
+`docs/security/V2-Task-Gate.md`.
+
 ## 5. Pendientes
 
 Un Pendiente representa un asunto con seguimiento prolongado. Incluye Vigencia, nombre, Categoría, Responsable, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y acciones.

@@ -31,6 +31,48 @@ def test_task_version_is_positive() -> None:
 
 
 @pytest.mark.parametrize(
+    ("schema", "payload"),
+    [
+        (TaskCreate, {"master_task_id": str(uuid.uuid4()), "planned_date": "2026-09-01"}),
+        (
+            RecurringTaskCreate,
+            {
+                "master_task_id": str(uuid.uuid4()),
+                "recurrence": {
+                    "pattern": "DAILY",
+                    "date_from": "2026-09-01",
+                    "date_until": "2026-09-02",
+                },
+            },
+        ),
+        (TaskUpdate, {"planned_date": "2026-09-02", "lock_version": 1}),
+    ],
+)
+@pytest.mark.parametrize(
+    "hostile_field",
+    [
+        "workspace_id",
+        "generation_batch_id",
+        "entity_type",
+        "result",
+        "resolved_at",
+        "resolved_by_user_id",
+        "created_by_user_id",
+        "created_at",
+        "updated_at",
+        "can_edit",
+        "can_delete_future",
+        "global_role",
+        "workspace",
+        "members",
+    ],
+)
+def test_task_write_schemas_reject_mass_assignment(schema, payload, hostile_field) -> None:
+    with pytest.raises(ValidationError):
+        schema.model_validate({**payload, hostile_field: "forged"})
+
+
+@pytest.mark.parametrize(
     ("pattern", "extra"),
     [("DAILY", {}), ("WEEKLY", {"weekdays": [0, 2]}), ("MONTHLY", {"month_days": [29, 31]})],
 )

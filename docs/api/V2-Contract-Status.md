@@ -348,6 +348,12 @@ Stage 5.3 concreta la mutación sin exponer el batch:
 - el listado acepta `state=PROGRAMADA|PENDIENTE|COMPLETADA|NO_REALIZADA` y `generated=true|false`, además de sus filtros previos;
 - toda operación es atómica, usa locking determinista por `planned_date,id` y retorna 409 ante versión o unicidad incompatible.
 
+Stage 5.4 declara este contrato cerrado tras validar su superficie OpenAPI,
+DTO ofensivo, aislamiento IDOR, capacidades derivadas, carreras significativas
+y ciclo real en PostgreSQL desechable. No existe una ruta V1 de Tareas montada
+en el runtime ni lookup de Tarea sin `workspace_id`. La evidencia autoritativa
+está en `docs/security/V2-Task-Gate.md`.
+
 Task usa DATE. Activity añade hora local y timezone IANA; backend rechaza horas DST inexistentes o ambiguas y retorna instantes UTC.
 
 ## 10. Activity y Calendar

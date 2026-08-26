@@ -170,3 +170,19 @@ def test_openapi_exposes_explicit_task_contracts() -> None:
     assert set(recurring["properties"]) == {"master_task_id", "responsible_user_id", "recurrence"}
     update = document["components"]["schemas"]["TaskUpdate"]
     assert set(update["properties"]) == {"master_task_id", "planned_date", "responsible_user_id", "lock_version", "scope"}
+    task_paths = {
+        route: set(operations)
+        for route, operations in document["paths"].items()
+        if route.startswith("/api/v2/workspaces/{workspace_id}/tasks")
+    }
+    assert task_paths == {
+        "/api/v2/workspaces/{workspace_id}/tasks": {"get", "post"},
+        "/api/v2/workspaces/{workspace_id}/tasks/recurring": {"post"},
+        "/api/v2/workspaces/{workspace_id}/tasks/{task_id}": {"get", "patch", "delete"},
+        "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/complete": {"post"},
+        "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete": {"post"},
+    }
+    read = document["components"]["schemas"]["TaskRead"]["properties"]
+    assert "generation_batch_id" not in read
+    assert "created_by_user_id" not in read
+    assert "entity_type" not in read

@@ -46,6 +46,27 @@ describe("V2 PlanningTasksPage", () => {
 
   it("clears a generated scope dialog when Workspace changes", async () => { vi.mocked(taskApi.listV2Tasks).mockResolvedValue({ items: [{ ...task, is_generated: true, can_edit_future: true, can_delete_future: true }], total: 1, page: 1, page_size: 25, total_pages: 1 }); const user = userEvent.setup(); const view = renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Comprar pan" })); expect(screen.getByRole("heading", { name: "Elegir alcance" })).toBeInTheDocument(); auth.workspace = { id: "workspace-b", name: "Otro", kind: "SHARED", timezone: "America/Lima" }; view.rerender(<QueryClientProvider client={view.client}><PlanningTasksPage /></QueryClientProvider>); await waitFor(() => expect(screen.queryByRole("heading", { name: "Elegir alcance" })).not.toBeInTheDocument()); });
 
+  it("clears create and filter state and queries the new Workspace on switch", async () => {
+    const user = userEvent.setup();
+    const view = renderPage();
+    const createSection = screen.getByRole("heading", { name: "Crear tarea" }).closest("section")!;
+    const register = screen.getByRole("heading", { name: "Tareas planificadas" }).closest("section")!;
+    await user.selectOptions(within(createSection).getByLabelText("Tarea"), "master-1");
+    await user.type(within(createSection).getByLabelText("Fecha"), "2026-08-30");
+    await user.selectOptions(within(register).getByLabelText("Estado"), "PENDIENTE");
+    await waitFor(() => expect(taskApi.listV2Tasks).toHaveBeenCalledWith("workspace-a", expect.objectContaining({ state: "PENDIENTE" })));
+
+    auth.workspace = { id: "workspace-b", name: "Otro", kind: "SHARED", timezone: "America/Lima" };
+    view.rerender(<QueryClientProvider client={view.client}><PlanningTasksPage /></QueryClientProvider>);
+
+    const resetCreate = screen.getByRole("heading", { name: "Crear tarea" }).closest("section")!;
+    const resetRegister = screen.getByRole("heading", { name: "Tareas planificadas" }).closest("section")!;
+    expect(within(resetCreate).getByLabelText("Tarea")).toHaveValue("");
+    expect(within(resetCreate).getByLabelText("Fecha")).toHaveValue("");
+    expect(within(resetRegister).getByLabelText("Estado")).toHaveValue("");
+    await waitFor(() => expect(taskApi.listV2Tasks).toHaveBeenCalledWith("workspace-b", { page: 1, page_size: 25 }));
+  });
+
   it("shows Editar only for future Programada tasks and keeps Pendiente resolution actions", async () => {
     vi.mocked(taskApi.listV2Tasks).mockResolvedValue({
       items: [

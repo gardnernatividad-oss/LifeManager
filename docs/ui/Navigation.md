@@ -34,6 +34,9 @@ ocurrencias generadas aparecen como Tareas normales. Una futura generada ofrece
 `Solo esta` y `Todas las futuras`; las independientes se editan directamente.
 No debe confundirse con `Tablas → Tareas`, que
 administra el catálogo reutilizable.
+Stage 5.4 confirma que el cambio de Workspace reinicia formularios, filtros y
+diálogos de alcance de esta pantalla; las query keys incluyen `workspace_id` y
+logout limpia la caché privada.
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.
 - Tablas: Tareas, Actividades y Categorías.

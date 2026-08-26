@@ -8,7 +8,7 @@ import pytest
 from app.models import Category, MasterTask, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult, WorkspaceKind
 from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
-from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, _mutation_scope_tasks, create_recurring_tasks, create_task, delete_task, resolve_task, task_projection, update_task
+from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, _mutation_scope_tasks, create_recurring_tasks, create_task, delete_task, list_tasks, resolve_task, task_projection, update_task
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -134,6 +134,44 @@ def test_projection_allows_edit_only_while_unresolved_task_is_future() -> None:
     task.planned_date = date(2026, 9, 1)
     _, state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
     assert (state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future) == ("PENDIENTE", False, False, False, True, False, False)
+
+
+@pytest.mark.parametrize("result, expected_state", [(TaskResult.COMPLETED, "COMPLETADA"), (TaskResult.NOT_COMPLETED, "NO_REALIZADA")])
+@pytest.mark.parametrize("generated", [False, True])
+def test_projection_keeps_every_resolved_task_immutable(result, expected_state, generated) -> None:
+    actor, access = _context()
+    category = Category(id=uuid.uuid4(), workspace_id=access.workspace.id, name="Casa", normalized_name="casa")
+    master = MasterTask(id=uuid.uuid4(), workspace_id=access.workspace.id, category_id=category.id, name="Comprar", normalized_name="comprar")
+    master.category = category
+    task = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=master.id, responsible_user_id=actor.id, created_by_user_id=actor.id, planned_date=date(2026, 9, 2), generation_batch_id=uuid.uuid4() if generated else None, result=result, resolved_at=datetime(2026, 9, 1, tzinfo=timezone.utc), resolved_by_user_id=actor.id, lock_version=2)
+    task.master_task = master
+    db = MagicMock()
+    db.scalar.return_value = actor
+
+    projection = task_projection(db, task=task, actor_id=actor.id, local_date=date(2026, 9, 1))
+
+    assert projection[1:] == (expected_state, generated, False, False, False, False, False)
+
+
+def test_list_builds_workspace_scoped_database_filters_and_stable_order() -> None:
+    db = MagicMock()
+    db.scalar.return_value = 0
+    db.scalars.return_value.all.return_value = []
+
+    items, total = list_tasks(db, workspace_id=uuid.uuid4(), page=2, page_size=25, planned_from=date(2026, 8, 1), planned_until=date(2026, 8, 31), responsible_user_id=uuid.uuid4(), master_task_id=uuid.uuid4(), category_id=uuid.uuid4(), state="PENDIENTE", generated=True, local_date=date(2026, 8, 26))
+
+    assert items == [] and total == 0
+    count_sql = str(db.scalar.call_args.args[0])
+    items_sql = str(db.scalars.call_args.args[0])
+    for expected in ("tasks.workspace_id", "tasks.planned_date >=", "tasks.planned_date <=", "tasks.responsible_user_id", "tasks.master_task_id", "master_tasks.category_id", "tasks.result IS NULL", "tasks.generation_batch_id IS NOT NULL"):
+        assert expected in count_sql
+    assert "ORDER BY tasks.planned_date, tasks.id" in items_sql
+    assert "LIMIT" in items_sql and "OFFSET" in items_sql
+    db.add.assert_not_called()
+    db.delete.assert_not_called()
+    db.flush.assert_not_called()
+    db.commit.assert_not_called()
+    db.rollback.assert_not_called()
 
 
 @patch("app.services.v2_task._responsible")
