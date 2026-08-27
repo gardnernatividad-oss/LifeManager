@@ -174,6 +174,12 @@ búsqueda parcial por nombre. El orden estable prioriza Activos y luego fecha
 planificada e identificador; la paginación es acotada. En desktop y móvil cada
 registro conserva resumen operativo, acciones y acceso compacto `>` al detalle.
 
+Stage 6.4 cierra esta vertical. Cualquier miembro `ACTIVE` de un Workspace
+`ACTIVE` opera conforme al lifecycle, sin privilegio especial de owner ni
+bypass de `GLOBAL_ADMIN`. Estado y Vigencia permanecen independientes; el hard
+delete se autoriza exclusivamente con avance actual cero bajo lock. El API
+rechaza referencias externas, mass assignment y versiones obsoletas.
+
 ## 6. Proyectos y Etapas
 
 Un Proyecto contiene información general y una colección de **Etapas**. En la interfaz no se usa Paso. El Proyecto incluye Vigencia, nombre, Categoría, Líder, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y acciones.

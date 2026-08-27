@@ -52,6 +52,12 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   según las capacidades server-side. Owner no obtiene privilegio especial y
   `GLOBAL_ADMIN` sin membership no tiene bypass. Historial y Pending se
   resuelven siempre por `workspace_id + pending_item_id`.
+- Stage 6.4 cierra la matriz de Pendientes: owner Personal, owner Shared,
+  member Shared, Responsable y miembro no Responsable pueden operar si cuenta,
+  Workspace y membership están `ACTIVE`, siempre sujetos al lifecycle y
+  `lock_version`. LEFT, REMOVED, no miembro, cuenta `DISABLED`, Workspace
+  `INACTIVE` y `GLOBAL_ADMIN` sin membership no acceden. Owner no obtiene
+  privilegio especial. Ver `docs/security/V2-Pending-Gate.md`.
 
 ## Arquitectura de enforcement V2
 

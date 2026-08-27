@@ -47,6 +47,9 @@ retorno, resumen mobile-first, seguimiento inline e historial en tarjetas. El
 historial muestra fecha/hora, actor, avance, etiqueta Seguimiento/Corrección y
 comentario escapado. Las query keys incluyen Workspace y Pending; cambiar de
 Workspace desmonta el detalle y limpia comentarios no enviados.
+Stage 6.4 confirma que el cambio de Workspace reinicia filtros, formularios y
+detalle; logout limpia la caché privada. El gate mobile no presenta overflow
+horizontal y mantiene las acciones secundarias en el detalle.
 
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.

@@ -1,5 +1,6 @@
 import uuid
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.db import session as db_session
 from app.models import PendingItem, PendingItemHistory, User, Workspace, WorkspaceMember
 from app.schemas.v2_pending_item import PendingItemCreate
-from app.services.v2_pending_item import PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, delete_pending_item, list_pending_items, update_pending_progress
+from app.services.v2_pending_item import PendingItemConflictError, PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, delete_pending_item, list_pending_items, update_pending_progress
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -61,7 +62,10 @@ def test_pending_lifecycle_history_and_cascade_on_disposable_postgres(monkeypatc
             update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=50, comment="Primer avance", expected_version=first.lock_version, local_date=date(2026, 9, 8))
             db.commit()
             first = db.get(PendingItem, first.id)
-            update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=None, comment="Comentario sin cambio", expected_version=first.lock_version, local_date=date(2026, 9, 8))
+            member = db.get(User, member_id)
+            member_membership = db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))
+            member_access = WorkspaceAccess(workspace, member_membership)
+            update_pending_progress(db, access=member_access, actor=member, pending_item_id=first.id, progress=None, comment="Comentario sin cambio", expected_version=first.lock_version, local_date=date(2026, 9, 8))
             db.commit()
             first = db.get(PendingItem, first.id)
             update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=100, expected_version=first.lock_version, local_date=date(2026, 9, 9))
@@ -82,7 +86,8 @@ def test_pending_lifecycle_history_and_cascade_on_disposable_postgres(monkeypatc
             assert [row.event_type for row in histories] == ["TRACKING", "TRACKING", "TRACKING", "CORRECTION", "TRACKING", "CORRECTION"]
             assert [row.progress for row in histories] == [50, 50, 100, 0, 100, 0]
             assert histories[0].comment == "Primer avance" and histories[1].comment == "Comentario sin cambio"
-            assert all(row.actor_user_id == owner_id and row.recorded_at is not None for row in histories)
+            assert [row.actor_user_id for row in histories] == [owner_id, member_id, owner_id, owner_id, owner_id, owner_id]
+            assert all(row.recorded_at is not None for row in histories)
 
             samples = [
                 PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="Activo atrasado", is_active=True, planned_date=date(2026, 9, 8), progress=40),
@@ -106,4 +111,32 @@ def test_pending_lifecycle_history_and_cascade_on_disposable_postgres(monkeypatc
             assert db.get(PendingItem, first.id) is None
             assert db.scalar(sa.select(sa.func.count()).select_from(PendingItemHistory).where(PendingItemHistory.pending_item_id == first.id)) == 0
             assert db.get(PendingItem, untouched.id) is not None
+
+            race = create_pending_item(db, access=access, actor=owner, item_in=PendingItemCreate(category_id=category_id, responsible_user_id=member_id, name="Carrera", planned_date=date(2026, 9, 20)))
+            db.commit()
+            race_id, race_version = race.id, race.lock_version
+
+            def race_progress(value: int) -> str:
+                with Session(engine) as concurrent_db:
+                    concurrent_actor = concurrent_db.get(User, owner_id)
+                    concurrent_workspace = concurrent_db.get(Workspace, workspace_id)
+                    concurrent_membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == owner_id))
+                    try:
+                        update_pending_progress(concurrent_db, access=WorkspaceAccess(concurrent_workspace, concurrent_membership), actor=concurrent_actor, pending_item_id=race_id, progress=value, expected_version=race_version, local_date=date(2026, 9, 12))
+                        concurrent_db.commit()
+                        return "updated"
+                    except PendingItemConflictError:
+                        concurrent_db.rollback()
+                        return "conflict"
+
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                outcomes = list(executor.map(race_progress, (10, 20)))
+            assert sorted(outcomes) == ["conflict", "updated"]
+            db.expire_all()
+            assert db.get(PendingItem, race_id).lock_version == race_version + 1
+            assert db.scalar(sa.select(sa.func.count()).select_from(PendingItemHistory).where(PendingItemHistory.pending_item_id == race_id)) == 1
+
+            pending_fks = {row["name"]: row for row in sa.inspect(engine).get_foreign_keys("pending_item_history")}
+            assert pending_fks["fk_pending_item_history_item_workspace"]["options"]["ondelete"] == "CASCADE"
+            assert pending_fks["fk_pending_item_history_actor_membership"]["options"]["ondelete"] == "RESTRICT"
         engine.dispose()

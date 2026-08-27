@@ -141,7 +141,9 @@ la reapertura explícita de un Finalizado. No existe descripción en PendingItem
 Stage 6.3 completa el listado server-side con filtros combinables por Vigencia,
 Categoría, Responsable, Estado, Cumplimiento, rango de fecha y nombre. Mantiene
 orden estable, paginación acotada, aislamiento de caché por Workspace y una
-presentación responsive en tarjetas. Stage 6.4 conserva el gate final.
+presentación responsive en tarjetas. Stage 6.4 confirma autorización,
+aislamiento, concurrencia, seguridad de DTOs y persistencia PostgreSQL. La Fase
+6 — Pendientes queda cerrada sin hallazgos HIGH abiertos.
 
 ## Principios
 

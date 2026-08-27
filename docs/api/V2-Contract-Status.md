@@ -435,6 +435,11 @@ estable: Vigencia activa primero, fecha planificada ascendente con nulos al
 final e identificador como desempate. La proyección incluye nombres de Categoría
 y Responsable sin consultas por fila.
 
+Stage 6.4 confirma DTOs estrictos, ausencia de mutaciones directas de historia,
+aislamiento por Workspace, optimistic locking en escrituras y transacciones
+atómicas. Estado, Cumplimiento, Detalle y capacidades `can_*` son proyecciones
+server-side y no forman parte de los contratos de escritura.
+
 ## 15. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.
