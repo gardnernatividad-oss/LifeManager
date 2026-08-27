@@ -75,6 +75,10 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   Etapa; comentario y avance se guardan atómicamente bajo `lock_version`. Actor,
   timestamp y tipo de evento son exclusivamente server-side y el historial no
   admite escritura directa.
+- Stage 7.4 cierra la matriz completa de Proyectos/Etapas: anónimo, `LEFT`,
+  `REMOVED`, no miembro, cuenta `DISABLED`, Workspace `INACTIVE` y
+  `GLOBAL_ADMIN` sin membership no acceden. Owner, Líder y Responsable no
+  reciben autoridad adicional. Ver `docs/security/V2-Project-Gate.md`.
 
 ## Arquitectura de enforcement V2
 

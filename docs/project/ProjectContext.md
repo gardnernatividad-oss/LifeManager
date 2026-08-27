@@ -166,6 +166,11 @@ el seguimiento atómico de avance con comentario opcional, comentario-only y el
 historial append-only con actor y timestamp server-side. No se implementa
 reapertura ni corrección de una Etapa finalizada.
 
+Stage 7.4 cierra Phase 7: confirma la matriz uniforme de miembros activos,
+aislamiento jerárquico, concurrencia, pesos/proyecciones derivadas, history
+append-only, cache privada y UX responsive. La evidencia del gate se conserva
+en `docs/security/V2-Project-Gate.md`.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.

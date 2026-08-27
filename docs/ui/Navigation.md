@@ -73,6 +73,8 @@ Mi calendario usa sus propios controles internos para colaboración y comparaci�
 - detalle: Pendiente, Proyecto y Etapa incorporan sus UUID en rutas anidadas;
 - Proyectos usa la jerarquía Listado → Proyecto → Etapas → Etapa, con retorno
   explícito al nivel anterior y sin rutas globales de Etapa fuera del Workspace;
+- Stage 7.4 confirma esta jerarquía en desktop y móvil: resumen y history se
+  componen verticalmente en pantallas estrechas, sin depender de tabla horizontal;
 - autenticación preserva un destino interno seguro y valida nuevamente sesión/membership al restaurar.
 
 ## Detalles y overlays

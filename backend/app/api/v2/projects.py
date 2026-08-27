@@ -91,11 +91,11 @@ def patch(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectUpd
 
 @router.post("/{project_id}/deactivate", response_model=ProjectRead)
 def deactivate(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectVersion, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
-    del workspace_id, account
+    del workspace_id
     return _read(db, _write(db, lambda: deactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)), today=local_today(account.timezone))
 
 
 @router.post("/{project_id}/reactivate", response_model=ProjectRead)
 def reactivate(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectVersion, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
-    del workspace_id, account
+    del workspace_id
     return _read(db, _write(db, lambda: reactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)), today=local_today(account.timezone))

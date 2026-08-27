@@ -192,6 +192,11 @@ exactamente una entrada append-only creada por el servidor, de forma atómica
 con la mutación. Una Etapa al 100% permanece read-only; V2 no implementa todavía
 reapertura ni corrección de Etapas finalizadas.
 
+El gate de Phase 7 confirma que cualquier miembro activo posee la misma
+autoridad operacional sobre Proyectos y Etapas conforme al lifecycle; Owner,
+Líder y Responsable no añaden privilegios y `GLOBAL_ADMIN` sin membership no
+evita el aislamiento del Workspace.
+
 El Avance del Proyecto se agrega desde sus Etapas mediante el modelo de ponderación aprobado. Para Revisión, una Etapa califica cuando está asignada al usuario actual, su Proyecto está Activo, no está finalizada y su fecha planificada es hoy o anterior.
 
 Los pesos usan porcentaje decimal y la configuración completa exige una suma

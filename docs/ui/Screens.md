@@ -44,6 +44,8 @@ overflow horizontal en la representación móvil.
 - Pendiente: vista general → `>` → detalle con historia.
 - Proyecto: vista general → `>` → detalle y lista de Etapas.
 - Etapa: lista dentro del Proyecto → `>` → detalle e historia.
+- El gate 7.4 confirma que listado, detalle, seguimiento e historial de Proyectos
+  y Etapas mantienen jerarquía accesible y composición mobile-first sin overflow.
 - Comparación de Calendario: página interna diaria separada.
 
 Móvil usa composición vertical compacta y mueve información secundaria a detalles. Desktop puede mostrar tablas más ricas sin convertir el scroll horizontal en la estrategia móvil principal.

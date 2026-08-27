@@ -468,6 +468,11 @@ server-side. Avance + comentario y comentario-only son atómicos con los locks d
 Project y Etapa. Las Etapas finalizadas y los Proyectos inactivos rechazan nuevas
 operaciones de seguimiento.
 
+Stage 7.4 confirma la superficie anterior como cerrada: no existe lookup global
+de Etapa, mutación directa de history, bypass de membership ni campos derivados
+en DTOs de escritura. El inventario OpenAPI y el gate PostgreSQL validan rutas,
+scope jerárquico, lifecycle y concurrencia.
+
 ## 16. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.

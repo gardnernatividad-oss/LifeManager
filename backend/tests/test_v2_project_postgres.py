@@ -64,6 +64,23 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
             first = create_project_stage(db, access=member_access, actor=member, project_id=shared_project.id, stage_in=ProjectStageCreate(name="Empacar", responsible_user_id=owner_id, position=0, weight="40.00", planned_date="2026-09-10", project_lock_version=shared_project.lock_version))
             second = create_project_stage(db, access=member_access, actor=member, project_id=shared_project.id, stage_in=ProjectStageCreate(name="Transportar", responsible_user_id=member_id, position=1, weight="60.00", planned_date="2026-09-12", project_lock_version=shared_project.lock_version))
             db.commit()
+            update_project_stage(db, access=member_access, project_id=shared_project.id, stage_id=second.id, stage_in=ProjectStageUpdate(weight="40.00", lock_version=second.lock_version, project_lock_version=shared_project.lock_version))
+            db.commit()
+            weight_project_version = shared_project.lock_version
+            weight_stage_versions = {first.id: first.lock_version, second.id: second.lock_version}
+            def race_weight(stage_id: uuid.UUID) -> str:
+                with Session(engine) as concurrent_db:
+                    concurrent_workspace = concurrent_db.get(Workspace, shared_id)
+                    concurrent_membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))
+                    try:
+                        update_project_stage(concurrent_db, access=WorkspaceAccess(concurrent_workspace, concurrent_membership), project_id=shared_project.id, stage_id=stage_id, stage_in=ProjectStageUpdate(weight="60.00", lock_version=weight_stage_versions[stage_id], project_lock_version=weight_project_version))
+                        concurrent_db.commit(); return "updated"
+                    except ProjectStageConflictError:
+                        concurrent_db.rollback(); return "conflict"
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                assert sorted(executor.map(race_weight, (first.id, second.id))) == ["conflict", "updated"]
+            db.expire_all(); shared_project = db.get(Project, shared_project.id); first = db.get(type(first), first.id); second = db.get(type(second), second.id)
+            assert first.weight + second.weight == 100
             incomplete = project_stage_summary([first], local_date=first.planned_date)
             assert incomplete["weights_complete"] is False and incomplete["progress"] is None
             complete = project_stage_summary([first, second], local_date=first.planned_date)
@@ -99,7 +116,8 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
             db.expire_all(); shared_project = db.get(Project, shared_project.id); first = db.get(type(first), first.id); second = db.get(type(second), second.id)
             assert db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == first.id)) == 3
             weighted = project_stage_summary([first, second], local_date=second.planned_date)
-            assert weighted["progress"] == 80 and weighted["state"] == "EN_PROCESO" and second.completion_date == second.planned_date
+            expected_weighted = (first.weight * 50 + second.weight * 100) / 100
+            assert weighted["progress"] == expected_weighted and weighted["state"] == "EN_PROCESO" and second.completion_date == second.planned_date
             assert stage_projection(second, local_date=second.planned_date)[:3] == ("FINALIZADA", "A_TIEMPO", 0)
             with pytest.raises(ProjectStageConflictError):
                 update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=second.id, progress=90, comment=None, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)

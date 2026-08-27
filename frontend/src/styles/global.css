@@ -1902,7 +1902,8 @@ div.settings-toggles { border: 0; padding: 0; }
 .stage-weight-summary { display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .stage-weight-summary--incomplete { border-color: var(--color-warning); }
 .project-stage-list { display: grid; gap: 0.6rem; }
-.project-stage-list article { display: grid; grid-template-columns: 1.4fr 1fr 0.7fr 1fr 1fr auto; gap: 0.6rem; align-items: center; padding: 0.7rem; border-bottom: 1px solid var(--color-border); }
+.project-stage-list article { display: grid; grid-template-columns: 1.4fr 1fr 0.7fr 0.8fr 1fr 1fr auto; gap: 0.6rem; align-items: center; padding: 0.7rem; border-bottom: 1px solid var(--color-border); }
+.project-stage-list article > *, .project-detail-grid dd { min-width: 0; overflow-wrap: anywhere; }
 .project-stage-list article > div { display: flex; gap: 0.35rem; }
 .project-stage-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 0.75rem; align-items: end; }
 .project-stage-form h4 { grid-column: 1 / -1; margin: 0; }

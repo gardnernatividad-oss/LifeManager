@@ -1,6 +1,6 @@
 import uuid
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.api.v2.dependencies import get_current_account, get_db, require_active_workspace_membership, require_usable_account
 from app.main import app
 from app.models import Project, User, Workspace, WorkspaceMember
-from app.models.enums import WorkspaceKind
+from app.models.enums import GlobalRole, WorkspaceKind
 from app.schemas.v2_project import ProjectRead
 from app.services.v2_project import ProjectConflictError
 from app.services.v2_workspace import WorkspaceAccess
@@ -66,6 +66,19 @@ def test_conflict_rolls_back(update, client) -> None:
     db.rollback.assert_called_once(); db.commit.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("path", "service_name"),
+    (("deactivate", "deactivate_project"), ("reactivate", "reactivate_project")),
+)
+def test_lifecycle_routes_keep_account_timezone_for_response(path, service_name, client) -> None:
+    http, db, _, _ = client
+    with patch(f"app.api.v2.projects.{service_name}", return_value=Project()), patch("app.api.v2.projects.local_today", return_value=date(2026, 9, 1)), patch("app.api.v2.projects._read", return_value=read()) as projection:
+        response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/{path}", json={"lock_version": 1})
+    assert response.status_code == 200
+    assert projection.call_args.kwargs["today"] == date(2026, 9, 1)
+    db.commit.assert_called_once(); db.refresh.assert_called_once(); db.rollback.assert_not_called()
+
+
 def test_mass_assignment_and_openapi_surface(client) -> None:
     http, db, *_ = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects", json={"category_id": str(uuid.uuid4()), "name": "X", "workspace_id": str(WORKSPACE_ID), "progress": 100, "can_edit": True, "stages": []})
@@ -81,3 +94,22 @@ def test_mass_assignment_and_openapi_surface(client) -> None:
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/history": {"get"},
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress": {"post"},
     }
+
+
+def test_anonymous_and_global_admin_nonmember_cannot_access_projects() -> None:
+    app.dependency_overrides.clear()
+    try:
+        with TestClient(app) as http:
+            assert http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/projects").status_code == 401
+
+        for role in (None, GlobalRole.GLOBAL_ADMIN):
+            db = MagicMock(); db.execute.return_value.one_or_none.return_value = None
+            account = User(id=uuid.uuid4(), email="outsider@test.local", global_role=role)
+            app.dependency_overrides[get_db] = lambda: db
+            app.dependency_overrides[get_current_account] = lambda: account
+            app.dependency_overrides[require_usable_account] = lambda: account
+            with TestClient(app) as http:
+                response = http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/projects")
+            assert response.status_code == 404 and response.json()["error"]["code"] == "WORKSPACE_NOT_FOUND"
+    finally:
+        app.dependency_overrides.clear()
