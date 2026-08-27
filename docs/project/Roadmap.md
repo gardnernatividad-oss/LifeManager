@@ -64,7 +64,7 @@ El roadmap conservará exactamente estas columnas:
 | 6. Pendientes | 6.2 | Historial, comentarios y detalle de Pendientes | Completado |
 | 6. Pendientes | 6.3 | Listado, filtros y UX mobile-first de Pendientes | Completado |
 | 6. Pendientes | 6.4 | Autorización, pruebas y gate de Pendientes | Completado |
-| 7. Proyectos y Etapas | 7.1 | Gestión de Proyectos, liderazgo y ciclo general | Pendiente |
+| 7. Proyectos y Etapas | 7.1 | Gestión de Proyectos, liderazgo y ciclo general | Completado |
 | 7. Proyectos y Etapas | 7.2 | Etapas, responsables, pesos, avance y cumplimiento | Pendiente |
 | 7. Proyectos y Etapas | 7.3 | Historial, comentarios y navegación jerárquica Proyecto → Etapa | Pendiente |
 | 7. Proyectos y Etapas | 7.4 | UX mobile-first, autorización, pruebas y gate | Pendiente |

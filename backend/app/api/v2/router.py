@@ -8,6 +8,7 @@ from app.api.v2.workspace_lifecycle import router as lifecycle_router
 from app.api.v2.catalogs import router as catalog_router
 from app.api.v2.tasks import router as task_router
 from app.api.v2.pending_items import router as pending_item_router
+from app.api.v2.projects import router as project_router
 
 
 api_router = APIRouter()
@@ -19,3 +20,4 @@ api_router.include_router(lifecycle_router)
 api_router.include_router(catalog_router)
 api_router.include_router(task_router)
 api_router.include_router(pending_item_router)
+api_router.include_router(project_router)

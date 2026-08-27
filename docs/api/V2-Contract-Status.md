@@ -440,11 +440,22 @@ aislamiento por Workspace, optimistic locking en escrituras y transacciones
 atómicas. Estado, Cumplimiento, Detalle y capacidades `can_*` son proyecciones
 server-side y no forman parte de los contratos de escritura.
 
-## 15. Terminología
+## 15. Proyectos — Stage 7.1
+
+El contrato workspace-scoped publica creación, listado paginado, detalle,
+edición y acciones explícitas de desactivación/reactivación bajo
+`/api/v2/workspaces/{workspace_id}/projects`. Categoría y Líder se validan como
+referencias activas del mismo Workspace; Personal deriva el Líder y Shared
+permite elegir cualquier miembro activo. Todas las escrituras usan
+`lock_version`, transacción en ruta y DTOs estrictos. No existe `DELETE`.
+Avance, Estado, Cumplimiento, finalización y operaciones de Etapas no se
+publican en Stage 7.1 y quedan para Stage 7.2.
+
+## 16. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.
 
-## 15. Decisiones aún operativas
+## 17. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

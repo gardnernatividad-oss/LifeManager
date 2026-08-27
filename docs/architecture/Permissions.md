@@ -59,6 +59,13 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   `INACTIVE` y `GLOBAL_ADMIN` sin membership no acceden. Owner no obtiene
   privilegio especial. Ver `docs/security/V2-Pending-Gate.md`.
 
+- Stage 7.1 autoriza crear, listar, consultar, editar, cambiar Categoría o
+  Líder y activar/desactivar Proyectos a cualquier membership `ACTIVE` del
+  mismo Workspace `ACTIVE`. Líder expresa responsabilidad funcional, no una
+  jerarquía de permisos; owner no recibe privilegio de Project-domain y
+  `GLOBAL_ADMIN` sin membership no obtiene bypass. Personal deriva el Líder al
+  propietario y Shared exige una cuenta y membership `ACTIVE` del Workspace.
+
 ## Arquitectura de enforcement V2
 
 - `CurrentUser` autentica y exige cuenta ACTIVE; `GlobalAdmin`, `ActiveWorkspaceMembership` y `WorkspaceOwner` son dependencies reutilizables.

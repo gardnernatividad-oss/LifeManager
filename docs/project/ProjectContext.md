@@ -145,6 +145,17 @@ presentación responsive en tarjetas. Stage 6.4 confirma autorización,
 aislamiento, concurrencia, seguridad de DTOs y persistencia PostgreSQL. La Fase
 6 — Pendientes queda cerrada sin hallazgos HIGH abiertos.
 
+## Estado V2 de Proyectos
+
+Stage 7.1 implementa la gestión general V2 de Proyectos: creación, listado,
+detalle, edición y lifecycle `ACTIVE`/`INACTIVE`, con Categoría y Líder válidos
+del mismo Workspace. Cualquier miembro `ACTIVE` del Workspace `ACTIVE` posee la
+misma autoridad operacional; Líder representa responsabilidad funcional y no
+autorización, owner no recibe privilegios del dominio y `GLOBAL_ADMIN` no evita
+la membresía. Personal deriva el Líder al usuario propietario. Avance, Estado,
+Cumplimiento, finalización y Etapas quedan expresamente diferidos a Stage 7.2;
+Stage 7.1 no ofrece eliminación de Proyectos.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.
