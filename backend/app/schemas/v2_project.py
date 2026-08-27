@@ -2,6 +2,7 @@ import unicodedata
 import uuid
 
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -79,6 +80,9 @@ class ProjectRead(_StrictModel):
     compliance: str | None
     compliance_detail_days: int | None
     completion_date: date | None
+    weights_complete: bool
+    stage_count: int = Field(ge=0)
+    total_weight: Decimal = Field(ge=0, le=100)
     lock_version: int
     can_edit: bool
     can_deactivate: bool

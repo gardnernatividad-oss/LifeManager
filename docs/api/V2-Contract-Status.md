@@ -451,6 +451,13 @@ permite elegir cualquier miembro activo. Todas las escrituras usan
 Avance, Estado, Cumplimiento, finalización y operaciones de Etapas no se
 publican en Stage 7.1 y quedan para Stage 7.2.
 
+Stage 7.2 publica `GET/POST .../projects/{project_id}/stages`, `GET/PATCH
+.../stages/{stage_id}` y `POST .../stages/{stage_id}/progress`. Los DTOs de
+escritura exigen las versiones del Project y de la Etapa cuando corresponde.
+ProjectRead agrega `weights_complete`, `stage_count` y `total_weight`, además
+de las proyecciones derivadas. Una configuración incompleta es legible pero no
+falsifica avance o cumplimiento global definitivo.
+
 ## 16. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.

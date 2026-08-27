@@ -284,7 +284,11 @@ Nombre técnico recomendado: `ProjectStage`/`project_stages`. V2 debe alinear c�
 - posición >= 0, peso > 0 y <= 100, progreso 0–100, consistencia de completion_date, versión positiva.
 - índices `(project_id, position, id)` y `(responsible_user_id, progress, planned_date, workspace_id, id)`.
 
-La suma exacta 100.00 es una invariancia transversal: se valida al activar/guardar estructura bajo lock de Project, no mediante CHECK por fila. Lock canónico: Project primero, Etapas por ID después.
+La suma exacta 100.00 es una invariancia transversal. Se permite construir la
+estructura gradualmente con una suma menor, se rechaza exceder 100 y solo una
+suma exacta habilita proyecciones globales definitivas. Cada mutación bloquea
+Project primero y Etapa después, valida `lock_version` de ambos e incrementa la
+versión del Project; no se usa un CHECK por fila para la suma.
 
 ### 9.4 `project_stage_history`
 

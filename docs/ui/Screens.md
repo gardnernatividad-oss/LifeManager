@@ -25,10 +25,10 @@ Stage 5.4 cierra el gate de esta pantalla: las acciones visibles proceden de
 capacidades server-side, el cambio de Workspace limpia estado privado y no hay
 overflow horizontal en la representación móvil.
 | Workspace | Planificación · Pendientes | Crear, asignar, filtrar y mantener planificación; mostrar Estado, Vigencia y Cumplimiento derivados; abrir detalle e historia con `>`. Desktop usa resumen horizontal y móvil tarjetas verticales sin overflow. |
-| Workspace | Planificación · Proyectos | Mantener datos generales, Categoría, Líder y Vigencia; Etapas se incorporan en Stage 7.2. |
+| Workspace | Planificación · Proyectos | Mantener datos generales, Categoría, Líder, Vigencia y Etapas con Responsable, peso, fecha y avance. |
 | Workspace | Seguimiento · Tareas | Registro y correcciones aprobadas. |
 | Workspace | Seguimiento · Pendientes | Avance, comentario e historia. |
-| Workspace | Seguimiento · Proyectos | Listado básico en Stage 7.1; avance e historia de Proyecto/Etapas se incorporan desde Stage 7.2. |
+| Workspace | Seguimiento · Proyectos | Avance y cumplimiento derivados de Proyecto/Etapas; historia y comentarios se incorporan en Stage 7.3. |
 | Workspace | Reportes | Periodo, Responsable y Categoría; métricas por refinar. |
 | Workspace | Tablas · Tareas | Catálogo visible como Tareas. |
 | Workspace | Tablas · Actividades | Catálogo de Actividades Activas/Inactivas. |

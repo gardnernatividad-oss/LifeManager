@@ -5,9 +5,13 @@ from fastapi import APIRouter, Query, status
 
 from app.api.v2.dependencies import ActiveWorkspaceMembership, SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
-from app.models import Project
+from sqlalchemy import select
+
+from app.core.dates import local_today
+from app.models import Project, ProjectStage
 from app.schemas.v2_project import ProjectCreate, ProjectListResponse, ProjectRead, ProjectUpdate, ProjectVersion
 from app.services.v2_project import ProjectConflictError, ProjectNotFoundError, ProjectReferenceUnavailableError, create_project, deactivate_project, get_project, list_projects, project_projection, reactivate_project, update_project
+from app.services.v2_project_stage import project_stage_summary
 
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/projects", tags=["V2 Projects"])
@@ -20,13 +24,16 @@ def _raise(error: Exception) -> None:
     raise V2APIError(status_code=409, code="PROJECT_CONFLICT", message="El Proyecto cambió o no admite esta acción.") from error
 
 
-def _read(db: SessionDependency, project: Project, *, category=None, leader=None) -> ProjectRead:
+def _read(db: SessionDependency, project: Project, *, today, category=None, leader=None, stages=None) -> ProjectRead:
     category, leader = project_projection(db, project=project, category=category, leader=leader)
+    stages = stages if stages is not None else list(db.scalars(select(ProjectStage).where(ProjectStage.project_id == project.id).order_by(ProjectStage.position, ProjectStage.id)))
+    summary = project_stage_summary(stages, local_date=today)
     return ProjectRead(
         id=project.id, workspace_id=project.workspace_id, category_id=project.category_id, category_name=category.name,
         leader_user_id=project.leader_user_id, leader_display_name=f"{leader.first_name} {leader.last_name}".strip(), leader_email=leader.email,
         name=project.name, description=project.description, is_active=project.is_active,
-        planned_date=None, progress=None, state=None, compliance=None, compliance_detail_days=None, completion_date=None,
+        planned_date=summary["planned_date"], progress=summary["progress"], state=summary["state"], compliance=summary["compliance"], compliance_detail_days=summary["compliance_detail_days"], completion_date=summary["completion_date"],
+        weights_complete=summary["weights_complete"], stage_count=summary["stage_count"], total_weight=summary["total_weight"],
         lock_version=project.lock_version, can_edit=True, can_deactivate=project.is_active, can_reactivate=not project.is_active,
         created_at=project.created_at, updated_at=project.updated_at,
     )
@@ -49,24 +56,29 @@ def _write(db: SessionDependency, operation):
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 def create(workspace_id: uuid.UUID, project_in: ProjectCreate, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
     del workspace_id
-    return _read(db, _write(db, lambda: create_project(db, access=access, actor=account, project_in=project_in)))
+    return _read(db, _write(db, lambda: create_project(db, access=access, actor=account, project_in=project_in)), today=local_today(account.timezone), stages=[])
 
 
 @router.get("", response_model=ProjectListResponse)
 def index(workspace_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, page: int = Query(default=1, ge=1), page_size: int = Query(default=25, ge=1, le=100), is_active: bool | None = None, category_id: uuid.UUID | None = None, leader_user_id: uuid.UUID | None = None, search: str | None = Query(default=None, max_length=255)) -> ProjectListResponse:
-    del account, access
+    del access
     try:
         rows, total = list_projects(db, workspace_id=workspace_id, page=page, page_size=page_size, is_active=is_active, category_id=category_id, leader_user_id=leader_user_id, search=search.strip() if search else None)
     except ProjectReferenceUnavailableError as error:
         _raise(error)
-    return ProjectListResponse(items=[_read(db, project, category=category, leader=leader) for project, category, leader in rows], total=total, page=page, page_size=page_size, total_pages=math.ceil(total / page_size))
+    today = local_today(account.timezone)
+    stage_rows = list(db.scalars(select(ProjectStage).where(ProjectStage.project_id.in_([project.id for project, _, _ in rows])).order_by(ProjectStage.position, ProjectStage.id))) if rows else []
+    stages_by_project = {project.id: [] for project, _, _ in rows}
+    for stage in stage_rows:
+        stages_by_project[stage.project_id].append(stage)
+    return ProjectListResponse(items=[_read(db, project, today=today, category=category, leader=leader, stages=stages_by_project[project.id]) for project, category, leader in rows], total=total, page=page, page_size=page_size, total_pages=math.ceil(total / page_size))
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
 def detail(workspace_id: uuid.UUID, project_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
-    del account, access
+    del access
     try:
-        return _read(db, get_project(db, workspace_id=workspace_id, project_id=project_id))
+        return _read(db, get_project(db, workspace_id=workspace_id, project_id=project_id), today=local_today(account.timezone))
     except ProjectNotFoundError as error:
         _raise(error)
 
@@ -74,16 +86,16 @@ def detail(workspace_id: uuid.UUID, project_id: uuid.UUID, db: SessionDependency
 @router.patch("/{project_id}", response_model=ProjectRead)
 def patch(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectUpdate, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
     del workspace_id
-    return _read(db, _write(db, lambda: update_project(db, access=access, actor=account, project_id=project_id, project_in=project_in)))
+    return _read(db, _write(db, lambda: update_project(db, access=access, actor=account, project_id=project_id, project_in=project_in)), today=local_today(account.timezone))
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectRead)
 def deactivate(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectVersion, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
     del workspace_id, account
-    return _read(db, _write(db, lambda: deactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)))
+    return _read(db, _write(db, lambda: deactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)), today=local_today(account.timezone))
 
 
 @router.post("/{project_id}/reactivate", response_model=ProjectRead)
 def reactivate(workspace_id: uuid.UUID, project_id: uuid.UUID, project_in: ProjectVersion, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectRead:
     del workspace_id, account
-    return _read(db, _write(db, lambda: reactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)))
+    return _read(db, _write(db, lambda: reactivate_project(db, access=access, project_id=project_id, expected_version=project_in.lock_version)), today=local_today(account.timezone))

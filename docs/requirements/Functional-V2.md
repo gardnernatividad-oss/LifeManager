@@ -188,6 +188,16 @@ Cada Etapa puede incluir Responsable, peso, fecha planificada, Avance, Estado, C
 
 El Avance del Proyecto se agrega desde sus Etapas mediante el modelo de ponderación aprobado. Para Revisión, una Etapa califica cuando está asignada al usuario actual, su Proyecto está Activo, no está finalizada y su fecha planificada es hoy o anterior.
 
+Los pesos usan porcentaje decimal y la configuración completa exige una suma
+exacta de `100.00`. Durante la construcción se admite una suma temporal menor;
+exceder 100 se rechaza. Mientras la suma sea incompleta, el API informa
+`weights_complete=false` y no presenta avance, finalización ni cumplimiento
+global como definitivos. Con pesos completos, el Avance es la suma ponderada
+de los avances 0–100 de las Etapas. Estado, fechas de cumplimiento y
+Cumplimiento se derivan; no se persisten duplicados en Proyecto. Una Etapa al
+100 queda Finalizada y read-only en operación ordinaria, sin alterar la
+Vigencia del Proyecto.
+
 La navegación es jerárquica mediante páginas internas:
 
 `Proyectos → > → detalle del Proyecto → Etapas → > → detalle de la Etapa`

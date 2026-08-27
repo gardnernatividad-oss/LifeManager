@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session
 from app.db import session as db_session
 from app.models import Project, ProjectLeaderHistory, User, Workspace, WorkspaceMember
 from app.schemas.v2_project import ProjectCreate, ProjectUpdate
+from app.schemas.v2_project_stage import ProjectStageCreate, ProjectStageUpdate
 from app.services.v2_project import ProjectConflictError, ProjectNotFoundError, ProjectReferenceUnavailableError, create_project, deactivate_project, get_project, list_projects, reactivate_project, update_project
+from app.services.v2_project_stage import ProjectStageConflictError, ProjectStageNotFoundError, ProjectStageReferenceUnavailableError, create_project_stage, get_project_stage, project_stage_summary, stage_projection, update_project_stage, update_project_stage_progress
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -59,6 +61,28 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
             assert shared_project.created_by_user_id == member_id and shared_project.is_active is True
             assert db.scalar(sa.select(sa.func.count()).select_from(ProjectLeaderHistory).where(ProjectLeaderHistory.project_id == shared_project.id)) == 1
 
+            first = create_project_stage(db, access=member_access, actor=member, project_id=shared_project.id, stage_in=ProjectStageCreate(name="Empacar", responsible_user_id=owner_id, position=0, weight="40.00", planned_date="2026-09-10", project_lock_version=shared_project.lock_version))
+            second = create_project_stage(db, access=member_access, actor=member, project_id=shared_project.id, stage_in=ProjectStageCreate(name="Transportar", responsible_user_id=member_id, position=1, weight="60.00", planned_date="2026-09-12", project_lock_version=shared_project.lock_version))
+            db.commit()
+            incomplete = project_stage_summary([first], local_date=first.planned_date)
+            assert incomplete["weights_complete"] is False and incomplete["progress"] is None
+            complete = project_stage_summary([first, second], local_date=first.planned_date)
+            assert complete["weights_complete"] is True and complete["progress"] == 0 and complete["state"] == "NO_INICIADO"
+            with pytest.raises(ProjectStageReferenceUnavailableError):
+                update_project_stage(db, access=member_access, project_id=shared_project.id, stage_id=first.id, stage_in=ProjectStageUpdate(responsible_user_id=foreign_id, lock_version=first.lock_version, project_lock_version=shared_project.lock_version))
+            db.rollback(); member = db.get(User, member_id); shared = db.get(Workspace, shared_id); member_access = WorkspaceAccess(shared, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))); shared_project = db.get(Project, shared_project.id); first = get_project_stage(db, workspace_id=shared_id, project_id=shared_project.id, stage_id=first.id); second = get_project_stage(db, workspace_id=shared_id, project_id=shared_project.id, stage_id=second.id)
+            update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=first.id, progress=50, expected_version=first.lock_version, project_version=shared_project.lock_version, local_date=first.planned_date)
+            update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=second.id, progress=100, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
+            db.commit()
+            weighted = project_stage_summary([first, second], local_date=second.planned_date)
+            assert weighted["progress"] == 80 and weighted["state"] == "EN_PROCESO" and second.completion_date == second.planned_date
+            assert stage_projection(second, local_date=second.planned_date)[:3] == ("FINALIZADA", "A_TIEMPO", 0)
+            with pytest.raises(ProjectStageConflictError):
+                update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=second.id, progress=90, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
+            with pytest.raises(ProjectStageNotFoundError):
+                get_project_stage(db, workspace_id=foreign_workspace_id, project_id=shared_project.id, stage_id=first.id)
+            db.rollback(); member = db.get(User, member_id); shared = db.get(Workspace, shared_id); member_access = WorkspaceAccess(shared, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))); shared_project = db.get(Project, shared_project.id)
+
             for bad_category, bad_leader in ((foreign_category_id, owner_id), (inactive_category_id, owner_id), (category_id, foreign_id), (category_id, disabled_id)):
                 with pytest.raises(ProjectReferenceUnavailableError):
                     create_project(db, access=member_access, actor=member, project_in=ProjectCreate(category_id=bad_category, leader_user_id=bad_leader, name="Inválido"))
@@ -67,13 +91,14 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
                 member_access = WorkspaceAccess(shared, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id)))
 
             shared_project = get_project(db, workspace_id=shared_id, project_id=shared_project.id)
+            before_update = shared_project.lock_version
             update_project(db, access=member_access, actor=member, project_id=shared_project.id, project_in=ProjectUpdate(leader_user_id=member_id, name="Mudanza familiar", description="Plan", lock_version=shared_project.lock_version))
             db.commit()
-            assert shared_project.leader_user_id == member_id and shared_project.lock_version == 2
+            assert shared_project.leader_user_id == member_id and shared_project.lock_version == before_update + 1
             assert db.scalar(sa.select(sa.func.count()).select_from(ProjectLeaderHistory).where(ProjectLeaderHistory.project_id == shared_project.id)) == 2
-            deactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=2); db.commit()
+            deactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=shared_project.lock_version); db.commit()
             assert shared_project.is_active is False
-            reactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=3); db.commit()
+            reactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=shared_project.lock_version); db.commit()
             assert shared_project.is_active is True
             rows, total = list_projects(db, workspace_id=shared_id, page=1, page_size=25, is_active=True, category_id=category_id, leader_user_id=member_id, search="FAMILIAR")
             assert total == 1 and rows[0][0].id == shared_project.id

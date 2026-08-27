@@ -20,12 +20,12 @@ WORKSPACE_ID, PROJECT_ID, USER_ID = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
 
 def read() -> ProjectRead:
     now = datetime(2026, 9, 1, tzinfo=timezone.utc)
-    return ProjectRead(id=PROJECT_ID, workspace_id=WORKSPACE_ID, category_id=uuid.uuid4(), category_name="Casa", leader_user_id=USER_ID, leader_display_name="Ana Uno", leader_email="ana@test.local", name="Mudanza", description=None, is_active=True, planned_date=None, progress=None, state=None, compliance=None, compliance_detail_days=None, completion_date=None, lock_version=1, can_edit=True, can_deactivate=True, can_reactivate=False, created_at=now, updated_at=now)
+    return ProjectRead(id=PROJECT_ID, workspace_id=WORKSPACE_ID, category_id=uuid.uuid4(), category_name="Casa", leader_user_id=USER_ID, leader_display_name="Ana Uno", leader_email="ana@test.local", name="Mudanza", description=None, is_active=True, planned_date=None, progress=0, state="NO_INICIADO", compliance=None, compliance_detail_days=None, completion_date=None, weights_complete=False, stage_count=0, total_weight=0, lock_version=1, can_edit=True, can_deactivate=True, can_reactivate=False, created_at=now, updated_at=now)
 
 
 @pytest.fixture
 def client():
-    db = MagicMock(); user = User(id=USER_ID, email="ana@test.local", first_name="Ana", last_name="Uno")
+    db = MagicMock(); user = User(id=USER_ID, email="ana@test.local", first_name="Ana", last_name="Uno", timezone="America/Lima")
     workspace = Workspace(id=WORKSPACE_ID, name="Casa", kind=WorkspaceKind.SHARED, owner_user_id=USER_ID)
     access = WorkspaceAccess(workspace, WorkspaceMember(workspace_id=WORKSPACE_ID, user_id=USER_ID))
     app.dependency_overrides[get_db] = lambda: db
@@ -43,7 +43,7 @@ def client():
 def test_create_uses_active_member_and_route_owns_transaction(create, projection, client) -> None:
     http, db, user, access = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects", json={"category_id": str(uuid.uuid4()), "leader_user_id": str(USER_ID), "name": "Mudanza"})
-    assert response.status_code == 201 and response.json()["progress"] is None
+    assert response.status_code == 201 and response.json()["progress"] == 0.0
     assert create.call_args.kwargs["actor"] is user and create.call_args.kwargs["access"] is access
     db.commit.assert_called_once(); db.refresh.assert_called_once(); db.rollback.assert_not_called()
 
@@ -76,4 +76,7 @@ def test_mass_assignment_and_openapi_surface(client) -> None:
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}": {"get", "patch"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/deactivate": {"post"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/reactivate": {"post"},
+        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages": {"get", "post"},
+        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}": {"get", "patch"},
+        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress": {"post"},
     }

@@ -156,6 +156,14 @@ la membresía. Personal deriva el Líder al usuario propietario. Avance, Estado,
 Cumplimiento, finalización y Etapas quedan expresamente diferidos a Stage 7.2;
 Stage 7.1 no ofrece eliminación de Proyectos.
 
+Stage 7.2 incorpora Etapas workspace-scoped con Responsable activo, posición,
+peso decimal, fecha planificada y avance 0–100. La suma temporal puede ser
+menor a 100, pero no mayor; solo `100.00` habilita Avance ponderado, Estado,
+Cumplimiento y finalización global definitivos. Etapa y Project usan optimistic
+locking coordinado. Una Etapa al 100 deriva su fecha local de cumplimiento y
+queda read-only; historia, comentarios y navegación jerárquica se completan en
+Stage 7.3.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.
