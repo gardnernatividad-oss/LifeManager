@@ -2,7 +2,7 @@ import uuid
 
 from datetime import date
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -101,24 +101,68 @@ def create_pending_item(db: Session, *, access: WorkspaceAccess, actor: User, it
     return item
 
 
-def list_pending_items(db: Session, *, workspace_id: uuid.UUID, local_date: date, page: int, page_size: int) -> tuple[list[PendingItem], int]:
+def list_pending_items(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    local_date: date,
+    page: int,
+    page_size: int,
+    is_active: bool | None = None,
+    responsible_user_id: uuid.UUID | None = None,
+    category_id: uuid.UUID | None = None,
+    state: str | None = None,
+    compliance: str | None = None,
+    planned_from: date | None = None,
+    planned_to: date | None = None,
+    search: str | None = None,
+) -> tuple[list[tuple[PendingItem, Category, User]], int]:
+    if category_id is not None and db.scalar(select(Category.id).where(Category.id == category_id, Category.workspace_id == workspace_id)) is None:
+        raise PendingItemReferenceUnavailableError("Category unavailable")
+    if responsible_user_id is not None and db.scalar(select(WorkspaceMember.user_id).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == responsible_user_id)) is None:
+        raise PendingItemReferenceUnavailableError("Responsible unavailable")
     filters = [PendingItem.workspace_id == workspace_id]
+    if is_active is not None:
+        filters.append(PendingItem.is_active.is_(is_active))
+    if responsible_user_id is not None:
+        filters.append(PendingItem.responsible_user_id == responsible_user_id)
+    if category_id is not None:
+        filters.append(PendingItem.category_id == category_id)
+    if state == "NO_INICIADO":
+        filters.append(PendingItem.progress == 0)
+    elif state == "EN_PROCESO":
+        filters.append(PendingItem.progress.between(1, 99))
+    elif state == "FINALIZADO":
+        filters.append(PendingItem.progress == 100)
+    if compliance == "EN_PLAZO":
+        filters.extend((PendingItem.completion_date.is_(None), PendingItem.planned_date >= local_date))
+    elif compliance == "ATRASADO":
+        filters.extend((PendingItem.completion_date.is_(None), PendingItem.planned_date < local_date))
+    elif compliance == "A_TIEMPO":
+        filters.append(PendingItem.completion_date == PendingItem.planned_date)
+    elif compliance == "CON_ADELANTO":
+        filters.append(PendingItem.completion_date < PendingItem.planned_date)
+    elif compliance == "CON_RETRASO":
+        filters.append(PendingItem.completion_date > PendingItem.planned_date)
+    if planned_from is not None:
+        filters.append(PendingItem.planned_date >= planned_from)
+    if planned_to is not None:
+        filters.append(PendingItem.planned_date <= planned_to)
+    if search:
+        filters.append(PendingItem.name.icontains(search, autoescape=True))
     total = db.scalar(select(func.count()).select_from(PendingItem).where(*filters)) or 0
-    urgency = case(
-        (and_(PendingItem.is_active.is_(True), PendingItem.progress < 100, PendingItem.planned_date < local_date), 0),
-        (and_(PendingItem.is_active.is_(True), PendingItem.progress < 100), 1),
-        else_=2,
-    )
-    items = list(
-        db.scalars(
-            select(PendingItem)
+    rows = list(
+        db.execute(
+            select(PendingItem, Category, User)
+            .join(Category, and_(Category.id == PendingItem.category_id, Category.workspace_id == PendingItem.workspace_id))
+            .join(User, User.id == PendingItem.responsible_user_id)
             .where(*filters)
-            .order_by(urgency, PendingItem.planned_date.asc().nulls_last(), PendingItem.id)
+            .order_by(PendingItem.is_active.desc(), PendingItem.planned_date.asc().nulls_last(), PendingItem.id)
             .offset((page - 1) * page_size)
             .limit(page_size)
         ).all()
     )
-    return items, int(total)
+    return rows, int(total)
 
 
 def get_pending_item(db: Session, *, workspace_id: uuid.UUID, pending_item_id: uuid.UUID) -> PendingItem:
@@ -215,9 +259,9 @@ def delete_pending_item(db: Session, *, access: WorkspaceAccess, pending_item_id
     _flush(db)
 
 
-def pending_item_projection(db: Session, *, item: PendingItem, local_date: date) -> tuple[Category, User, str, str | None, int | None, bool, bool, bool, bool, bool, bool]:
-    category = db.scalar(select(Category).where(Category.id == item.category_id, Category.workspace_id == item.workspace_id))
-    responsible = db.scalar(select(User).where(User.id == item.responsible_user_id))
+def pending_item_projection(db: Session, *, item: PendingItem, local_date: date, category: Category | None = None, responsible: User | None = None) -> tuple[Category, User, str, str | None, int | None, bool, bool, bool, bool, bool, bool]:
+    category = category or db.scalar(select(Category).where(Category.id == item.category_id, Category.workspace_id == item.workspace_id))
+    responsible = responsible or db.scalar(select(User).where(User.id == item.responsible_user_id))
     if category is None or responsible is None:
         raise PendingItemNotFoundError("Pending Item not found")
     state = "NO_INICIADO" if item.progress == 0 else "FINALIZADO" if item.progress == 100 else "EN_PROCESO"

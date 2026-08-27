@@ -8,7 +8,7 @@ import pytest
 from app.models import Category, PendingItem, PendingItemHistory, User, Workspace, WorkspaceMember
 from app.models.enums import HistoryEventType, WorkspaceKind
 from app.schemas.v2_pending_item import PendingItemCreate, PendingItemUpdate
-from app.services.v2_pending_item import PendingItemConflictError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, list_pending_item_history, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
+from app.services.v2_pending_item import PendingItemConflictError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, list_pending_item_history, list_pending_items, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -112,6 +112,21 @@ def test_history_is_newest_first_with_deterministic_tiebreaker(lookup) -> None:
     assert list_pending_item_history(db, workspace_id=access.workspace.id, pending_item_id=lookup.return_value.id) == expected
     statement = db.execute.call_args.args[0]
     assert "recorded_at DESC" in str(statement) and "pending_item_history.id DESC" in str(statement)
+
+
+def test_list_composes_server_side_filters_and_stable_order_without_n_plus_one() -> None:
+    actor, access = context()
+    category_id = uuid.uuid4()
+    db = MagicMock()
+    db.scalar.side_effect = [category_id, actor.id, 2]
+    db.execute.return_value.all.return_value = []
+    rows, total = list_pending_items(db, workspace_id=access.workspace.id, local_date=date(2026, 9, 10), page=2, page_size=25, is_active=True, responsible_user_id=actor.id, category_id=category_id, state="EN_PROCESO", compliance="ATRASADO", planned_from=date(2026, 8, 1), planned_to=date(2026, 9, 9), search="compra")
+    assert rows == [] and total == 2
+    statement = db.execute.call_args.args[0]
+    rendered = str(statement)
+    assert "JOIN categories" in rendered and "JOIN users" in rendered
+    assert "progress BETWEEN" in rendered and "lower(pending_items.name) LIKE" in rendered
+    assert "pending_items.is_active DESC" in rendered and "pending_items.planned_date ASC" in rendered and "pending_items.id" in rendered
 
 
 @patch("app.services.v2_pending_item._item")

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.db import session as db_session
 from app.models import PendingItem, PendingItemHistory, User, Workspace, WorkspaceMember
 from app.schemas.v2_pending_item import PendingItemCreate
-from app.services.v2_pending_item import PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, delete_pending_item, update_pending_progress
+from app.services.v2_pending_item import PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, delete_pending_item, list_pending_items, update_pending_progress
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -83,6 +83,22 @@ def test_pending_lifecycle_history_and_cascade_on_disposable_postgres(monkeypatc
             assert [row.progress for row in histories] == [50, 50, 100, 0, 100, 0]
             assert histories[0].comment == "Primer avance" and histories[1].comment == "Comentario sin cambio"
             assert all(row.actor_user_id == owner_id and row.recorded_at is not None for row in histories)
+
+            samples = [
+                PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="Activo atrasado", is_active=True, planned_date=date(2026, 9, 8), progress=40),
+                PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="A tiempo", is_active=True, planned_date=date(2026, 9, 10), progress=100, completion_date=date(2026, 9, 10)),
+                PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="Con adelanto", is_active=True, planned_date=date(2026, 9, 12), progress=100, completion_date=date(2026, 9, 10)),
+                PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="Con retraso", is_active=True, planned_date=date(2026, 9, 8), progress=100, completion_date=date(2026, 9, 10)),
+                PendingItem(workspace_id=workspace_id, category_id=category_id, responsible_user_id=member_id, created_by_user_id=owner_id, name="Inactivo", is_active=False, planned_date=None, progress=0),
+            ]
+            db.add_all(samples); db.commit()
+            for compliance, expected_name in (("EN_PLAZO", "Compra"), ("ATRASADO", "Activo atrasado"), ("A_TIEMPO", "A tiempo"), ("CON_ADELANTO", "Con adelanto"), ("CON_RETRASO", "Con retraso")):
+                rows, _ = list_pending_items(db, workspace_id=workspace_id, local_date=date(2026, 9, 10), page=1, page_size=25, compliance=compliance)
+                assert expected_name in {row[0].name for row in rows}
+            filtered, filtered_total = list_pending_items(db, workspace_id=workspace_id, local_date=date(2026, 9, 10), page=1, page_size=25, is_active=True, responsible_user_id=member_id, category_id=category_id, state="EN_PROCESO", planned_from=date(2026, 9, 1), planned_to=date(2026, 9, 9), search="ATRASADO")
+            assert filtered_total == 1 and filtered[0][0].name == "Activo atrasado"
+            inactive, _ = list_pending_items(db, workspace_id=workspace_id, local_date=date(2026, 9, 10), page=1, page_size=25, is_active=False)
+            assert [row[0].name for row in inactive] == ["Inactivo"]
 
             first = db.get(PendingItem, first.id)
             delete_pending_item(db, access=access, pending_item_id=first.id, expected_version=first.lock_version)

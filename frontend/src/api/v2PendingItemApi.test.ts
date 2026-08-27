@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "./client";
-import { correctV2PendingItem, listV2PendingItemHistory, updateV2PendingItemProgress } from "./v2PendingItemApi";
+import { correctV2PendingItem, listV2PendingItemHistory, listV2PendingItems, updateV2PendingItemProgress } from "./v2PendingItemApi";
 
 vi.mock("./client", () => ({ apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
@@ -11,6 +11,13 @@ describe("v2PendingItemApi", () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { items: [] } });
     await listV2PendingItemHistory("workspace-a", "pending-a");
     expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining("/api/v2/workspaces/workspace-a/pending-items/pending-a/history"));
+  });
+
+  it("passes combined list filters to the workspace-scoped endpoint", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { items: [], total: 0, page: 1, page_size: 25, total_pages: 0 } });
+    const filters = { page: 1, page_size: 25, state: "EN_PROCESO" as const, compliance: "ATRASADO" as const, search: "casa" };
+    await listV2PendingItems("workspace-a", filters);
+    expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining("/api/v2/workspaces/workspace-a/pending-items"), { params: filters });
   });
 
   it("sends one atomic progress and comment payload", async () => {

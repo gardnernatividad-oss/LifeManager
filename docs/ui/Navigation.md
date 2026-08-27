@@ -37,6 +37,11 @@ administra el catálogo reutilizable.
 Stage 5.4 confirma que el cambio de Workspace reinicia formularios, filtros y
 diálogos de alcance de esta pantalla; las query keys incluyen `workspace_id` y
 logout limpia la caché privada.
+`Planificación → Pendientes` presenta filtros combinables y paginación sobre
+consultas aisladas por Workspace. En desktop usa tarjetas horizontales con el
+resumen operativo completo; en pantallas estrechas las convierte en tarjetas
+verticales sin desplazamiento horizontal. Diferencia el registro inicialmente
+vacío de una búsqueda sin coincidencias.
 `Planificación → Pendientes → >` abre una pantalla interna con flecha de
 retorno, resumen mobile-first, seguimiento inline e historial en tarjetas. El
 historial muestra fecha/hora, actor, avance, etiqueta Seguimiento/Corrección y

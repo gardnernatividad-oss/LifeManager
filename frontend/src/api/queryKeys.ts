@@ -1,7 +1,7 @@
 export const queryKeys = {
   v2Tasks: (workspaceId: string, params: object) => ["v2-tasks", workspaceId, params] as const,
   v2TasksRoot: (workspaceId: string) => ["v2-tasks", workspaceId] as const,
-  v2PendingItems: (workspaceId: string, page: number, pageSize: number) => ["v2-pending-items", workspaceId, page, pageSize] as const,
+  v2PendingItems: (workspaceId: string, filters: object) => ["v2-pending-items", workspaceId, filters] as const,
   v2PendingItemsRoot: (workspaceId: string) => ["v2-pending-items", workspaceId] as const,
   v2PendingItemDetail: (workspaceId: string, itemId: string) => ["v2-pending-items", workspaceId, "detail", itemId] as const,
   v2PendingItemHistory: (workspaceId: string, itemId: string) => ["v2-pending-items", workspaceId, "history", itemId] as const,

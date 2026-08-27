@@ -138,8 +138,10 @@ Stages 6.1 y 6.2 implementan planificación, ciclo, avance, cumplimiento,
 detalle e historial cronológico de Pendientes. Los comentarios viven en
 historia append-only; `TRACKING` representa seguimiento normal y `CORRECTION`
 la reapertura explícita de un Finalizado. No existe descripción en PendingItem.
-Stage 6.3 conserva listado, filtros avanzados y su UX; Stage 6.4 conserva el
-gate final.
+Stage 6.3 completa el listado server-side con filtros combinables por Vigencia,
+Categoría, Responsable, Estado, Cumplimiento, rango de fecha y nombre. Mantiene
+orden estable, paginación acotada, aislamiento de caché por Workspace y una
+presentación responsive en tarjetas. Stage 6.4 conserva el gate final.
 
 ## Principios
 

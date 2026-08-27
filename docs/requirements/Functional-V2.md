@@ -168,6 +168,12 @@ cambio normal crea `TRACKING`; la reapertura explícita de un Finalizado crea
 read-only salvo corrección y el hard delete elegible elimina exclusivamente su
 historia dependiente.
 
+Stage 6.3 incorpora al registro filtros server-side combinables por Vigencia,
+Categoría, Responsable, Estado, Cumplimiento, rango de fecha planificada y
+búsqueda parcial por nombre. El orden estable prioriza Activos y luego fecha
+planificada e identificador; la paginación es acotada. En desktop y móvil cada
+registro conserva resumen operativo, acciones y acceso compacto `>` al detalle.
+
 ## 6. Proyectos y Etapas
 
 Un Proyecto contiene información general y una colección de **Etapas**. En la interfaz no se usa Paso. El Proyecto incluye Vigencia, nombre, Categoría, Líder, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y acciones.

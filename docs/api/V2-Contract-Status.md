@@ -417,7 +417,7 @@ Assignment IDs sí pueden aparecer cuando el producto permite elegir Responsable
 
 Stage 2.11 verificó las siete DTOs de escritura activas de identidad: todas rechazan extras. Email, nombres, timezone, passwords y tokens tienen límites autoritativos antes de hashing, JWT, Turnstile o consultas. El envelope 422 nunca incluye el valor `input`; los cuerpos malformados/form/text fallan sin reflejar datos. Las respuestas activas son allowlists y una regresión OpenAPI impide publicar hashes, digests o session internals. El detalle de controles y diferimientos está en `docs/security/V2-Input-and-Output-Security.md`.
 
-## 14. Pendientes — Stage 6.2
+## 14. Pendientes — Stages 6.2 y 6.3
 
 Además del detalle workspace-scoped, el contrato publica `GET
 /api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/history` y
@@ -426,6 +426,14 @@ la misma operación de seguimiento y crea exactamente un evento. No existen
 mutaciones directas del historial ni exposición de grafos ORM. Actor, tipo y
 timestamp son server-side; las escrituras conservan `lock_version` y la
 transacción pertenece a la ruta.
+
+`GET /api/v2/workspaces/{workspace_id}/pending-items` admite filtros opcionales
+`is_active`, `responsible_user_id`, `category_id`, `state`, `compliance`,
+`planned_from`, `planned_to` y `search`, además de paginación. Los filtros se
+componen en SQL, las referencias se validan dentro del Workspace y el orden es
+estable: Vigencia activa primero, fecha planificada ascendente con nulos al
+final e identificador como desempate. La proyección incluye nombres de Categoría
+y Responsable sin consultas por fila.
 
 ## 15. Terminología
 

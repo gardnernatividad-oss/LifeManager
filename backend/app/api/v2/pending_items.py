@@ -9,7 +9,7 @@ from app.api.v2.dependencies import ActiveWorkspaceMembership, SessionDependency
 from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import PendingItem, User
-from app.schemas.v2_pending_item import PendingItemCorrection, PendingItemCreate, PendingItemHistoryListResponse, PendingItemHistoryRead, PendingItemListResponse, PendingItemProgressUpdate, PendingItemReactivate, PendingItemRead, PendingItemUpdate, PendingItemVersion
+from app.schemas.v2_pending_item import PendingItemCompliance, PendingItemCorrection, PendingItemCreate, PendingItemHistoryListResponse, PendingItemHistoryRead, PendingItemListResponse, PendingItemProgressUpdate, PendingItemReactivate, PendingItemRead, PendingItemState, PendingItemUpdate, PendingItemVersion
 from app.services.v2_pending_item import PendingItemConflictError, PendingItemNotFoundError, PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, get_pending_item, list_pending_item_history, list_pending_items, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
 
 
@@ -23,8 +23,8 @@ def _raise(error: Exception) -> None:
     raise V2APIError(status_code=409, code="PENDING_ITEM_CONFLICT", message="El Pendiente cambió o no admite esta acción.") from error
 
 
-def _read(db: SessionDependency, item: PendingItem, today: date) -> PendingItemRead:
-    category, responsible, state, compliance, detail, can_edit, can_progress, can_correct, can_deactivate, can_reactivate, can_delete = pending_item_projection(db, item=item, local_date=today)
+def _read(db: SessionDependency, item: PendingItem, today: date, *, category=None, responsible=None) -> PendingItemRead:
+    category, responsible, state, compliance, detail, can_edit, can_progress, can_correct, can_deactivate, can_reactivate, can_delete = pending_item_projection(db, item=item, local_date=today, category=category, responsible=responsible)
     return PendingItemRead(
         id=item.id, workspace_id=item.workspace_id, category_id=item.category_id, category_name=category.name,
         responsible_user_id=item.responsible_user_id, responsible_display_name=f"{responsible.first_name} {responsible.last_name}".strip(), responsible_email=responsible.email,
@@ -59,11 +59,16 @@ def create(workspace_id: uuid.UUID, item_in: PendingItemCreate, db: SessionDepen
 
 
 @router.get("", response_model=PendingItemListResponse)
-def index(workspace_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, page: int = Query(default=1, ge=1), page_size: int = Query(default=25, ge=1, le=100)) -> PendingItemListResponse:
+def index(workspace_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, page: int = Query(default=1, ge=1), page_size: int = Query(default=25, ge=1, le=100), is_active: bool | None = None, responsible_user_id: uuid.UUID | None = None, category_id: uuid.UUID | None = None, state: PendingItemState | None = None, compliance: PendingItemCompliance | None = None, planned_from: date | None = None, planned_to: date | None = None, search: str | None = Query(default=None, max_length=255)) -> PendingItemListResponse:
     del access
+    if planned_from is not None and planned_to is not None and planned_from > planned_to:
+        raise V2APIError(status_code=422, code="INVALID_DATE_RANGE", message="El rango de fechas no es válido.")
     today = local_today(account.timezone)
-    items, total = list_pending_items(db, workspace_id=workspace_id, local_date=today, page=page, page_size=page_size)
-    return PendingItemListResponse(items=[_read(db, item, today) for item in items], total=total, page=page, page_size=page_size, total_pages=math.ceil(total / page_size))
+    try:
+        rows, total = list_pending_items(db, workspace_id=workspace_id, local_date=today, page=page, page_size=page_size, is_active=is_active, responsible_user_id=responsible_user_id, category_id=category_id, state=state, compliance=compliance, planned_from=planned_from, planned_to=planned_to, search=search.strip() if search else None)
+    except PendingItemReferenceUnavailableError as error:
+        _raise(error)
+    return PendingItemListResponse(items=[_read(db, item, today, category=category, responsible=responsible) for item, category, responsible in rows], total=total, page=page, page_size=page_size, total_pages=math.ceil(total / page_size))
 
 
 @router.get("/{pending_item_id}", response_model=PendingItemRead)

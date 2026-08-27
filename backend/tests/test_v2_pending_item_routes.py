@@ -79,6 +79,23 @@ def test_conflict_rolls_back_safely(update, client) -> None:
     db.rollback.assert_called_once(); db.commit.assert_not_called()
 
 
+@patch("app.api.v2.pending_items._read", return_value=read())
+@patch("app.api.v2.pending_items.list_pending_items")
+def test_list_passes_combined_filters_and_remains_read_only(listing, projection, client) -> None:
+    listing.return_value = ([(PendingItem(), MagicMock(), MagicMock())], 1)
+    http, db, *_ = client
+    response = http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/pending-items", params={"is_active": "true", "responsible_user_id": str(USER_ID), "category_id": str(uuid.uuid4()), "state": "EN_PROCESO", "compliance": "ATRASADO", "planned_from": "2026-08-01", "planned_to": "2026-08-31", "search": " compra ", "page": 2, "page_size": 10})
+    assert response.status_code == 200 and response.json()["total"] == 1
+    assert listing.call_args.kwargs["search"] == "compra" and listing.call_args.kwargs["state"] == "EN_PROCESO"
+    db.commit.assert_not_called(); db.flush.assert_not_called(); db.rollback.assert_not_called()
+
+
+def test_list_rejects_invalid_filters(client) -> None:
+    http, *_ = client
+    assert http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/pending-items?state=INVALID").status_code == 422
+    assert http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/pending-items?planned_from=2026-09-02&planned_to=2026-09-01").status_code == 422
+
+
 def test_mass_assignment_and_invalid_correction_are_rejected(client) -> None:
     http, db, *_ = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/pending-items", json={"category_id": str(uuid.uuid4()), "name": "Compra", "planned_date": "2026-09-10", "workspace_id": str(WORKSPACE_ID), "completion_date": "2026-09-10"})

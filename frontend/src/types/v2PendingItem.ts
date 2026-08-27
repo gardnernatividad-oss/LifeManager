@@ -12,6 +12,7 @@ export interface V2PendingItem {
   can_delete: boolean; created_at: string; updated_at: string;
 }
 export interface V2PendingItemList { items: V2PendingItem[]; total: number; page: number; page_size: number; total_pages: number; }
+export interface V2PendingItemFilters { page: number; page_size: number; is_active?: boolean; responsible_user_id?: string; category_id?: string; state?: V2PendingItemState; compliance?: V2PendingItemCompliance; planned_from?: string; planned_to?: string; search?: string; }
 export interface V2PendingItemCreate { category_id: string; responsible_user_id?: string; name: string; planned_date: string; }
 export interface V2PendingItemUpdate { category_id?: string; responsible_user_id?: string; name?: string; planned_date?: string; lock_version: number; }
 export interface V2PendingItemHistory { id: string; progress: number; comment: string | null; type: "TRACKING" | "CORRECTION"; actor_user_id: string; actor_display_name: string; recorded_at: string; }
