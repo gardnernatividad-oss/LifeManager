@@ -88,7 +88,7 @@ describe("AuthenticatedLayout V1", () => {
 
     const groups = navigation.querySelectorAll("details");
     expect(groups).toHaveLength(4);
-    expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
+    expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos", "Actividades"]);
     expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
     expect(within(groups[2]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
     expect(within(groups[3]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Actividades", "Categorías"]);

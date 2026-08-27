@@ -26,6 +26,7 @@ capacidades server-side, el cambio de Workspace limpia estado privado y no hay
 overflow horizontal en la representación móvil.
 | Workspace | Planificación · Pendientes | Crear, asignar, filtrar y mantener planificación; mostrar Estado, Vigencia y Cumplimiento derivados; abrir detalle e historia con `>`. Desktop usa resumen horizontal y móvil tarjetas verticales sin overflow. |
 | Workspace | Planificación · Proyectos | Mantener datos generales, Categoría, Líder, Vigencia y Etapas con Responsable, peso, fecha y avance. |
+| Workspace | Planificación · Actividades | Crear y administrar Actividades futuras standalone con catálogo, organizador, participantes y fecha/hora zonificada. Desde `starts_at`, una Actividad en curso o pasada es histórica y de solo lectura. |
 | Workspace | Seguimiento · Tareas | Registro y correcciones aprobadas. |
 | Workspace | Seguimiento · Pendientes | Avance, comentario e historia. |
 | Workspace | Seguimiento · Proyectos | Navegar Proyecto → Etapas → Etapa; registrar avance con comentario opcional o comentario-only y consultar historial. |

@@ -26,7 +26,7 @@ Estas vistas agregan información entre Workspaces y no muestran el selector glo
 
 ### Vistas dependientes de Workspace
 
-- Planificación: Tareas, Pendientes y Proyectos.
+- Planificación: Tareas, Pendientes, Proyectos y Actividades.
 
 `Planificación → Tareas` usa el Workspace seleccionado y permite elegir entre
 una ocurrencia puntual o una repetición finita diaria, semanal o mensual. Las
@@ -50,6 +50,13 @@ Workspace desmonta el detalle y limpia comentarios no enviados.
 Stage 6.4 confirma que el cambio de Workspace reinicia filtros, formularios y
 detalle; logout limpia la caché privada. El gate mobile no presenta overflow
 horizontal y mantiene las acciones secundarias en el detalle.
+
+`Planificación → Actividades` usa el Workspace seleccionado para crear y listar
+Actividades standalone con catálogo, Organizador y Participantes Shared. Las
+acciones aparecen solo para ocurrencias futuras según capacidades del backend;
+en curso y pasadas se presentan en modo de solo lectura. Personal deriva al
+Organizador y omite controles colaborativos. La query key incluye Workspace y
+el cambio de selección desmonta formulario y diálogo privados.
 
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.

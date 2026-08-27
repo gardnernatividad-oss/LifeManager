@@ -225,11 +225,13 @@ La Categoría de una Actividad basada en catálogo es dinámica: si cambia en el
 
 ## 8. Calendario y Actividades
 
-Una Actividad es un bloque de tiempo de calendario. No tiene Responsable; puede tener Organizador y Participantes. El Organizador es quien la crea y es la única persona que puede modificarla o cancelarla para todos.
+Una Actividad es un bloque de tiempo de calendario. No tiene Responsable; puede tener Organizador y Participantes. El Organizador expresa atribución funcional, no autoridad: cualquier Miembro `ACTIVE` del mismo Workspace `ACTIVE` puede administrar una Actividad mientras siga siendo futura. Owner y `GLOBAL_ADMIN` sin membership no obtienen privilegios adicionales.
 
 Al crearla se selecciona un Workspace. Los posibles Participantes son miembros de ese Workspace y su selección es opcional. No existe aceptación/rechazo: al añadir a una persona, la Actividad aparece automáticamente en su calendario.
 
 Un Participante puede retirarla de su propio calendario sin eliminarla para los demás. Esto también desactiva su recordatorio individual asociado.
+
+`starts_at` es la frontera histórica autoritativa. Mientras `now < starts_at`, una Actividad standalone puede editarse o eliminarse y sus Participantes pueden modificarse o retirarse. Cuando `starts_at <= now`, tanto una Actividad en curso como una pasada son completamente read-only: no se editan fechas, catálogo, Organizador ni Participantes, no se eliminan y nadie abandona su participación. El backend revalida esta frontera bajo lock antes de mutar.
 
 Las Actividades recurrentes usan generación finita diaria, semanal o mensual con Desde y Hasta, incluyendo la regla 29/30/31 y deduplicación. Las operaciones de serie no modifican el pasado. Las opciones simplificadas incluyen `Solo esta` y `Todas las futuras`; no se añade otra opción semánticamente redundante.
 

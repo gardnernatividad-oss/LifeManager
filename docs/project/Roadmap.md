@@ -68,7 +68,7 @@ El roadmap conservará exactamente estas columnas:
 | 7. Proyectos y Etapas | 7.2 | Etapas, responsables, pesos, avance y cumplimiento | Completado |
 | 7. Proyectos y Etapas | 7.3 | Historial, comentarios y navegación jerárquica Proyecto → Etapa | Completado |
 | 7. Proyectos y Etapas | 7.4 | UX mobile-first, autorización, pruebas y gate | Completado |
-| 8. Calendario y Actividades | 8.1 | Gestión de Actividades, organizador, participantes y Workspace | Pendiente |
+| 8. Calendario y Actividades | 8.1 | Gestión de Actividades, organizador, participantes y Workspace | Completado |
 | 8. Calendario y Actividades | 8.2 | Recurrencia, recordatorios y modificaciones de series de Actividades | Pendiente |
 | 8. Calendario y Actividades | 8.3 | Mi calendario consolidado y experiencia desktop/móvil | Pendiente |
 | 8. Calendario y Actividades | 8.4 | Privacidad de Calendario y comparación de disponibilidad | Pendiente |

@@ -1,0 +1,65 @@
+import uuid
+
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import pytest
+import sqlalchemy as sa
+from alembic import command
+from sqlalchemy.engine import make_url
+from sqlalchemy.orm import Session
+
+from app.db import session as db_session
+from app.models import Activity, ActivityParticipant, User, Workspace, WorkspaceMember
+from app.schemas.v2_activity import ActivityCreate, ActivityUpdate
+from app.services.v2_activity import ActivityConflictError, ActivityReferenceUnavailableError, create_activity, delete_activity, leave_activity, update_activity
+from app.services.v2_workspace import WorkspaceAccess
+from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
+
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
+    source_url = make_url(db_session.DATABASE_URL)
+    if source_url.host not in {"localhost", "127.0.0.1", "::1"}:
+        pytest.skip("V2 Activity PostgreSQL gate requires local PostgreSQL")
+    with disposable_postgres_database(source_url, database_name="lifemanager_v2_test", explicit_test_intent=True) as target_url:
+        monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1"); monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+        command.upgrade(alembic_config_for_test_database(target_url, backend_root=BACKEND_ROOT, explicit_test_intent=True), "head")
+        engine = sa.create_engine(target_url)
+        with Session(engine) as db:
+            owner_id, member_id, foreign_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+            workspace_id, foreign_workspace_id = uuid.uuid4(), uuid.uuid4()
+            for user_id, email in ((owner_id, "owner@test.local"), (member_id, "member@test.local"), (foreign_id, "foreign@test.local")):
+                db.execute(sa.text("INSERT INTO users (id,email,hashed_password,first_name,last_name,account_status,email_verified_at) VALUES (:id,:email,'hash','Test','User','ACTIVE',now())"), {"id": user_id, "email": email})
+            for identifier, owner, name in ((workspace_id, owner_id, "Shared"), (foreign_workspace_id, foreign_id, "Foreign")):
+                db.execute(sa.text("INSERT INTO workspaces (id,name,kind,owner_user_id) VALUES (:id,:name,'SHARED',:owner)"), {"id": identifier, "name": name, "owner": owner})
+                db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": identifier, "user": owner})
+            db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": workspace_id, "user": member_id})
+            category_id, foreign_category_id, master_id, foreign_master_id = (uuid.uuid4() for _ in range(4))
+            db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Familia','familia')"), {"id": category_id, "workspace": workspace_id})
+            db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Otra','otra')"), {"id": foreign_category_id, "workspace": foreign_workspace_id})
+            db.execute(sa.text("INSERT INTO activity_masters (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Reunión','reunión')"), {"id": master_id, "workspace": workspace_id, "category": category_id})
+            db.execute(sa.text("INSERT INTO activity_masters (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Ajena','ajena')"), {"id": foreign_master_id, "workspace": foreign_workspace_id, "category": foreign_category_id})
+            db.commit()
+            actor = db.get(User, member_id); workspace = db.get(Workspace, workspace_id)
+            access = WorkspaceAccess(workspace, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id)))
+            start = datetime.now(timezone.utc) + timedelta(days=2)
+            created = create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(activity_master_id=master_id, organizer_user_id=owner_id, participant_user_ids=[member_id], starts_at=start, ends_at=start + timedelta(hours=1)))
+            db.commit(); db.refresh(created)
+            assert created.workspace_id == workspace_id and created.title == "Reunión" and created.generation_batch_id is None
+            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant).where(ActivityParticipant.activity_id == created.id)) == 1
+            with pytest.raises(ActivityReferenceUnavailableError):
+                create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(activity_master_id=foreign_master_id, organizer_user_id=owner_id, starts_at=start, ends_at=start + timedelta(hours=1)))
+            db.rollback(); actor = db.get(User, member_id); workspace = db.get(Workspace, workspace_id); access = WorkspaceAccess(workspace, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))); created = db.get(Activity, created.id)
+            update_activity(db, access=access, activity_id=created.id, activity_in=ActivityUpdate(ends_at=start + timedelta(hours=2), participant_user_ids=[owner_id, member_id], lock_version=created.lock_version)); db.commit(); db.refresh(created)
+            assert created.lock_version == 2 and db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant).where(ActivityParticipant.activity_id == created.id)) == 2
+            leave_activity(db, access=access, actor=actor, activity_id=created.id, expected_version=created.lock_version); db.commit(); db.refresh(created)
+            participant = db.scalar(sa.select(ActivityParticipant).where(ActivityParticipant.activity_id == created.id, ActivityParticipant.user_id == member_id))
+            assert participant.calendar_status == "REMOVED" and created.lock_version == 3
+            with pytest.raises(ActivityConflictError):
+                delete_activity(db, access=access, activity_id=created.id, expected_version=2)
+            db.rollback(); created = db.get(Activity, created.id); delete_activity(db, access=access, activity_id=created.id, expected_version=created.lock_version); db.commit()
+            assert db.get(Activity, created.id) is None
+        engine.dispose()

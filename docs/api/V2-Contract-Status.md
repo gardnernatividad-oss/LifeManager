@@ -360,13 +360,23 @@ Task usa DATE. Activity añade hora local y timezone IANA; backend rechaza horas
 
 Fronteras diferentes:
 
-- Activity scoped: create/read/update/cancel, organizer-only mutations y participants;
+- Activity scoped implementada en Stage 8.1:
+  `GET|POST /api/v2/workspaces/{workspace_id}/activities`,
+  `GET|PATCH|DELETE /api/v2/workspaces/{workspace_id}/activities/{activity_id}`
+  y `POST .../{activity_id}/leave`;
 - `/api/v2/calendar`: Mi calendario global;
 - `/api/v2/workspaces/{workspace_id}/calendar`: vista colaborativa;
 - availability comparison: intervalos autorizados;
 - privacy preference: `WorkspaceMember.calendar_visibility`.
 
 Una Activity compartida tiene una fila; participants son relaciones, no copias. No existe aceptar/rechazar invitación de Activity: WorkspaceInvitation es independiente.
+
+Stage 8.1 crea únicamente Actividades standalone mediante una entrada activa de
+`ActivityMaster`. Cualquier Miembro ACTIVE administra una Actividad futura;
+Organizador y owner no añaden autoridad. La respuesta deriva `can_edit`,
+`can_delete`, `can_leave_participation` y estado temporal sin exponer batch ni
+recordatorios internos. Desde `starts_at`, una Actividad en curso o pasada es
+read-only. Recurrencia, cancelación de series y Calendario permanecen diferidos.
 
 - `SHOW_DETAILS`: puede retornar detalle autorizado;
 - `AVAILABILITY_ONLY`: solo intervalos busy/free sin ID, título, categoría, participants ni deep link;

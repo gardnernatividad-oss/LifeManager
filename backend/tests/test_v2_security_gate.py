@@ -197,6 +197,17 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/deactivate",
             "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/reactivate",
             "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/history",
+            "/api/v2/workspaces/{workspace_id}/projects",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/deactivate",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/reactivate",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/history",
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress",
+            "/api/v2/workspaces/{workspace_id}/activities",
+            "/api/v2/workspaces/{workspace_id}/activities/{activity_id}",
+            "/api/v2/workspaces/{workspace_id}/activities/{activity_id}/leave",
         }
     serialized = str(document).lower()
     for forbidden in (

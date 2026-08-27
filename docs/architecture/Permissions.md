@@ -79,6 +79,14 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   `REMOVED`, no miembro, cuenta `DISABLED`, Workspace `INACTIVE` y
   `GLOBAL_ADMIN` sin membership no acceden. Owner, Líder y Responsable no
   reciben autoridad adicional. Ver `docs/security/V2-Project-Gate.md`.
+- Stage 8.1 autoriza crear, listar, consultar y administrar Actividades futuras
+  standalone a cualquier membership `ACTIVE` del mismo Workspace `ACTIVE`.
+  Organizador y owner son atribuciones sin privilegio especial; `GLOBAL_ADMIN`
+  sin membership no obtiene bypass. ActivityMaster, Organizador y Participantes
+  deben pertenecer activamente al mismo Workspace. `starts_at` es la frontera:
+  en curso y pasadas son read-only. Un Participante solo puede retirar su propia
+  participación futura y el servidor revalida lifecycle y `lock_version` bajo
+  lock.
 
 ## Arquitectura de enforcement V2
 

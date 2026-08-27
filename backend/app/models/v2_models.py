@@ -462,8 +462,8 @@ class Activity(BaseEntity):
     cancelled_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     generation_batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
-    participants: Mapped[list[ActivityParticipant]] = relationship(back_populates="activity", passive_deletes=True)
-    reminders: Mapped[list[ActivityReminder]] = relationship(back_populates="activity", passive_deletes=True)
+    participants: Mapped[list[ActivityParticipant]] = relationship(back_populates="activity", cascade="all, delete-orphan", passive_deletes=True)
+    reminders: Mapped[list[ActivityReminder]] = relationship(back_populates="activity", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class ActivityParticipant(BaseEntity):

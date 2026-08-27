@@ -10,6 +10,7 @@ from app.api.v2.tasks import router as task_router
 from app.api.v2.pending_items import router as pending_item_router
 from app.api.v2.projects import router as project_router
 from app.api.v2.project_stages import router as project_stage_router
+from app.api.v2.activities import router as activity_router
 
 
 api_router = APIRouter()
@@ -23,3 +24,4 @@ api_router.include_router(task_router)
 api_router.include_router(pending_item_router)
 api_router.include_router(project_router)
 api_router.include_router(project_stage_router)
+api_router.include_router(activity_router)

@@ -14,7 +14,8 @@ export const v1Navigation: readonly NavigationSection[] = [
     children: [
       { label: "Tareas", path: "/planificacion/tareas" },
       { label: "Pendientes", path: "/planificacion/pendientes" },
-      { label: "Proyectos", path: "/planificacion/proyectos" }
+      { label: "Proyectos", path: "/planificacion/proyectos" },
+      { label: "Actividades", path: "/planificacion/actividades" }
     ]
   },
   {

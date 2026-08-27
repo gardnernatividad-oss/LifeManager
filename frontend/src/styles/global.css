@@ -1894,6 +1894,17 @@ div.settings-toggles { border: 0; padding: 0; }
   align-items: end;
 }
 
+.v2-activity-page { display: grid; gap: 1rem; }
+.v2-activity-form, .v2-activity-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; align-items: end; }
+.v2-activity-form label, .v2-activity-filters label { display: grid; gap: 0.3rem; }
+.v2-activity-form input, .v2-activity-form select, .v2-activity-filters select { min-height: 2.6rem; min-width: 0; padding: 0.55rem; border: 1px solid var(--color-border); border-radius: 0.5rem; background: var(--color-surface); color: var(--color-text); }
+.v2-activity-form fieldset { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.75rem; border: 1px solid var(--color-border); border-radius: 0.5rem; }
+.v2-activity-form fieldset label { display: flex; align-items: center; gap: 0.35rem; }
+.v2-activity-list { display: grid; gap: 0.65rem; }
+.v2-activity-row { display: grid; grid-template-columns: minmax(12rem, 1.4fr) minmax(15rem, 1fr) 7rem auto; gap: 0.75rem; align-items: center; padding: 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.v2-activity-row > div:first-child { display: grid; gap: 0.2rem; }
+.v2-activity-row > div:last-child { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
 .v2-project-list { display: grid; gap: 0.65rem; margin-top: 1rem; }
 .v2-project-row { display: grid; grid-template-columns: minmax(12rem, 2fr) minmax(6rem, 0.7fr) minmax(7rem, 0.7fr) auto; gap: 0.75rem; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem; }
 .v2-project-row > div:first-child { display: grid; gap: 0.2rem; }
@@ -1920,6 +1931,7 @@ div.settings-toggles { border: 0; padding: 0; }
 
 @media (max-width: 48rem) {
   .v2-project-form, .v2-project-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2-activity-form, .v2-activity-filters, .v2-activity-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2-project-row { grid-template-columns: 1fr 1fr; }
   .v2-project-row > div:last-child { grid-column: 1 / -1; }
   .project-stage-list article { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1990,6 +2002,7 @@ div.settings-toggles { border: 0; padding: 0; }
   .v2-pending-row { grid-template-columns: 1fr; }
   .v2-pending-filters { grid-template-columns: 1fr; }
   .v2-project-form, .v2-project-filters, .v2-project-row { grid-template-columns: 1fr; }
+  .v2-activity-form, .v2-activity-filters, .v2-activity-row { grid-template-columns: 1fr; }
   .v2-project-row > div:last-child { grid-column: auto; }
   .project-stage-list article, .project-stage-form { grid-template-columns: 1fr; }
   .stage-weight-summary { flex-direction: column; }

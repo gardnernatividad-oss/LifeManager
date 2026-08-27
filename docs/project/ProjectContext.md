@@ -171,6 +171,18 @@ aislamiento jerárquico, concurrencia, pesos/proyecciones derivadas, history
 append-only, cache privada y UX responsive. La evidencia del gate se conserva
 en `docs/security/V2-Project-Gate.md`.
 
+## Estado V2 de Actividades
+
+Stage 8.1 implementa la planificación Workspace-scoped de Actividades
+standalone con catálogo activo, Organizador y Participantes activos del mismo
+Workspace, intervalos zonificados, filtros y optimistic locking. Cualquier
+Miembro ACTIVE del Workspace ACTIVE administra Actividades futuras; owner,
+Organizador y `GLOBAL_ADMIN` no crean bypass ni jerarquías adicionales.
+`starts_at` es la frontera histórica: una Actividad en curso o pasada es
+completamente read-only. Un Participante puede retirarse solo de una Actividad
+futura sin afectar a los demás. Recurrencia, series, recordatorios configurables,
+Mi calendario y privacidad permanecen diferidos a Stages 8.2–8.5.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.
