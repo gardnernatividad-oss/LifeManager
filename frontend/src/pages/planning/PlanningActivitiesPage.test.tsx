@@ -7,7 +7,7 @@ import * as api from "../../api/v2ActivityApi";
 import * as workspaceApi from "../../api/workspaceApi";
 import { PlanningActivitiesPage } from "./PlanningActivitiesPage";
 
-vi.mock("../../api/v2ActivityApi", () => ({ listV2Activities: vi.fn(), createV2Activity: vi.fn(), updateV2Activity: vi.fn(), deleteV2Activity: vi.fn(), leaveV2Activity: vi.fn() }));
+vi.mock("../../api/v2ActivityApi", () => ({ listV2Activities: vi.fn(), createV2Activity: vi.fn(), createRecurringV2Activities: vi.fn(), updateV2Activity: vi.fn(), deleteV2Activity: vi.fn(), leaveV2Activity: vi.fn() }));
 vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
 vi.mock("../../components/common/V2CatalogSelector", () => ({ ActivityCatalogSelector: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <label>Actividad<select value={value} onChange={(event) => onChange(event.target.value)}><option value="">Selecciona</option><option value="master-1">Reunión</option></select></label> }));
 const auth = { user: { id: "user-1", email: "ana@example.com", first_name: "Ana", last_name: "Uno", timezone: "America/Lima" }, workspace: { id: "workspace-a", name: "Familia", kind: "SHARED" as "SHARED" | "PERSONAL", timezone: "America/Lima" } };
@@ -20,13 +20,19 @@ describe("PlanningActivitiesPage", () => {
     vi.clearAllMocks(); auth.workspace = { id: "workspace-a", name: "Familia", kind: "SHARED", timezone: "America/Lima" };
     vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: "user-1", display_name: "Ana Uno", email: "ana@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }, { user_id: "user-2", display_name: "Luis Dos", email: "luis@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }]);
     vi.mocked(api.listV2Activities).mockResolvedValue({ items: [base], total: 1, page: 1, page_size: 25, total_pages: 1 });
-    vi.mocked(api.createV2Activity).mockResolvedValue(base); vi.mocked(api.updateV2Activity).mockResolvedValue(base); vi.mocked(api.deleteV2Activity).mockResolvedValue(); vi.mocked(api.leaveV2Activity).mockResolvedValue(base);
+    vi.mocked(api.createV2Activity).mockResolvedValue(base); vi.mocked(api.createRecurringV2Activities).mockResolvedValue({ created_count: 1, items: [base] }); vi.mocked(api.updateV2Activity).mockResolvedValue(base); vi.mocked(api.deleteV2Activity).mockResolvedValue(); vi.mocked(api.leaveV2Activity).mockResolvedValue(base);
   });
   it("creates a Shared Activity with organizer, participants and timezone-aware instants", async () => {
     const user = userEvent.setup(); mount(); const form = screen.getByRole("heading", { name: "Crear Actividad" }).closest("section")!;
     await user.selectOptions(within(form).getByLabelText("Actividad"), "master-1"); await user.selectOptions(within(form).getByLabelText("Organizador"), "user-1");
     await user.type(within(form).getByLabelText("Inicio"), "2027-01-01T10:00"); await user.type(within(form).getByLabelText("Fin"), "2027-01-01T11:00"); await user.click(within(form).getByLabelText("Luis Dos")); await user.click(within(form).getByRole("button", { name: "Crear" }));
     await waitFor(() => expect(api.createV2Activity).toHaveBeenCalledWith("workspace-a", expect.objectContaining({ activity_master_id: "master-1", organizer_user_id: "user-1", participant_user_ids: ["user-2"], starts_at: "2027-01-01T15:00:00.000Z", ends_at: "2027-01-01T16:00:00.000Z" })));
+  });
+  it("creates a finite recurring Activity in the Workspace timezone", async () => {
+    const user = userEvent.setup(); mount(); const form = screen.getByRole("heading", { name: "Crear Actividad" }).closest("section")!;
+    await user.click(within(form).getByLabelText("Repetir")); await user.selectOptions(within(form).getByLabelText("Actividad"), "master-1"); await user.selectOptions(within(form).getByLabelText("Organizador"), "user-1");
+    await user.type(within(form).getByLabelText("Desde"), "2027-01-01"); await user.type(within(form).getByLabelText("Hasta"), "2027-01-02"); await user.type(within(form).getByLabelText("Hora de inicio"), "09:00"); await user.type(within(form).getByLabelText("Hora de fin"), "10:00"); await user.click(within(form).getByRole("button", { name: "Crear" }));
+    await waitFor(() => expect(api.createRecurringV2Activities).toHaveBeenCalledWith("workspace-a", expect.objectContaining({ timezone: "America/Lima", recurrence: expect.objectContaining({ pattern: "DAILY", date_from: "2027-01-01", date_until: "2027-01-02" }) })));
   });
   it("renders only server-authorized future actions and keeps started Activities read-only", async () => {
     vi.mocked(api.listV2Activities).mockResolvedValue({ items: [{ ...base, temporal_state: "IN_PROGRESS", can_edit: false, can_delete: false, can_leave_participation: false }], total: 1, page: 1, page_size: 25, total_pages: 1 });

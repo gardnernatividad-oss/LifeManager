@@ -62,3 +62,26 @@ export interface V2ActivityCreate {
 export interface V2ActivityUpdate extends Partial<V2ActivityCreate> {
   lock_version: number;
 }
+
+export type ActivityRecurrencePattern = "DAILY" | "WEEKLY" | "MONTHLY";
+
+export interface V2RecurringActivityCreate {
+  activity_master_id: string;
+  organizer_user_id?: string;
+  participant_user_ids: string[];
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  recurrence: {
+    pattern: ActivityRecurrencePattern;
+    date_from: string;
+    date_until: string;
+    weekdays?: number[];
+    month_days?: number[];
+  };
+}
+
+export interface V2RecurringActivityCreateResponse {
+  created_count: number;
+  items: V2Activity[];
+}

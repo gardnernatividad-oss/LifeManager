@@ -449,6 +449,7 @@ class Activity(BaseEntity):
         Index("ix_activities_organizer_starts_id", "organizer_user_id", "starts_at", "id"),
         Index("ix_activities_batch_starts_id", "generation_batch_id", "starts_at", "id"),
         Index("uq_activities_batch_starts", "generation_batch_id", "starts_at", unique=True, postgresql_where=text("generation_batch_id IS NOT NULL")),
+        Index("uq_activities_catalog_occurrence", "workspace_id", "activity_master_id", "organizer_user_id", "starts_at", unique=True, postgresql_where=text("activity_master_id IS NOT NULL")),
     )
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     organizer_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)

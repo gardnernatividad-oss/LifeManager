@@ -371,12 +371,20 @@ Fronteras diferentes:
 
 Una Activity compartida tiene una fila; participants son relaciones, no copias. No existe aceptar/rechazar invitación de Activity: WorkspaceInvitation es independiente.
 
-Stage 8.1 crea únicamente Actividades standalone mediante una entrada activa de
-`ActivityMaster`. Cualquier Miembro ACTIVE administra una Actividad futura;
+Stage 8.1 crea Actividades standalone mediante una entrada activa de
+`ActivityMaster`. Stage 8.2 añade
+`POST /api/v2/workspaces/{workspace_id}/activities/recurring` para crear de
+forma atómica ocurrencias finitas DAILY, WEEKLY o MONTHLY. Recibe hora local,
+zona IANA, rango inclusivo Desde/Hasta, Organizador y Participantes; devuelve
+`created_count` e `items` sin exponer `GenerationBatch`. La regla mensual
+29/30/31 usa el último día disponible y deduplica convergencias. La identidad
+`workspace_id + activity_master_id + organizer_user_id + starts_at` protege
+standalone, recurrencias y batches; cualquier colisión devuelve `409` y revierte
+la solicitud completa. Cualquier Miembro ACTIVE administra una Actividad futura;
 Organizador y owner no añaden autoridad. La respuesta deriva `can_edit`,
 `can_delete`, `can_leave_participation` y estado temporal sin exponer batch ni
 recordatorios internos. Desde `starts_at`, una Actividad en curso o pasada es
-read-only. Recurrencia, cancelación de series y Calendario permanecen diferidos.
+read-only. Edición/cancelación de series y Calendario permanecen diferidos.
 
 - `SHOW_DETAILS`: puede retornar detalle autorizado;
 - `AVAILABILITY_ONLY`: solo intervalos busy/free sin ID, título, categoría, participants ni deep link;

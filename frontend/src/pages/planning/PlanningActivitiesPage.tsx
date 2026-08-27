@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 
 import { queryKeys } from "../../api/queryKeys";
-import { createV2Activity, deleteV2Activity, leaveV2Activity, listV2Activities, updateV2Activity } from "../../api/v2ActivityApi";
+import { createRecurringV2Activities, createV2Activity, deleteV2Activity, leaveV2Activity, listV2Activities, updateV2Activity } from "../../api/v2ActivityApi";
 import { listWorkspaceMembers, type WorkspaceMemberSummary } from "../../api/workspaceApi";
 import { ActivityCatalogSelector } from "../../components/common/V2CatalogSelector";
 import { useAuth } from "../../hooks/useAuth";
 import type { WorkspaceSummary } from "../../types/auth";
-import type { V2Activity, V2ActivityFilters, V2ActivityUpdate } from "../../types/v2Activity";
+import type { ActivityRecurrencePattern, V2Activity, V2ActivityFilters, V2ActivityUpdate } from "../../types/v2Activity";
+import { activityRecurrenceDates } from "../../utils/activityRecurrence";
 import { formatTaskDate, isoToLocalInput, localDateTimeToIso } from "../../utils/taskDateTime";
 
 const safeError = (error: unknown) => axios.isAxiosError(error) && error.response?.status === 409
@@ -30,6 +31,14 @@ function WorkspaceActivities({ workspace, timeZone }: { workspace: WorkspaceSumm
   const [participants, setParticipants] = useState<string[]>([]);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [mode, setMode] = useState<"ONCE" | "REPEAT">("ONCE");
+  const [pattern, setPattern] = useState<ActivityRecurrencePattern>("DAILY");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateUntil, setDateUntil] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [monthDays, setMonthDays] = useState("");
   const [editing, setEditing] = useState<V2Activity | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const activities = useQuery({ queryKey: queryKeys.v2Activities(workspace.id, filters), queryFn: () => listV2Activities(workspace.id, filters) });
@@ -45,7 +54,24 @@ function WorkspaceActivities({ workspace, timeZone }: { workspace: WorkspaceSumm
   function submit(event: FormEvent) {
     event.preventDefault();
     try {
-      if (!masterId || !startsAt || !endsAt || (shared && !organizerId)) throw new Error("Completa los campos requeridos.");
+      if (!masterId || (shared && !organizerId)) throw new Error("Completa los campos requeridos.");
+      if (mode === "REPEAT") {
+        const days = monthDays.split(",").map((value) => Number(value.trim())).filter((value) => Number.isInteger(value));
+        const dates = activityRecurrenceDates({ pattern, dateFrom, dateUntil, weekdays, monthDays: days });
+        const invalidMonthlyDays = pattern === "MONTHLY" && (days.length === 0 || new Set(days).size !== days.length || days.some((day) => day < 1 || day > 31));
+        if (!dateFrom || !dateUntil || dateUntil < dateFrom || !startTime || !endTime || endTime <= startTime ||
+            (pattern === "WEEKLY" && weekdays.length === 0) || invalidMonthlyDays || dates.length === 0 || dates.length > 1000) {
+          throw new Error("Completa una recurrencia válida de hasta 1000 ocurrencias.");
+        }
+        mutation.mutate(() => createRecurringV2Activities(workspace.id, {
+          activity_master_id: masterId, ...(shared ? { organizer_user_id: organizerId } : {}),
+          participant_user_ids: shared ? participants : [], start_time: startTime, end_time: endTime,
+          timezone: timeZone, recurrence: { pattern, date_from: dateFrom, date_until: dateUntil,
+            ...(pattern === "WEEKLY" ? { weekdays } : {}), ...(pattern === "MONTHLY" ? { month_days: days } : {}) },
+        }).then((value) => { setDateFrom(""); setDateUntil(""); setParticipants([]); return value; }));
+        return;
+      }
+      if (!startsAt || !endsAt) throw new Error("Completa los campos requeridos.");
       mutation.mutate(() => createV2Activity(workspace.id, {
         activity_master_id: masterId,
         ...(shared ? { organizer_user_id: organizerId } : {}),
@@ -57,10 +83,17 @@ function WorkspaceActivities({ workspace, timeZone }: { workspace: WorkspaceSumm
 
   return <section className="v2-activity-page"><header><p className="eyebrow">Planificación</p><h1>Planificación · Actividades</h1></header>
     <section className="project-planning-panel"><h2>Crear Actividad</h2><form className="v2-activity-form" onSubmit={submit}>
+      <fieldset><legend>Modalidad</legend><label><input type="radio" checked={mode === "ONCE"} onChange={() => setMode("ONCE")} />Una vez</label><label><input type="radio" checked={mode === "REPEAT"} onChange={() => setMode("REPEAT")} />Repetir</label></fieldset>
       <ActivityCatalogSelector workspaceId={workspace.id} value={masterId} onChange={setMasterId} required />
       {shared ? <MemberSelect label="Organizador" value={organizerId} members={activeMembers} onChange={setOrganizerId} required /> : <p>Organizador: tú</p>}
-      <label>Inicio<input type="datetime-local" required value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
-      <label>Fin<input type="datetime-local" required value={endsAt} onChange={(event) => setEndsAt(event.target.value)} /></label>
+      {mode === "ONCE" ? <><label>Inicio<input type="datetime-local" required value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label><label>Fin<input type="datetime-local" required value={endsAt} onChange={(event) => setEndsAt(event.target.value)} /></label></> : <>
+        <label>Frecuencia<select value={pattern} onChange={(event) => setPattern(event.target.value as ActivityRecurrencePattern)}><option value="DAILY">Diaria</option><option value="WEEKLY">Semanal</option><option value="MONTHLY">Mensual</option></select></label>
+        <label>Desde<input type="date" required value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>Hasta<input type="date" required value={dateUntil} onChange={(event) => setDateUntil(event.target.value)} /></label>
+        <label>Hora de inicio<input type="time" required value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label><label>Hora de fin<input type="time" required value={endTime} onChange={(event) => setEndTime(event.target.value)} /></label>
+        {pattern === "WEEKLY" ? <fieldset><legend>Días</legend>{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((label, day) => <label key={label}><input type="checkbox" checked={weekdays.includes(day)} onChange={(event) => setWeekdays(event.target.checked ? [...weekdays, day] : weekdays.filter((value) => value !== day))} />{label}</label>)}</fieldset> : null}
+        {pattern === "MONTHLY" ? <label>Días del mes<input value={monthDays} placeholder="1, 15, 31" onChange={(event) => setMonthDays(event.target.value)} /><small>Si un día no existe, se usa el último día del mes.</small></label> : null}
+        <p>{activityRecurrenceDates({ pattern, dateFrom, dateUntil, weekdays, monthDays: monthDays.split(",").map(Number).filter(Number.isInteger) }).length} ocurrencias</p>
+      </>}
       {shared ? <ParticipantChecks members={activeMembers} selected={participants} onChange={setParticipants} /> : null}
       <button className="primary-button" disabled={mutation.isPending}>Crear</button>
     </form></section>

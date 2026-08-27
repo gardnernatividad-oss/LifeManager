@@ -6,9 +6,11 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Activity, ActivityMaster, ActivityParticipant, ActivityReminder, Category, User, WorkspaceMember
-from app.models.enums import AccountStatus, ActivityStatus, MembershipStatus, ParticipantCalendarStatus, WorkspaceKind
-from app.schemas.v2_activity import ActivityCreate, ActivityTemporalState, ActivityUpdate
+from app.core.activity_recurrence import InvalidLocalActivityTimeError, local_activity_datetime
+from app.core.recurrence import recurrence_dates
+from app.models import Activity, ActivityMaster, ActivityParticipant, ActivityReminder, Category, GenerationBatch, User, WorkspaceMember
+from app.models.enums import AccountStatus, ActivityStatus, GenerationEntityType, MembershipStatus, ParticipantCalendarStatus, WorkspaceKind
+from app.schemas.v2_activity import ActivityCreate, ActivityTemporalState, ActivityUpdate, RecurringActivityCreate
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -22,6 +24,13 @@ class ActivityConflictError(ValueError):
 
 class ActivityReferenceUnavailableError(ValueError):
     pass
+
+
+class ActivityRecurrenceError(ValueError):
+    pass
+
+
+MAX_RECURRING_ACTIVITY_OCCURRENCES = 1000
 
 
 def _now() -> datetime:
@@ -39,6 +48,8 @@ def _flush(db: Session) -> None:
             "uq_activity_participants_activity_user",
         }:
             raise ActivityReferenceUnavailableError("Activity reference unavailable") from error
+        if constraint in {"uq_activities_catalog_occurrence", "uq_activities_batch_starts"}:
+            raise ActivityConflictError("Activity occurrence already exists") from error
         raise
 
 
@@ -110,6 +121,62 @@ def create_activity(db: Session, *, access: WorkspaceAccess, actor: User, activi
     db.add_all(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id) for user_id in sorted(participant_ids, key=str))
     _flush(db)
     return activity
+
+
+def create_recurring_activities(
+    db: Session, *, access: WorkspaceAccess, actor: User, activity_in: RecurringActivityCreate,
+) -> list[Activity]:
+    master = _master(db, workspace_id=access.workspace.id, master_id=activity_in.activity_master_id, assignable=True)
+    organizer_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (activity_in.organizer_user_id or actor.id)
+    participant_ids = {access.workspace.owner_user_id} if access.workspace.kind == WorkspaceKind.PERSONAL else set(activity_in.participant_user_ids)
+    _eligible_users(db, workspace_id=access.workspace.id, user_ids=participant_ids | {organizer_id})
+    recurrence = activity_in.recurrence
+    dates = recurrence_dates(pattern=recurrence.pattern, date_from=recurrence.date_from,
+                             date_until=recurrence.date_until, weekdays=recurrence.weekdays,
+                             month_days=recurrence.month_days)
+    if not dates:
+        raise ActivityRecurrenceError("Recurrence must generate at least one occurrence")
+    if len(dates) > MAX_RECURRING_ACTIVITY_OCCURRENCES:
+        raise ActivityRecurrenceError("Recurrence exceeds occurrence limit")
+    try:
+        instants = [(
+            local_activity_datetime(local_date=value, local_time=activity_in.start_time, timezone_name=activity_in.timezone),
+            local_activity_datetime(local_date=value, local_time=activity_in.end_time, timezone_name=activity_in.timezone),
+        ) for value in dates]
+    except InvalidLocalActivityTimeError as error:
+        raise ActivityRecurrenceError(str(error)) from error
+    current = _now()
+    if any(starts_at <= current or ends_at <= starts_at for starts_at, ends_at in instants):
+        raise ActivityRecurrenceError("Every Activity occurrence must be future and have a valid range")
+    starts = [starts_at for starts_at, _ in instants]
+    collision = db.scalar(select(Activity.id).where(
+        Activity.workspace_id == access.workspace.id,
+        Activity.activity_master_id == master.id,
+        Activity.organizer_user_id == organizer_id,
+        Activity.starts_at.in_(starts),
+    ).limit(1))
+    if collision is not None:
+        raise ActivityConflictError("Activity occurrence already exists")
+    batch = GenerationBatch(
+        workspace_id=access.workspace.id, entity_type=GenerationEntityType.ACTIVITY,
+        pattern=recurrence.pattern, date_from=recurrence.date_from, date_until=recurrence.date_until,
+        weekdays=recurrence.weekdays, month_days=recurrence.month_days,
+        timezone=activity_in.timezone, created_by_user_id=actor.id,
+    )
+    db.add(batch)
+    _flush(db)
+    activities = [Activity(
+        workspace_id=access.workspace.id, organizer_user_id=organizer_id,
+        activity_master_id=master.id, title=master.name, custom_category_id=None,
+        starts_at=starts_at, ends_at=ends_at, status=ActivityStatus.SCHEDULED,
+        generation_batch_id=batch.id,
+    ) for starts_at, ends_at in instants]
+    db.add_all(activities)
+    _flush(db)
+    db.add_all(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id)
+               for activity in activities for user_id in sorted(participant_ids, key=str))
+    _flush(db)
+    return activities
 
 
 def list_activities(

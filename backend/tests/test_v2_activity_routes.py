@@ -11,7 +11,7 @@ from app.main import app
 from app.models import Activity, User, Workspace, WorkspaceMember
 from app.models.enums import GlobalRole, WorkspaceKind
 from app.schemas.v2_activity import ActivityRead
-from app.services.v2_activity import ActivityConflictError
+from app.services.v2_activity import ActivityConflictError, ActivityRecurrenceError
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -67,10 +67,37 @@ def test_activity_openapi_surface_and_mass_assignment(client) -> None:
     paths = {path: set(methods) for path, methods in app.openapi()["paths"].items() if path.startswith("/api/v2/workspaces/{workspace_id}/activities")}
     assert paths == {
         "/api/v2/workspaces/{workspace_id}/activities": {"get", "post"},
+        "/api/v2/workspaces/{workspace_id}/activities/recurring": {"post"},
         "/api/v2/workspaces/{workspace_id}/activities/{activity_id}": {"get", "patch", "delete"},
         "/api/v2/workspaces/{workspace_id}/activities/{activity_id}/leave": {"post"},
     }
     db.commit.assert_not_called()
+
+
+@patch("app.api.v2.activities._read", return_value=read())
+@patch("app.api.v2.activities.create_recurring_activities", return_value=[Activity()])
+def test_recurring_create_is_atomic_router_write(create, projection, client) -> None:
+    http, db, user, access = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/activities/recurring", json={
+        "activity_master_id": str(uuid.uuid4()), "organizer_user_id": str(USER_ID),
+        "participant_user_ids": [str(USER_ID)], "start_time": "09:00", "end_time": "10:00",
+        "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2027-01-01", "date_until": "2027-01-02"},
+    })
+    assert response.status_code == 201 and response.json()["created_count"] == 1
+    assert create.call_args.kwargs["actor"] is user and create.call_args.kwargs["access"] is access
+    db.commit.assert_called_once(); db.rollback.assert_not_called()
+
+
+@patch("app.api.v2.activities.create_recurring_activities", side_effect=ActivityRecurrenceError())
+def test_invalid_recurring_local_time_maps_to_422_and_rolls_back(create, client) -> None:
+    http, db, *_ = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/activities/recurring", json={
+        "activity_master_id": str(uuid.uuid4()), "organizer_user_id": str(USER_ID),
+        "participant_user_ids": [], "start_time": "02:30", "end_time": "03:30",
+        "timezone": "America/New_York", "recurrence": {"pattern": "DAILY", "date_from": "2027-03-14", "date_until": "2027-03-14"},
+    })
+    assert response.status_code == 422 and response.json()["error"]["code"] == "ACTIVITY_RECURRENCE_INVALID"
+    db.rollback.assert_called_once(); db.commit.assert_not_called()
 
 
 def test_anonymous_and_global_admin_nonmember_have_no_activity_access() -> None:

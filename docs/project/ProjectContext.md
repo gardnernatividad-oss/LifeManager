@@ -180,8 +180,15 @@ Miembro ACTIVE del Workspace ACTIVE administra Actividades futuras; owner,
 Organizador y `GLOBAL_ADMIN` no crean bypass ni jerarquías adicionales.
 `starts_at` es la frontera histórica: una Actividad en curso o pasada es
 completamente read-only. Un Participante puede retirarse solo de una Actividad
-futura sin afectar a los demás. Recurrencia, series, recordatorios configurables,
-Mi calendario y privacidad permanecen diferidos a Stages 8.2–8.5.
+futura sin afectar a los demás. Stage 8.2 añade generación finita DAILY,
+WEEKLY y MONTHLY como ocurrencias materiales dentro de un `GenerationBatch`.
+La hora local se interpreta en la zona IANA del Workspace y cada ocurrencia
+conserva su instante UTC; los huecos y ambigüedades DST se rechazan. La regla
+mensual 29/30/31 cae al último día disponible y deduplica convergencias antes
+de persistir. La identidad de catálogo
+`workspace_id + activity_master_id + organizer_user_id + starts_at` evita
+duplicados standalone/recurrentes y entre batches. La edición de series,
+recordatorios configurables, Mi calendario y privacidad permanecen diferidos.
 
 ## Principios
 

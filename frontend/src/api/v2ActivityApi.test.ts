@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "./client";
-import { createV2Activity, deleteV2Activity, leaveV2Activity, listV2Activities, updateV2Activity } from "./v2ActivityApi";
+import { createRecurringV2Activities, createV2Activity, deleteV2Activity, leaveV2Activity, listV2Activities, updateV2Activity } from "./v2ActivityApi";
 
 vi.mock("./client", () => ({ apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
 
@@ -22,5 +22,11 @@ describe("v2ActivityApi", () => {
     expect(apiClient.patch).toHaveBeenCalledWith(expect.stringContaining("/activities/activity-1"), { ends_at: "2027-01-01T17:00:00Z", lock_version: 2 });
     expect(apiClient.post).toHaveBeenNthCalledWith(2, expect.stringContaining("/leave"), { lock_version: 3 });
     expect(apiClient.delete).toHaveBeenCalledWith(expect.stringContaining("/activities/activity-1"), { params: { lock_version: 4 } });
+  });
+  it("uses the recurring Activity endpoint", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { created_count: 1, items: [] } });
+    const payload = { activity_master_id: "master-1", participant_user_ids: [], start_time: "09:00", end_time: "10:00", timezone: "America/Lima", recurrence: { pattern: "DAILY" as const, date_from: "2027-01-01", date_until: "2027-01-01" } };
+    await createRecurringV2Activities("workspace-a", payload);
+    expect(apiClient.post).toHaveBeenCalledWith(expect.stringContaining("/activities/recurring"), payload);
   });
 });

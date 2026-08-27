@@ -1,11 +1,13 @@
 import uuid
 
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models.enums import ActivityStatus, ParticipantCalendarStatus
+from app.core.recurrence import recurrence_dates
+from app.models.enums import ActivityStatus, GenerationPattern, ParticipantCalendarStatus
 
 
 ActivityTemporalState = Literal["FUTURE", "IN_PROGRESS", "PAST"]
@@ -37,6 +39,44 @@ class ActivityCreate(_StrictModel):
             raise ValueError("ends_at must be after starts_at")
         if len(set(self.participant_user_ids)) != len(self.participant_user_ids):
             raise ValueError("participant_user_ids must be unique")
+        return self
+
+
+class ActivityRecurrence(_StrictModel):
+    pattern: GenerationPattern
+    date_from: date
+    date_until: date
+    weekdays: list[int] | None = None
+    month_days: list[int] | None = None
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ActivityRecurrence":
+        recurrence_dates(pattern=self.pattern, date_from=self.date_from, date_until=self.date_until,
+                         weekdays=self.weekdays, month_days=self.month_days)
+        return self
+
+
+class RecurringActivityCreate(_StrictModel):
+    activity_master_id: uuid.UUID
+    organizer_user_id: uuid.UUID | None = None
+    participant_user_ids: list[uuid.UUID] = Field(default_factory=list)
+    start_time: time
+    end_time: time
+    timezone: str = Field(min_length=1, max_length=100)
+    recurrence: ActivityRecurrence
+
+    @model_validator(mode="after")
+    def validate_activity(self) -> "RecurringActivityCreate":
+        if self.start_time.tzinfo is not None or self.end_time.tzinfo is not None:
+            raise ValueError("local times must not include a timezone")
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        if len(set(self.participant_user_ids)) != len(self.participant_user_ids):
+            raise ValueError("participant_user_ids must be unique")
+        try:
+            ZoneInfo(self.timezone)
+        except ZoneInfoNotFoundError as error:
+            raise ValueError("timezone must be a valid IANA timezone") from error
         return self
 
 
@@ -115,3 +155,8 @@ class ActivityListResponse(_StrictModel):
     page: int = Field(ge=1)
     page_size: int = Field(ge=1)
     total_pages: int = Field(ge=0)
+
+
+class RecurringActivityCreateResponse(_StrictModel):
+    created_count: int = Field(ge=1)
+    items: list[ActivityRead]

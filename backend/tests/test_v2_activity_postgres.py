@@ -1,7 +1,9 @@
 import uuid
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 import sqlalchemy as sa
@@ -10,9 +12,9 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import Activity, ActivityParticipant, User, Workspace, WorkspaceMember
-from app.schemas.v2_activity import ActivityCreate, ActivityUpdate
-from app.services.v2_activity import ActivityConflictError, ActivityReferenceUnavailableError, create_activity, delete_activity, leave_activity, update_activity
+from app.models import Activity, ActivityParticipant, GenerationBatch, User, Workspace, WorkspaceMember
+from app.schemas.v2_activity import ActivityCreate, ActivityUpdate, RecurringActivityCreate
+from app.services.v2_activity import ActivityConflictError, ActivityReferenceUnavailableError, create_activity, create_recurring_activities, delete_activity, leave_activity, update_activity
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -62,4 +64,75 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
                 delete_activity(db, access=access, activity_id=created.id, expected_version=2)
             db.rollback(); created = db.get(Activity, created.id); delete_activity(db, access=access, activity_id=created.id, expected_version=created.lock_version); db.commit()
             assert db.get(Activity, created.id) is None
+            recurring = RecurringActivityCreate.model_validate({
+                "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),
+                "participant_user_ids": [str(member_id)], "start_time": "09:00", "end_time": "10:00",
+                "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2027-01-04", "date_until": "2027-01-05"},
+            })
+            generated = create_recurring_activities(db, access=access, actor=actor, activity_in=recurring); db.commit()
+            assert len(generated) == 2 and len({item.generation_batch_id for item in generated}) == 1
+            assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == 1
+            with pytest.raises(ActivityConflictError):
+                create_recurring_activities(db, access=access, actor=actor, activity_in=recurring)
+            db.rollback()
+            assert db.scalar(sa.select(sa.func.count()).select_from(Activity)) == 2
+            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant)) == 2
+            assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == 1
+            with pytest.raises(ActivityConflictError):
+                create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(
+                    activity_master_id=master_id, organizer_user_id=owner_id,
+                    starts_at=datetime(2027, 1, 4, 14, tzinfo=timezone.utc),
+                    ends_at=datetime(2027, 1, 4, 15, tzinfo=timezone.utc),
+                ))
+            db.rollback()
+            standalone_start = datetime(2027, 3, 1, 14, tzinfo=timezone.utc)
+            standalone = create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(
+                activity_master_id=master_id, organizer_user_id=owner_id,
+                starts_at=standalone_start, ends_at=standalone_start + timedelta(hours=1),
+            )); db.commit()
+            standalone_collision = RecurringActivityCreate.model_validate({
+                "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),
+                "participant_user_ids": [], "start_time": "09:00", "end_time": "10:00",
+                "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2027-03-01", "date_until": "2027-03-01"},
+            })
+            with pytest.raises(ActivityConflictError):
+                create_recurring_activities(db, access=access, actor=actor, activity_in=standalone_collision)
+            db.rollback()
+        barrier = Barrier(2)
+        concurrent_request = RecurringActivityCreate.model_validate({
+            "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),
+            "participant_user_ids": [str(member_id)], "start_time": "11:00", "end_time": "12:00",
+            "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2027-02-01", "date_until": "2027-02-02"},
+        })
+
+        def submit_same_recurrence() -> str:
+            with Session(engine) as concurrent_db:
+                concurrent_actor = concurrent_db.get(User, member_id)
+                concurrent_workspace = concurrent_db.get(Workspace, workspace_id)
+                membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))
+                barrier.wait()
+                try:
+                    create_recurring_activities(concurrent_db, access=WorkspaceAccess(concurrent_workspace, membership), actor=concurrent_actor, activity_in=concurrent_request)
+                    concurrent_db.commit()
+                    return "created"
+                except ActivityConflictError:
+                    concurrent_db.rollback()
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = sorted(executor.map(lambda _: submit_same_recurrence(), range(2)))
+        assert outcomes == ["conflict", "created"]
+        with Session(engine) as verification_db:
+            starts = [datetime(2027, 2, 1, 16, tzinfo=timezone.utc), datetime(2027, 2, 2, 16, tzinfo=timezone.utc)]
+            assert verification_db.scalar(sa.select(sa.func.count()).select_from(Activity).where(Activity.starts_at.in_(starts))) == 2
+            batch_ids = verification_db.scalars(sa.select(Activity.generation_batch_id).where(Activity.starts_at.in_(starts))).all()
+            assert len(set(batch_ids)) == 1
         engine.dispose()
+        config = alembic_config_for_test_database(target_url, backend_root=BACKEND_ROOT, explicit_test_intent=True)
+        command.downgrade(config, "e6f7a8b9c0d1")
+        command.upgrade(config, "head")
+        inspection_engine = sa.create_engine(target_url)
+        try:
+            assert "uq_activities_catalog_occurrence" in {index["name"] for index in sa.inspect(inspection_engine).get_indexes("activities")}
+        finally:
+            inspection_engine.dispose()

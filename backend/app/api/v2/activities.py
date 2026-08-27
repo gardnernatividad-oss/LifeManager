@@ -11,10 +11,10 @@ from sqlalchemy import select
 
 from app.models import Activity, ActivityMaster, Category, User
 from app.models.enums import ParticipantCalendarStatus, WorkspaceKind
-from app.schemas.v2_activity import ActivityCreate, ActivityListResponse, ActivityParticipantRead, ActivityRead, ActivityUpdate, ActivityVersion
+from app.schemas.v2_activity import ActivityCreate, ActivityListResponse, ActivityParticipantRead, ActivityRead, ActivityUpdate, ActivityVersion, RecurringActivityCreate, RecurringActivityCreateResponse
 from app.services.v2_activity import (
-    ActivityConflictError, ActivityNotFoundError, ActivityReferenceUnavailableError,
-    activity_projection, create_activity, delete_activity, get_activity, leave_activity,
+    ActivityConflictError, ActivityNotFoundError, ActivityRecurrenceError, ActivityReferenceUnavailableError,
+    activity_projection, create_activity, create_recurring_activities, delete_activity, get_activity, leave_activity,
     list_activities, temporal_state, update_activity,
 )
 
@@ -27,6 +27,8 @@ def _raise(error: Exception) -> None:
         raise V2APIError(status_code=404, code="ACTIVITY_NOT_FOUND", message="No se encontró la Actividad.") from error
     if isinstance(error, ActivityReferenceUnavailableError):
         raise V2APIError(status_code=404, code="ACTIVITY_REFERENCE_UNAVAILABLE", message="Una referencia de la Actividad no está disponible.") from error
+    if isinstance(error, ActivityRecurrenceError):
+        raise V2APIError(status_code=422, code="ACTIVITY_RECURRENCE_INVALID", message="La recurrencia o su horario local no es válido.") from error
     raise V2APIError(status_code=409, code="ACTIVITY_CONFLICT", message="La Actividad cambió o ya no admite esta acción.") from error
 
 
@@ -79,7 +81,7 @@ def _write(db: SessionDependency, operation):
         if result is not None:
             db.refresh(result)
         return result
-    except (ActivityNotFoundError, ActivityConflictError, ActivityReferenceUnavailableError) as error:
+    except (ActivityNotFoundError, ActivityConflictError, ActivityReferenceUnavailableError, ActivityRecurrenceError) as error:
         db.rollback()
         _raise(error)
     except Exception:
@@ -92,6 +94,20 @@ def create(workspace_id: uuid.UUID, activity_in: ActivityCreate, db: SessionDepe
     del workspace_id
     activity = _write(db, lambda: create_activity(db, access=access, actor=account, activity_in=activity_in))
     return _read(db, activity, account, personal=access.workspace.kind == WorkspaceKind.PERSONAL)
+
+
+@router.post("/recurring", response_model=RecurringActivityCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_recurring(
+    workspace_id: uuid.UUID, activity_in: RecurringActivityCreate, db: SessionDependency,
+    account: UsableAccount, access: ActiveWorkspaceMembership,
+) -> RecurringActivityCreateResponse:
+    del workspace_id
+    activities = _write(db, lambda: create_recurring_activities(db, access=access, actor=account, activity_in=activity_in))
+    personal = access.workspace.kind == WorkspaceKind.PERSONAL
+    return RecurringActivityCreateResponse(
+        created_count=len(activities),
+        items=[_read(db, activity, account, personal=personal) for activity in activities],
+    )
 
 
 @router.get("", response_model=ActivityListResponse)
