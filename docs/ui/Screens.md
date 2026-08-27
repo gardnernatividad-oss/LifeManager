@@ -28,7 +28,7 @@ overflow horizontal en la representación móvil.
 | Workspace | Planificación · Proyectos | Mantener datos generales, Categoría, Líder, Vigencia y Etapas con Responsable, peso, fecha y avance. |
 | Workspace | Seguimiento · Tareas | Registro y correcciones aprobadas. |
 | Workspace | Seguimiento · Pendientes | Avance, comentario e historia. |
-| Workspace | Seguimiento · Proyectos | Avance y cumplimiento derivados de Proyecto/Etapas; historia y comentarios se incorporan en Stage 7.3. |
+| Workspace | Seguimiento · Proyectos | Navegar Proyecto → Etapas → Etapa; registrar avance con comentario opcional o comentario-only y consultar historial. |
 | Workspace | Reportes | Periodo, Responsable y Categoría; métricas por refinar. |
 | Workspace | Tablas · Tareas | Catálogo visible como Tareas. |
 | Workspace | Tablas · Actividades | Catálogo de Actividades Activas/Inactivas. |

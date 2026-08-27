@@ -161,8 +161,10 @@ peso decimal, fecha planificada y avance 0–100. La suma temporal puede ser
 menor a 100, pero no mayor; solo `100.00` habilita Avance ponderado, Estado,
 Cumplimiento y finalización global definitivos. Etapa y Project usan optimistic
 locking coordinado. Una Etapa al 100 deriva su fecha local de cumplimiento y
-queda read-only; historia, comentarios y navegación jerárquica se completan en
-Stage 7.3.
+queda read-only. Stage 7.3 completa la navegación jerárquica Proyecto → Etapa,
+el seguimiento atómico de avance con comentario opcional, comentario-only y el
+historial append-only con actor y timestamp server-side. No se implementa
+reapertura ni corrección de una Etapa finalizada.
 
 ## Principios
 

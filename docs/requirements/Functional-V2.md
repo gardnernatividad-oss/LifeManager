@@ -186,6 +186,12 @@ Un Proyecto contiene información general y una colección de **Etapas**. En la 
 
 Cada Etapa puede incluir Responsable, peso, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y Comentario. Su historial cronológico conserva Fecha, Usuario, Avance y Comentario. No necesita Vigencia propia: la Vigencia del Proyecto gobierna su participación en los flujos pertinentes.
 
+El seguimiento de una Etapa permite cambiar Avance con comentario opcional o
+registrar solo un comentario conservando el Avance actual. Cada acción produce
+exactamente una entrada append-only creada por el servidor, de forma atómica
+con la mutación. Una Etapa al 100% permanece read-only; V2 no implementa todavía
+reapertura ni corrección de Etapas finalizadas.
+
 El Avance del Proyecto se agrega desde sus Etapas mediante el modelo de ponderación aprobado. Para Revisión, una Etapa califica cuando está asignada al usuario actual, su Proyecto está Activo, no está finalizada y su fecha planificada es hoy o anterior.
 
 Los pesos usan porcentaje decimal y la configuración completa exige una suma

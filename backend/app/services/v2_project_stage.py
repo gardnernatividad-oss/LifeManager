@@ -7,8 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Project, ProjectStage, User, WorkspaceMember
-from app.models.enums import AccountStatus, MembershipStatus, WorkspaceKind
+from app.models import Project, ProjectStage, ProjectStageHistory, User, WorkspaceMember
+from app.models.enums import AccountStatus, HistoryEventType, MembershipStatus, WorkspaceKind
 from app.schemas.v2_project_stage import ProjectStageCreate, ProjectStageUpdate
 from app.services.v2_workspace import WorkspaceAccess
 
@@ -120,18 +120,35 @@ def update_project_stage(db: Session, *, access: WorkspaceAccess, project_id: uu
     return stage
 
 
-def update_project_stage_progress(db: Session, *, access: WorkspaceAccess, project_id: uuid.UUID, stage_id: uuid.UUID, progress: int, expected_version: int, project_version: int, local_date: date) -> ProjectStage:
+def update_project_stage_progress(db: Session, *, access: WorkspaceAccess, actor: User, project_id: uuid.UUID, stage_id: uuid.UUID, progress: int | None, comment: str | None, expected_version: int, project_version: int, local_date: date) -> ProjectStage:
     project = _project(db, workspace_id=access.workspace.id, project_id=project_id, lock=True)
     _check_project(project, project_version)
     stage = _stage(db, workspace_id=access.workspace.id, project_id=project_id, stage_id=stage_id, lock=True)
-    if stage.progress == 100 or stage.lock_version != expected_version or stage.progress == progress:
+    if stage.progress == 100 or stage.lock_version != expected_version:
         raise ProjectStageConflictError("Stage progress cannot be changed")
-    stage.progress = progress
-    stage.completion_date = local_date if progress == 100 else None
+    resulting_progress = stage.progress if progress is None else progress
+    if resulting_progress == stage.progress and comment is None:
+        raise ProjectStageConflictError("Stage progress cannot be changed")
+    stage.progress = resulting_progress
+    stage.completion_date = local_date if resulting_progress == 100 else None
     stage.lock_version += 1
     project.lock_version += 1
+    db.add(ProjectStageHistory(project_stage_id=stage.id, workspace_id=stage.workspace_id, actor_user_id=actor.id, progress=resulting_progress, comment=comment, event_type=HistoryEventType.TRACKING))
     _flush(db)
     return stage
+
+
+def list_project_stage_history(db: Session, *, workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID) -> list[tuple[ProjectStageHistory, User]]:
+    _project(db, workspace_id=workspace_id, project_id=project_id)
+    _stage(db, workspace_id=workspace_id, project_id=project_id, stage_id=stage_id)
+    return list(
+        db.execute(
+            select(ProjectStageHistory, User)
+            .join(User, User.id == ProjectStageHistory.actor_user_id)
+            .where(ProjectStageHistory.workspace_id == workspace_id, ProjectStageHistory.project_stage_id == stage_id)
+            .order_by(ProjectStageHistory.recorded_at.desc(), ProjectStageHistory.id.desc())
+        ).all()
+    )
 
 
 def stage_projection(stage: ProjectStage, *, local_date: date) -> tuple[str, str, int, bool]:

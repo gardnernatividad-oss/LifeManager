@@ -21,6 +21,11 @@ def test_stage_schemas_are_strict_and_weighted_projection_is_derived() -> None:
         ProjectStageUpdate(lock_version=1, project_lock_version=1)
     with pytest.raises(ValidationError):
         ProjectStageProgress(progress=101, lock_version=1, project_lock_version=1)
+    assert ProjectStageProgress(comment="  Seguimiento  ", lock_version=1, project_lock_version=1).comment == "Seguimiento"
+    with pytest.raises(ValidationError):
+        ProjectStageProgress(comment="   ", lock_version=1, project_lock_version=1)
+    with pytest.raises(ValidationError):
+        ProjectStageProgress(lock_version=1, project_lock_version=1)
 
     first = ProjectStage(name="A", position=0, weight=Decimal("40"), planned_date=date(2026, 9, 10), progress=50)
     second = ProjectStage(name="B", position=1, weight=Decimal("60"), planned_date=date(2026, 9, 12), progress=100, completion_date=date(2026, 9, 11))

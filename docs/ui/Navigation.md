@@ -71,6 +71,8 @@ Mi calendario usa sus propios controles internos para colaboración y comparaci�
 - globales: `/inicio`, `/revision`, `/calendario`, `/configuracion/*`, `/administracion/*`;
 - Workspace: `/w/:workspaceId/tareas`, `/pendientes`, `/proyectos`, `/tablas/*`, `/reportes/*` y `/calendario/*` bajo ese prefijo;
 - detalle: Pendiente, Proyecto y Etapa incorporan sus UUID en rutas anidadas;
+- Proyectos usa la jerarquía Listado → Proyecto → Etapas → Etapa, con retorno
+  explícito al nivel anterior y sin rutas globales de Etapa fuera del Workspace;
 - autenticación preserva un destino interno seguro y valida nuevamente sesión/membership al restaurar.
 
 ## Detalles y overlays

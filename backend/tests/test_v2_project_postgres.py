@@ -10,11 +10,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import Project, ProjectLeaderHistory, User, Workspace, WorkspaceMember
+from app.models import Project, ProjectLeaderHistory, ProjectStageHistory, User, Workspace, WorkspaceMember
 from app.schemas.v2_project import ProjectCreate, ProjectUpdate
 from app.schemas.v2_project_stage import ProjectStageCreate, ProjectStageUpdate
 from app.services.v2_project import ProjectConflictError, ProjectNotFoundError, ProjectReferenceUnavailableError, create_project, deactivate_project, get_project, list_projects, reactivate_project, update_project
-from app.services.v2_project_stage import ProjectStageConflictError, ProjectStageNotFoundError, ProjectStageReferenceUnavailableError, create_project_stage, get_project_stage, project_stage_summary, stage_projection, update_project_stage, update_project_stage_progress
+from app.services.v2_project_stage import ProjectStageConflictError, ProjectStageNotFoundError, ProjectStageReferenceUnavailableError, create_project_stage, get_project_stage, list_project_stage_history, project_stage_summary, stage_projection, update_project_stage, update_project_stage_progress
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -71,14 +71,38 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
             with pytest.raises(ProjectStageReferenceUnavailableError):
                 update_project_stage(db, access=member_access, project_id=shared_project.id, stage_id=first.id, stage_in=ProjectStageUpdate(responsible_user_id=foreign_id, lock_version=first.lock_version, project_lock_version=shared_project.lock_version))
             db.rollback(); member = db.get(User, member_id); shared = db.get(Workspace, shared_id); member_access = WorkspaceAccess(shared, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))); shared_project = db.get(Project, shared_project.id); first = get_project_stage(db, workspace_id=shared_id, project_id=shared_project.id, stage_id=first.id); second = get_project_stage(db, workspace_id=shared_id, project_id=shared_project.id, stage_id=second.id)
-            update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=first.id, progress=50, expected_version=first.lock_version, project_version=shared_project.lock_version, local_date=first.planned_date)
-            update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=second.id, progress=100, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
+            update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=first.id, progress=50, comment="Mitad lista", expected_version=first.lock_version, project_version=shared_project.lock_version, local_date=first.planned_date)
+            update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=second.id, progress=100, comment=None, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
             db.commit()
+            update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=first.id, progress=None, comment="Sin cambio de avance", expected_version=first.lock_version, project_version=shared_project.lock_version, local_date=first.planned_date)
+            db.commit()
+            history = list_project_stage_history(db, workspace_id=shared_id, project_id=shared_project.id, stage_id=first.id)
+            assert [(entry.progress, entry.comment, actor.id) for entry, actor in history] == [(50, "Sin cambio de avance", member_id), (50, "Mitad lista", member_id)]
+            assert db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == first.id)) == 2
+            with pytest.raises(ProjectStageNotFoundError):
+                list_project_stage_history(db, workspace_id=foreign_workspace_id, project_id=shared_project.id, stage_id=first.id)
+            db.rollback(); shared_project = db.get(Project, shared_project.id); first = db.get(type(first), first.id)
+
+            tracking_project_version, tracking_stage_version = shared_project.lock_version, first.lock_version
+            def race_tracking(comment: str) -> str:
+                with Session(engine) as concurrent_db:
+                    concurrent_actor = concurrent_db.get(User, member_id)
+                    concurrent_workspace = concurrent_db.get(Workspace, shared_id)
+                    concurrent_membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))
+                    try:
+                        update_project_stage_progress(concurrent_db, access=WorkspaceAccess(concurrent_workspace, concurrent_membership), actor=concurrent_actor, project_id=shared_project.id, stage_id=first.id, progress=None, comment=comment, expected_version=tracking_stage_version, project_version=tracking_project_version, local_date=first.planned_date)
+                        concurrent_db.commit(); return "updated"
+                    except ProjectStageConflictError:
+                        concurrent_db.rollback(); return "conflict"
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                assert sorted(executor.map(race_tracking, ("Comentario A", "Comentario B"))) == ["conflict", "updated"]
+            db.expire_all(); shared_project = db.get(Project, shared_project.id); first = db.get(type(first), first.id); second = db.get(type(second), second.id)
+            assert db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == first.id)) == 3
             weighted = project_stage_summary([first, second], local_date=second.planned_date)
             assert weighted["progress"] == 80 and weighted["state"] == "EN_PROCESO" and second.completion_date == second.planned_date
             assert stage_projection(second, local_date=second.planned_date)[:3] == ("FINALIZADA", "A_TIEMPO", 0)
             with pytest.raises(ProjectStageConflictError):
-                update_project_stage_progress(db, access=member_access, project_id=shared_project.id, stage_id=second.id, progress=90, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
+                update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=second.id, progress=90, comment=None, expected_version=second.lock_version, project_version=shared_project.lock_version, local_date=second.planned_date)
             with pytest.raises(ProjectStageNotFoundError):
                 get_project_stage(db, workspace_id=foreign_workspace_id, project_id=shared_project.id, stage_id=first.id)
             db.rollback(); member = db.get(User, member_id); shared = db.get(Workspace, shared_id); member_access = WorkspaceAccess(shared, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == shared_id, WorkspaceMember.user_id == member_id))); shared_project = db.get(Project, shared_project.id)
@@ -98,6 +122,12 @@ def test_project_lifecycle_authority_and_concurrency_on_disposable_postgres(monk
             assert db.scalar(sa.select(sa.func.count()).select_from(ProjectLeaderHistory).where(ProjectLeaderHistory.project_id == shared_project.id)) == 2
             deactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=shared_project.lock_version); db.commit()
             assert shared_project.is_active is False
+            history_count = db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == first.id))
+            with pytest.raises(ProjectStageConflictError):
+                update_project_stage_progress(db, access=member_access, actor=member, project_id=shared_project.id, stage_id=first.id, progress=None, comment="No permitido", expected_version=first.lock_version, project_version=shared_project.lock_version, local_date=first.planned_date)
+            db.rollback()
+            assert db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == first.id)) == history_count
+            shared_project = db.get(Project, shared_project.id)
             reactivate_project(db, access=member_access, project_id=shared_project.id, expected_version=shared_project.lock_version); db.commit()
             assert shared_project.is_active is True
             rows, total = list_projects(db, workspace_id=shared_id, page=1, page_size=25, is_active=True, category_id=category_id, leader_user_id=member_id, search="FAMILIAR")

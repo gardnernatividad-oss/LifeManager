@@ -60,9 +60,20 @@ class ProjectStageUpdate(_StrictModel):
 
 
 class ProjectStageProgress(_StrictModel):
-    progress: int = Field(ge=0, le=100)
+    progress: int | None = Field(default=None, ge=0, le=100)
+    comment: str | None = Field(default=None, max_length=2000)
     lock_version: int = Field(ge=1)
     project_lock_version: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def require_progress_or_comment(self) -> "ProjectStageProgress":
+        if self.comment is not None:
+            self.comment = self.comment.strip()
+            if not self.comment:
+                raise ValueError("Comment cannot be blank")
+        if self.progress is None and self.comment is None:
+            raise ValueError("Progress or comment is required")
+        return self
 
 
 class ProjectStageRead(_StrictModel):
@@ -92,3 +103,17 @@ class ProjectStageListResponse(_StrictModel):
     items: list[ProjectStageRead]
     total_weight: Decimal
     weights_complete: bool
+
+
+class ProjectStageHistoryRead(_StrictModel):
+    id: uuid.UUID
+    progress: int
+    comment: str | None
+    type: Literal["TRACKING", "CORRECTION"]
+    actor_user_id: uuid.UUID
+    actor_display_name: str
+    recorded_at: datetime
+
+
+class ProjectStageHistoryListResponse(_StrictModel):
+    items: list[ProjectStageHistoryRead]

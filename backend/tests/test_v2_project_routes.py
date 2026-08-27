@@ -77,6 +77,7 @@ def test_mass_assignment_and_openapi_surface(client) -> None:
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/deactivate": {"post"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/reactivate": {"post"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages": {"get", "post"},
-        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}": {"get", "patch"},
-        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress": {"post"},
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}": {"get", "patch"},
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/history": {"get"},
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress": {"post"},
     }

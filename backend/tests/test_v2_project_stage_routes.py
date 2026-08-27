@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 from app.api.v2.dependencies import get_current_account, get_db, require_active_workspace_membership, require_usable_account
 from app.main import app
-from app.models import Project, ProjectStage, User, Workspace, WorkspaceMember
+from app.models import Project, ProjectStage, ProjectStageHistory, User, Workspace, WorkspaceMember
+from app.models.enums import HistoryEventType
 from app.models.enums import WorkspaceKind
 from app.schemas.v2_project_stage import ProjectStageRead
 from app.services.v2_project_stage import ProjectStageConflictError
@@ -54,3 +55,27 @@ def test_progress_conflict_rolls_back(update, client) -> None:
     http, db, *_ = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/progress", json={"progress": 50, "lock_version": 1, "project_lock_version": 1})
     assert response.status_code == 409 and db.rollback.call_count == 1 and not db.commit.called
+
+
+@patch("app.api.v2.project_stages._read", return_value=stage_read())
+@patch("app.api.v2.project_stages.update_project_stage_progress", return_value=ProjectStage())
+def test_progress_accepts_one_atomic_comment_and_rejects_mass_assignment(update, projection, client) -> None:
+    http, db, user, access = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/progress", json={"progress": 50, "comment": "Avance real", "lock_version": 1, "project_lock_version": 1})
+    assert response.status_code == 200
+    assert update.call_args.kwargs["actor"] is user and update.call_args.kwargs["comment"] == "Avance real"
+    db.commit.assert_called_once()
+    invalid = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/progress", json={"comment": "x", "actor_user_id": str(USER_ID), "workspace_id": str(WORKSPACE_ID), "lock_version": 1, "project_lock_version": 1})
+    assert invalid.status_code == 422
+
+
+@patch("app.api.v2.project_stages.list_project_stage_history")
+def test_history_is_hierarchically_scoped_and_read_only(history, client) -> None:
+    http, db, *_ = client
+    now = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    history.return_value = [(ProjectStageHistory(id=uuid.uuid4(), project_stage_id=STAGE_ID, workspace_id=WORKSPACE_ID, actor_user_id=USER_ID, progress=50, comment="Mitad", event_type=HistoryEventType.TRACKING, recorded_at=now), User(id=USER_ID, first_name="Ana", last_name="Uno"))]
+    response = http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/history")
+    assert response.status_code == 200 and response.json()["items"][0]["comment"] == "Mitad"
+    assert history.call_args.args == (db,) and history.call_args.kwargs == {"workspace_id": WORKSPACE_ID, "project_id": PROJECT_ID, "stage_id": STAGE_ID}
+    assert not db.commit.called and not db.flush.called and not db.rollback.called
+    assert http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/history", json={}).status_code == 405

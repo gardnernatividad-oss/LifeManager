@@ -70,6 +70,11 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   del mismo Workspace. Toda consulta usa Workspace + Project + Etapa y toda
   mutación bloquea Project antes que Etapa. Owner, Líder y `GLOBAL_ADMIN` sin
   membership no obtienen privilegios adicionales.
+- Stage 7.3 conserva esa frontera en detalle, seguimiento e historial. Project,
+  Etapa e historial se resuelven siempre por la jerarquía Workspace + Project +
+  Etapa; comentario y avance se guardan atómicamente bajo `lock_version`. Actor,
+  timestamp y tipo de evento son exclusivamente server-side y el historial no
+  admite escritura directa.
 
 ## Arquitectura de enforcement V2
 

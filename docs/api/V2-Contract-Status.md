@@ -458,6 +458,16 @@ ProjectRead agrega `weights_complete`, `stage_count` y `total_weight`, además
 de las proyecciones derivadas. Una configuración incompleta es legible pero no
 falsifica avance o cumplimiento global definitivo.
 
+Stage 7.3 mantiene la jerarquía scopeada por
+`/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}`.
+`GET .../{stage_id}/history` expone el historial en orden descendente estable;
+no existen endpoints para crearlo, editarlo o eliminarlo directamente.
+`POST .../{stage_id}/progress` acepta Avance opcional y comentario opcional,
+exige al menos uno y crea un único evento `TRACKING` con actor, timestamp y tipo
+server-side. Avance + comentario y comentario-only son atómicos con los locks de
+Project y Etapa. Las Etapas finalizadas y los Proyectos inactivos rechazan nuevas
+operaciones de seguimiento.
+
 ## 16. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.

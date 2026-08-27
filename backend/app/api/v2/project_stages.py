@@ -8,8 +8,8 @@ from app.api.v2.dependencies import ActiveWorkspaceMembership, SessionDependency
 from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import Project, ProjectStage, User
-from app.schemas.v2_project_stage import ProjectStageCreate, ProjectStageListResponse, ProjectStageProgress, ProjectStageRead, ProjectStageUpdate
-from app.services.v2_project_stage import ProjectStageConflictError, ProjectStageNotFoundError, ProjectStageReferenceUnavailableError, create_project_stage, get_project_stage, list_project_stages, stage_projection, update_project_stage, update_project_stage_progress
+from app.schemas.v2_project_stage import ProjectStageCreate, ProjectStageHistoryListResponse, ProjectStageHistoryRead, ProjectStageListResponse, ProjectStageProgress, ProjectStageRead, ProjectStageUpdate
+from app.services.v2_project_stage import ProjectStageConflictError, ProjectStageNotFoundError, ProjectStageReferenceUnavailableError, create_project_stage, get_project_stage, list_project_stage_history, list_project_stages, stage_projection, update_project_stage, update_project_stage_progress
 
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/projects/{project_id}/stages", tags=["V2 Project Stages"])
@@ -72,6 +72,16 @@ def detail(workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID, 
         _raise(error)
 
 
+@router.get("/{stage_id}/history", response_model=ProjectStageHistoryListResponse)
+def history(workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectStageHistoryListResponse:
+    del access
+    try:
+        rows = list_project_stage_history(db, workspace_id=workspace_id, project_id=project_id, stage_id=stage_id)
+    except ProjectStageNotFoundError as error:
+        _raise(error)
+    return ProjectStageHistoryListResponse(items=[ProjectStageHistoryRead(id=entry.id, progress=entry.progress, comment=entry.comment, type=entry.event_type, actor_user_id=actor.id, actor_display_name=f"{actor.first_name} {actor.last_name}".strip(), recorded_at=entry.recorded_at) for entry, actor in rows])
+
+
 @router.patch("/{stage_id}", response_model=ProjectStageRead)
 def patch(workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID, stage_in: ProjectStageUpdate, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectStageRead:
     del workspace_id
@@ -82,4 +92,4 @@ def patch(workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID, s
 def progress(workspace_id: uuid.UUID, project_id: uuid.UUID, stage_id: uuid.UUID, stage_in: ProjectStageProgress, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> ProjectStageRead:
     del workspace_id
     today = local_today(account.timezone)
-    return _read(db, _write(db, lambda: update_project_stage_progress(db, access=access, project_id=project_id, stage_id=stage_id, progress=stage_in.progress, expected_version=stage_in.lock_version, project_version=stage_in.project_lock_version, local_date=today)), today=today)
+    return _read(db, _write(db, lambda: update_project_stage_progress(db, access=access, actor=account, project_id=project_id, stage_id=stage_id, progress=stage_in.progress, comment=stage_in.comment, expected_version=stage_in.lock_version, project_version=stage_in.project_lock_version, local_date=today)), today=today)
