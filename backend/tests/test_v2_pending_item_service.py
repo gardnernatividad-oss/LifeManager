@@ -8,7 +8,7 @@ import pytest
 from app.models import Category, PendingItem, PendingItemHistory, User, Workspace, WorkspaceMember
 from app.models.enums import HistoryEventType, WorkspaceKind
 from app.schemas.v2_pending_item import PendingItemCreate, PendingItemUpdate
-from app.services.v2_pending_item import PendingItemConflictError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
+from app.services.v2_pending_item import PendingItemConflictError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, list_pending_item_history, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -58,6 +58,29 @@ def test_progress_completion_and_history_are_atomic(lookup) -> None:
 
 
 @patch("app.services.v2_pending_item._item")
+def test_comment_only_versions_item_and_creates_one_tracking_entry(lookup) -> None:
+    actor, access = context()
+    current = item(access, actor, progress=40)
+    lookup.return_value = current
+    update_pending_progress(db := MagicMock(), access=access, actor=actor, pending_item_id=current.id, progress=None, comment="Avance validado", expected_version=1, local_date=date(2026, 9, 12))
+    assert current.progress == 40 and current.lock_version == 2
+    history = db.add.call_args.args[0]
+    assert history.progress == 40 and history.comment == "Avance validado" and history.event_type == HistoryEventType.TRACKING
+    db.add.assert_called_once(); db.flush.assert_called_once()
+
+
+@patch("app.services.v2_pending_item._item")
+def test_progress_and_comment_create_one_atomic_tracking_entry(lookup) -> None:
+    actor, access = context()
+    current = item(access, actor, progress=40)
+    lookup.return_value = current
+    update_pending_progress(db := MagicMock(), access=access, actor=actor, pending_item_id=current.id, progress=60, comment="Información recibida", expected_version=1, local_date=date(2026, 9, 12))
+    history = db.add.call_args.args[0]
+    assert current.progress == 60 and history.progress == 60 and history.comment == "Información recibida"
+    db.add.assert_called_once()
+
+
+@patch("app.services.v2_pending_item._item")
 def test_finalized_is_read_only_except_explicit_correction(lookup) -> None:
     actor, access = context()
     current = item(access, actor, progress=100)
@@ -77,6 +100,18 @@ def test_correction_reopens_and_preserves_history_boundary(lookup) -> None:
     assert corrected.progress == 0 and corrected.completion_date is None and corrected.is_active is True
     assert db.add.call_args.args[0].event_type == HistoryEventType.CORRECTION
     assert db.add.call_args.args[0].progress == 0
+
+
+@patch("app.services.v2_pending_item._item")
+def test_history_is_newest_first_with_deterministic_tiebreaker(lookup) -> None:
+    actor, access = context()
+    lookup.return_value = item(access, actor)
+    db = MagicMock()
+    expected = [(PendingItemHistory(), actor)]
+    db.execute.return_value.all.return_value = expected
+    assert list_pending_item_history(db, workspace_id=access.workspace.id, pending_item_id=lookup.return_value.id) == expected
+    statement = db.execute.call_args.args[0]
+    assert "recorded_at DESC" in str(statement) and "pending_item_history.id DESC" in str(statement)
 
 
 @patch("app.services.v2_pending_item._item")

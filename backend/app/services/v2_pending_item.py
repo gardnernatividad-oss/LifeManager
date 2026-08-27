@@ -142,21 +142,22 @@ def update_pending_item(db: Session, *, access: WorkspaceAccess, pending_item_id
     return item
 
 
-def update_pending_progress(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int, expected_version: int, local_date: date) -> PendingItem:
+def update_pending_progress(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int | None, expected_version: int, local_date: date, comment: str | None = None) -> PendingItem:
     item = _item(db, workspace_id=access.workspace.id, pending_item_id=pending_item_id, lock=True)
     _check_version(item, expected_version)
-    if not item.is_active or item.progress == 100 or item.progress == progress:
+    if not item.is_active or item.progress == 100 or (progress is None and comment is None) or (progress == item.progress and comment is None):
         raise PendingItemConflictError("Pending Item progress cannot be changed")
-    item.progress = progress
-    if progress == 100:
+    resulting_progress = item.progress if progress is None else progress
+    item.progress = resulting_progress
+    if resulting_progress == 100:
         item.completion_date = local_date
     item.lock_version += 1
-    db.add(PendingItemHistory(pending_item_id=item.id, workspace_id=item.workspace_id, actor_user_id=actor.id, progress=progress, comment=None, event_type=HistoryEventType.TRACKING))
+    db.add(PendingItemHistory(pending_item_id=item.id, workspace_id=item.workspace_id, actor_user_id=actor.id, progress=resulting_progress, comment=comment, event_type=HistoryEventType.TRACKING))
     _flush(db)
     return item
 
 
-def correct_pending_item(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int, expected_version: int) -> PendingItem:
+def correct_pending_item(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int, expected_version: int, comment: str | None = None) -> PendingItem:
     item = _item(db, workspace_id=access.workspace.id, pending_item_id=pending_item_id, lock=True)
     _check_version(item, expected_version)
     if not item.is_active or item.progress != 100:
@@ -164,9 +165,21 @@ def correct_pending_item(db: Session, *, access: WorkspaceAccess, actor: User, p
     item.progress = progress
     item.completion_date = None
     item.lock_version += 1
-    db.add(PendingItemHistory(pending_item_id=item.id, workspace_id=item.workspace_id, actor_user_id=actor.id, progress=progress, comment=None, event_type=HistoryEventType.CORRECTION))
+    db.add(PendingItemHistory(pending_item_id=item.id, workspace_id=item.workspace_id, actor_user_id=actor.id, progress=progress, comment=comment, event_type=HistoryEventType.CORRECTION))
     _flush(db)
     return item
+
+
+def list_pending_item_history(db: Session, *, workspace_id: uuid.UUID, pending_item_id: uuid.UUID) -> list[tuple[PendingItemHistory, User]]:
+    _item(db, workspace_id=workspace_id, pending_item_id=pending_item_id)
+    return list(
+        db.execute(
+            select(PendingItemHistory, User)
+            .join(User, User.id == PendingItemHistory.actor_user_id)
+            .where(PendingItemHistory.pending_item_id == pending_item_id, PendingItemHistory.workspace_id == workspace_id)
+            .order_by(PendingItemHistory.recorded_at.desc(), PendingItemHistory.id.desc())
+        ).all()
+    )
 
 
 def deactivate_pending_item(db: Session, *, access: WorkspaceAccess, pending_item_id: uuid.UUID, expected_version: int) -> PendingItem:

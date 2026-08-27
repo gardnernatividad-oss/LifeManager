@@ -417,7 +417,17 @@ Assignment IDs sí pueden aparecer cuando el producto permite elegir Responsable
 
 Stage 2.11 verificó las siete DTOs de escritura activas de identidad: todas rechazan extras. Email, nombres, timezone, passwords y tokens tienen límites autoritativos antes de hashing, JWT, Turnstile o consultas. El envelope 422 nunca incluye el valor `input`; los cuerpos malformados/form/text fallan sin reflejar datos. Las respuestas activas son allowlists y una regresión OpenAPI impide publicar hashes, digests o session internals. El detalle de controles y diferimientos está en `docs/security/V2-Input-and-Output-Security.md`.
 
-## 14. Terminología
+## 14. Pendientes — Stage 6.2
+
+Además del detalle workspace-scoped, el contrato publica `GET
+/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/history` y
+extiende seguimiento/corrección con comentario opcional. Comentario-only usa
+la misma operación de seguimiento y crea exactamente un evento. No existen
+mutaciones directas del historial ni exposición de grafos ORM. Actor, tipo y
+timestamp son server-side; las escrituras conservan `lock_version` y la
+transacción pertenece a la ruta.
+
+## 15. Terminología
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.
 

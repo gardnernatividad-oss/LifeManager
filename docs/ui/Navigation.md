@@ -37,6 +37,12 @@ administra el catálogo reutilizable.
 Stage 5.4 confirma que el cambio de Workspace reinicia formularios, filtros y
 diálogos de alcance de esta pantalla; las query keys incluyen `workspace_id` y
 logout limpia la caché privada.
+`Planificación → Pendientes → >` abre una pantalla interna con flecha de
+retorno, resumen mobile-first, seguimiento inline e historial en tarjetas. El
+historial muestra fecha/hora, actor, avance, etiqueta Seguimiento/Corrección y
+comentario escapado. Las query keys incluyen Workspace y Pending; cambiar de
+Workspace desmonta el detalle y limpia comentarios no enviados.
+
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.
 - Tablas: Tareas, Actividades y Categorías.

@@ -43,6 +43,8 @@ from app.schemas.v2_task import (
 from app.schemas.v2_pending_item import (
     PendingItemCorrection,
     PendingItemCreate,
+    PendingItemHistoryListResponse,
+    PendingItemHistoryRead,
     PendingItemListResponse,
     PendingItemProgressUpdate,
     PendingItemReactivate,
@@ -73,6 +75,8 @@ __all__ = [
     "TaskVersionRequest",
     "PendingItemCorrection",
     "PendingItemCreate",
+    "PendingItemHistoryListResponse",
+    "PendingItemHistoryRead",
     "PendingItemListResponse",
     "PendingItemProgressUpdate",
     "PendingItemReactivate",

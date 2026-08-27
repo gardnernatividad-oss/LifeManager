@@ -61,7 +61,7 @@ El roadmap conservará exactamente estas columnas:
 | 5. Tareas | 5.3 | Gestión de ocurrencias/series, listado y experiencia responsive | Completado |
 | 5. Tareas | 5.4 | Autorización, pruebas y gate de Tareas | Completado |
 | 6. Pendientes | 6.1 | Planificación, ciclo, avance y cumplimiento de Pendientes | Completado |
-| 6. Pendientes | 6.2 | Historial, comentarios y detalle de Pendientes | Pendiente |
+| 6. Pendientes | 6.2 | Historial, comentarios y detalle de Pendientes | Completado |
 | 6. Pendientes | 6.3 | Listado, filtros y UX mobile-first de Pendientes | Pendiente |
 | 6. Pendientes | 6.4 | Autorización, pruebas y gate de Pendientes | Pendiente |
 | 7. Proyectos y Etapas | 7.1 | Gestión de Proyectos, liderazgo y ciclo general | Pendiente |

@@ -367,4 +367,5 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
                 ("POST", "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/correction"),
                 ("POST", "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/deactivate"),
                 ("POST", "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/reactivate"),
+                ("GET", "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/history"),
         }

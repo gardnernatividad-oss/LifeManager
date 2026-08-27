@@ -47,6 +47,12 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
 - una transferencia bloquea Workspace y membresías implicadas antes de cambiar propietario;
 - la privacidad de calendario se almacena en la membresía y autoriza la vista consolidada de la persona frente a ese Workspace.
 
+- Stage 6.2 mantiene la misma frontera para detalle, historial y comentarios:
+  cualquier membership `ACTIVE` del mismo Workspace `ACTIVE` puede operar
+  según las capacidades server-side. Owner no obtiene privilegio especial y
+  `GLOBAL_ADMIN` sin membership no tiene bypass. Historial y Pending se
+  resuelven siempre por `workspace_id + pending_item_id`.
+
 ## Arquitectura de enforcement V2
 
 - `CurrentUser` autentica y exige cuenta ACTIVE; `GlobalAdmin`, `ActiveWorkspaceMembership` y `WorkspaceOwner` son dependencies reutilizables.

@@ -11,6 +11,7 @@ import { HomePage } from "../pages/home/HomePage";
 import { ReviewPage } from "../pages/review/ReviewPage";
 import { PlanningTasksPage } from "../pages/planning/PlanningTasksPage";
 import { PlanningPendingItemsPage } from "../pages/planning/PlanningPendingItemsPage";
+import { PendingItemDetailPage } from "../pages/planning/PendingItemDetailPage";
 import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
@@ -56,6 +57,7 @@ export const appRouter = createBrowserRouter([
           { path: "/revision", element: <ReviewPage /> },
           { path: "/planificacion/tareas", element: <PlanningTasksPage /> },
           { path: "/planificacion/pendientes", element: <PlanningPendingItemsPage /> },
+          { path: "/planificacion/pendientes/:pendingItemId", element: <PendingItemDetailPage /> },
           { path: "/planificacion/proyectos", element: <PlanningProjectsPage /> },
           { path: "/tablas/tareas", element: <MasterTasksTablePage /> },
           { path: "/tablas/categorias", element: <CategoriesTablePage /> },

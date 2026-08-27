@@ -132,6 +132,15 @@ reactivación siguen en Stage 3.6.
 
 Tras completar Stage 3.3, el roadmap V2 fue reagrupado en bloques futuros más amplios y coherentes. La reorganización no elimina, simplifica ni desplaza funcionalidad fuera de V2: conserva requisitos funcionales, técnicos, de seguridad, UX/PWA, QA y publicación. La trazabilidad detallada se mantiene en [`V2-Roadmap-Regrouping-Traceability.md`](V2-Roadmap-Regrouping-Traceability.md).
 
+## Estado V2 de Pendientes
+
+Stages 6.1 y 6.2 implementan planificación, ciclo, avance, cumplimiento,
+detalle e historial cronológico de Pendientes. Los comentarios viven en
+historia append-only; `TRACKING` representa seguimiento normal y `CORRECTION`
+la reapertura explícita de un Finalizado. No existe descripción en PendingItem.
+Stage 6.3 conserva listado, filtros avanzados y su UX; Stage 6.4 conserva el
+gate final.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.

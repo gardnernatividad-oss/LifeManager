@@ -14,3 +14,5 @@ export interface V2PendingItem {
 export interface V2PendingItemList { items: V2PendingItem[]; total: number; page: number; page_size: number; total_pages: number; }
 export interface V2PendingItemCreate { category_id: string; responsible_user_id?: string; name: string; planned_date: string; }
 export interface V2PendingItemUpdate { category_id?: string; responsible_user_id?: string; name?: string; planned_date?: string; lock_version: number; }
+export interface V2PendingItemHistory { id: string; progress: number; comment: string | null; type: "TRACKING" | "CORRECTION"; actor_user_id: string; actor_display_name: string; recorded_at: string; }
+export interface V2PendingItemHistoryList { items: V2PendingItemHistory[]; }

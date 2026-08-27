@@ -159,6 +159,15 @@ Para Revisión, un Pendiente califica cuando está asignado al usuario actual, e
 
 En móvil se prioriza una representación vertical compacta. La información secundaria se abre mediante `>` en una página interna de detalle con flecha de retorno; no se expande debajo de una fila.
 
+Stage 6.2 expone el detalle interno y el historial append-only del Pendiente,
+ordenado del evento más reciente al más antiguo con desempate determinista.
+El comentario pertenece exclusivamente a una entrada de historial: puede
+acompañar un cambio de avance o guardarse solo, sin inventar un cambio. Un
+cambio normal crea `TRACKING`; la reapertura explícita de un Finalizado crea
+`CORRECTION`. No existe `description` en PendingItem. El Finalizado continúa
+read-only salvo corrección y el hard delete elegible elimina exclusivamente su
+historia dependiente.
+
 ## 6. Proyectos y Etapas
 
 Un Proyecto contiene información general y una colección de **Etapas**. En la interfaz no se usa Paso. El Proyecto incluye Vigencia, nombre, Categoría, Líder, fecha planificada, Avance, Estado, Cumplimiento, Detalle, fecha de cumplimiento y acciones.

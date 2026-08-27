@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from app.api.v2.dependencies import get_current_account, get_db, require_active_workspace_membership, require_usable_account
 from app.main import app
-from app.models import PendingItem, User, Workspace, WorkspaceMember
-from app.models.enums import WorkspaceKind
+from app.models import PendingItem, PendingItemHistory, User, Workspace, WorkspaceMember
+from app.models.enums import HistoryEventType, WorkspaceKind
 from app.schemas.v2_pending_item import PendingItemRead
 from app.services.v2_pending_item import PendingItemConflictError
 from app.services.v2_workspace import WorkspaceAccess
@@ -60,6 +60,17 @@ def test_progress_owns_transaction_and_uses_local_date(progress, projection, cli
     db.commit.assert_called_once()
 
 
+@patch("app.api.v2.pending_items.list_pending_item_history")
+def test_history_returns_safe_projection_without_writes(history, client) -> None:
+    http, db, user, *_ = client
+    history.return_value = [(PendingItemHistory(id=uuid.uuid4(), pending_item_id=ITEM_ID, workspace_id=WORKSPACE_ID, actor_user_id=USER_ID, progress=60, comment="Información", event_type=HistoryEventType.TRACKING, recorded_at=datetime(2026, 9, 1, tzinfo=timezone.utc)), user)]
+    response = http.get(f"/api/v2/workspaces/{WORKSPACE_ID}/pending-items/{ITEM_ID}/history")
+    assert response.status_code == 200
+    assert response.json()["items"][0]["comment"] == "Información" and response.json()["items"][0]["type"] == "TRACKING"
+    assert "global_role" not in response.text and "hashed_password" not in response.text
+    db.commit.assert_not_called(); db.flush.assert_not_called(); db.rollback.assert_not_called()
+
+
 @patch("app.api.v2.pending_items.update_pending_item", side_effect=PendingItemConflictError())
 def test_conflict_rolls_back_safely(update, client) -> None:
     http, db, *_ = client
@@ -86,4 +97,5 @@ def test_openapi_has_explicit_pending_surface_without_history_mutation() -> None
         "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/correction": {"post"},
         "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/deactivate": {"post"},
         "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/reactivate": {"post"},
+        "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}/history": {"get"},
     }

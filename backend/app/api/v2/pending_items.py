@@ -9,8 +9,8 @@ from app.api.v2.dependencies import ActiveWorkspaceMembership, SessionDependency
 from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import PendingItem, User
-from app.schemas.v2_pending_item import PendingItemCorrection, PendingItemCreate, PendingItemListResponse, PendingItemProgressUpdate, PendingItemReactivate, PendingItemRead, PendingItemUpdate, PendingItemVersion
-from app.services.v2_pending_item import PendingItemConflictError, PendingItemNotFoundError, PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, get_pending_item, list_pending_items, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
+from app.schemas.v2_pending_item import PendingItemCorrection, PendingItemCreate, PendingItemHistoryListResponse, PendingItemHistoryRead, PendingItemListResponse, PendingItemProgressUpdate, PendingItemReactivate, PendingItemRead, PendingItemUpdate, PendingItemVersion
+from app.services.v2_pending_item import PendingItemConflictError, PendingItemNotFoundError, PendingItemReferenceUnavailableError, correct_pending_item, create_pending_item, deactivate_pending_item, delete_pending_item, get_pending_item, list_pending_item_history, list_pending_items, pending_item_projection, reactivate_pending_item, update_pending_item, update_pending_progress
 
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/pending-items", tags=["V2 Pending Items"])
@@ -75,6 +75,16 @@ def detail(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, db: SessionDepen
         _raise(error)
 
 
+@router.get("/{pending_item_id}/history", response_model=PendingItemHistoryListResponse)
+def history(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> PendingItemHistoryListResponse:
+    del account, access
+    try:
+        rows = list_pending_item_history(db, workspace_id=workspace_id, pending_item_id=pending_item_id)
+    except PendingItemNotFoundError as error:
+        _raise(error)
+    return PendingItemHistoryListResponse(items=[PendingItemHistoryRead(id=entry.id, progress=entry.progress, comment=entry.comment, type=entry.event_type, actor_user_id=actor.id, actor_display_name=f"{actor.first_name} {actor.last_name}".strip(), recorded_at=entry.recorded_at) for entry, actor in rows])
+
+
 @router.patch("/{pending_item_id}", response_model=PendingItemRead)
 def patch(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, item_in: PendingItemUpdate, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> PendingItemRead:
     del workspace_id
@@ -86,14 +96,14 @@ def patch(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, item_in: PendingI
 def progress(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, item_in: PendingItemProgressUpdate, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> PendingItemRead:
     del workspace_id
     today = local_today(account.timezone)
-    item = _write(db, lambda: update_pending_progress(db, access=access, actor=account, pending_item_id=pending_item_id, progress=item_in.progress, expected_version=item_in.lock_version, local_date=today))
+    item = _write(db, lambda: update_pending_progress(db, access=access, actor=account, pending_item_id=pending_item_id, progress=item_in.progress, expected_version=item_in.lock_version, local_date=today, comment=item_in.comment))
     return _read(db, item, today)
 
 
 @router.post("/{pending_item_id}/correction", response_model=PendingItemRead)
 def correction(workspace_id: uuid.UUID, pending_item_id: uuid.UUID, item_in: PendingItemCorrection, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> PendingItemRead:
     del workspace_id
-    item = _write(db, lambda: correct_pending_item(db, access=access, actor=account, pending_item_id=pending_item_id, progress=item_in.progress, expected_version=item_in.lock_version))
+    item = _write(db, lambda: correct_pending_item(db, access=access, actor=account, pending_item_id=pending_item_id, progress=item_in.progress, expected_version=item_in.lock_version, comment=item_in.comment))
     return _read(db, item, local_today(account.timezone))
 
 

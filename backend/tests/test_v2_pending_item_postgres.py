@@ -58,19 +58,31 @@ def test_pending_lifecycle_history_and_cascade_on_disposable_postgres(monkeypatc
             db.rollback()
 
             first = db.get(PendingItem, first.id)
-            update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=50, expected_version=first.lock_version, local_date=date(2026, 9, 8))
+            update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=50, comment="Primer avance", expected_version=first.lock_version, local_date=date(2026, 9, 8))
+            db.commit()
+            first = db.get(PendingItem, first.id)
+            update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=None, comment="Comentario sin cambio", expected_version=first.lock_version, local_date=date(2026, 9, 8))
             db.commit()
             first = db.get(PendingItem, first.id)
             update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=100, expected_version=first.lock_version, local_date=date(2026, 9, 9))
             db.commit()
             assert first.is_active is True and first.completion_date == date(2026, 9, 9)
             first = db.get(PendingItem, first.id)
-            correct_pending_item(db, access=access, actor=owner, pending_item_id=first.id, progress=0, expected_version=first.lock_version)
+            correct_pending_item(db, access=access, actor=owner, pending_item_id=first.id, progress=0, comment="Corrección", expected_version=first.lock_version)
             db.commit()
             assert first.completion_date is None and first.progress == 0
+            first = db.get(PendingItem, first.id)
+            update_pending_progress(db, access=access, actor=owner, pending_item_id=first.id, progress=100, expected_version=first.lock_version, local_date=date(2026, 9, 11))
+            db.commit()
+            assert first.completion_date == date(2026, 9, 11)
+            first = db.get(PendingItem, first.id)
+            correct_pending_item(db, access=access, actor=owner, pending_item_id=first.id, progress=0, expected_version=first.lock_version)
+            db.commit()
             histories = db.scalars(sa.select(PendingItemHistory).where(PendingItemHistory.pending_item_id == first.id).order_by(PendingItemHistory.recorded_at, PendingItemHistory.id)).all()
-            assert [row.event_type for row in histories] == ["TRACKING", "TRACKING", "CORRECTION"]
-            assert [row.progress for row in histories] == [50, 100, 0]
+            assert [row.event_type for row in histories] == ["TRACKING", "TRACKING", "TRACKING", "CORRECTION", "TRACKING", "CORRECTION"]
+            assert [row.progress for row in histories] == [50, 50, 100, 0, 100, 0]
+            assert histories[0].comment == "Primer avance" and histories[1].comment == "Comentario sin cambio"
+            assert all(row.actor_user_id == owner_id and row.recorded_at is not None for row in histories)
 
             first = db.get(PendingItem, first.id)
             delete_pending_item(db, access=access, pending_item_id=first.id, expected_version=first.lock_version)

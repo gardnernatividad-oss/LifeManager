@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import * as api from "../../api/v2PendingItemApi";
 import * as workspaceApi from "../../api/workspaceApi";
 import { PlanningPendingItemsPage } from "./PlanningPendingItemsPage";
@@ -14,7 +15,7 @@ const auth = { user: { id: "user-1", email: "ana@example.com", first_name: "Ana"
 vi.mock("../../hooks/useAuth", () => ({ useAuth: () => auth }));
 const item = { id: "pending-1", workspace_id: "workspace-a", category_id: "category-1", category_name: "Casa", responsible_user_id: "user-1", responsible_display_name: "Ana Uno", responsible_email: "ana@example.com", name: "Renovar documento", is_active: true, planned_date: "2026-08-20", progress: 20, state: "EN_PROCESO" as const, completion_date: null, compliance: "ATRASADO" as const, compliance_detail_days: 6, lock_version: 7, can_edit: true, can_update_progress: true, can_correct: false, can_deactivate: true, can_reactivate: false, can_delete: false, created_at: "", updated_at: "" };
 
-function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return { ...render(<QueryClientProvider client={client}><PlanningPendingItemsPage /></QueryClientProvider>), client }; }
+function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return { ...render(<QueryClientProvider client={client}><MemoryRouter><PlanningPendingItemsPage /></MemoryRouter></QueryClientProvider>), client }; }
 
 describe("V2 PlanningPendingItemsPage", () => {
   beforeEach(() => { auth.workspace = { id: "workspace-a", name: "Familia", kind: "SHARED", timezone: "America/Lima" }; vi.clearAllMocks(); vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: "user-1", display_name: "Ana Uno", email: "ana@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }]); vi.mocked(api.listV2PendingItems).mockResolvedValue({ items: [item], total: 1, page: 1, page_size: 25, total_pages: 1 }); vi.mocked(api.createV2PendingItem).mockResolvedValue(item); vi.mocked(api.updateV2PendingItem).mockResolvedValue(item); vi.mocked(api.updateV2PendingItemProgress).mockResolvedValue(item); vi.mocked(api.correctV2PendingItem).mockResolvedValue(item); vi.mocked(api.deactivateV2PendingItem).mockResolvedValue(item); vi.mocked(api.reactivateV2PendingItem).mockResolvedValue(item); vi.mocked(api.deleteV2PendingItem).mockResolvedValue(); });
