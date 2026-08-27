@@ -241,7 +241,7 @@ Estado y Cumplimiento son derivados. El comentario corriente no se guarda en Pen
 
 ### 8.2 `pending_item_history`
 
-`id UUID PK`, `pending_item_id UUID NOT NULL FK pending_items RESTRICT`, `workspace_id UUID NOT NULL`, `actor_user_id UUID NOT NULL`, `progress SMALLINT NOT NULL`, `comment TEXT NULL`, `event_type VARCHAR(16) NOT NULL`, `recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()`.
+`id UUID PK`, `pending_item_id UUID NOT NULL FK pending_items CASCADE`, `workspace_id UUID NOT NULL`, `actor_user_id UUID NOT NULL`, `progress SMALLINT NOT NULL`, `comment TEXT NULL`, `event_type VARCHAR(16) NOT NULL`, `recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()`.
 
 - FKs compuestas preservan Workspace para PendingItem y actor.
 - progreso 0–100; `event_type IN ('TRACKING','CORRECTION')`.

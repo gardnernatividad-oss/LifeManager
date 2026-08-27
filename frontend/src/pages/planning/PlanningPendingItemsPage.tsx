@@ -1,56 +1,74 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { createPlanningPendingItem, listAllCategoryOptions, listPlanningPendingItems, updatePlanningPendingItem } from "../../api/planningPendingItemApi";
+import { CategorySelector } from "../../components/common/V2CatalogSelector";
 import { queryKeys } from "../../api/queryKeys";
-import type { PendingItemListParams, PendingItemUpdatePayload, PlanningPendingItem } from "../../types/planningPendingItem";
+import { listWorkspaceMembers } from "../../api/workspaceApi";
+import { correctV2PendingItem, createV2PendingItem, deactivateV2PendingItem, deleteV2PendingItem, listV2PendingItems, reactivateV2PendingItem, updateV2PendingItem, updateV2PendingItemProgress } from "../../api/v2PendingItemApi";
+import { useAuth } from "../../hooks/useAuth";
+import type { V2PendingItem } from "../../types/v2PendingItem";
+import type { WorkspaceSummary } from "../../types/auth";
 import { formatShortCalendarDate } from "../../utils/localizedDate";
 
-interface FormState { categoryId: string; name: string; isActive: boolean; plannedDate: string }
-const emptyForm: FormState = { categoryId: "", name: "", isActive: true, plannedDate: "" };
-const conflictMessage = "El Pendiente cambió desde la última carga. Actualizamos el registro; vuelve a intentarlo.";
-
-function valid(form: FormState): string | null {
-  if (!form.categoryId || !form.name.trim()) return "Completa la Categoría y el nombre.";
-  if (form.isActive && !form.plannedDate) return "Un Pendiente activo requiere fecha planificada.";
-  return null;
-}
+const safeError = (error: unknown) => axios.isAxiosError(error) && error.response?.status === 409
+  ? "El Pendiente cambió desde la última carga. Actualizamos el registro; vuelve a intentarlo."
+  : "No pudimos guardar el Pendiente.";
 
 export function PlanningPendingItemsPage() {
+  const { workspace, user } = useAuth();
+  if (!workspace || !user) return <section><h1>Planificación · Pendientes</h1><p>Selecciona un espacio.</p></section>;
+  return <WorkspacePendingItems key={workspace.id} workspace={workspace} userId={user.id} />;
+}
+
+function WorkspacePendingItems({ workspace, userId }: { workspace: WorkspaceSummary; userId: string }) {
   const client = useQueryClient();
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [editing, setEditing] = useState<(FormState & { id: string; lockVersion: number }) | null>(null);
-  const [params, setParams] = useState<PendingItemListParams>({ page: 1, page_size: 25 });
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const categories = useQuery({ queryKey: queryKeys.categoryOptions, queryFn: listAllCategoryOptions });
-  const items = useQuery({ queryKey: queryKeys.planningPendingItems(params), queryFn: () => listPlanningPendingItems(params) });
+  const workspaceId = workspace.id;
+  const shared = workspace.kind === "SHARED";
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [categoryId, setCategoryId] = useState("");
+  const [responsibleId, setResponsibleId] = useState("");
+  const [name, setName] = useState("");
+  const [plannedDate, setPlannedDate] = useState("");
+  const [editing, setEditing] = useState<V2PendingItem | null>(null);
+  const [progressing, setProgressing] = useState<V2PendingItem | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [reactivating, setReactivating] = useState<V2PendingItem | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  async function refreshRelated() { await Promise.all([client.invalidateQueries({ queryKey: queryKeys.planningPendingItemsRoot }), client.invalidateQueries({ queryKey: queryKeys.home }), client.invalidateQueries({ queryKey: queryKeys.review }), client.invalidateQueries({ queryKey: queryKeys.pendingItemReportsRoot })]); }
-  const create = useMutation({ mutationFn: () => createPlanningPendingItem({ category_id: form.categoryId, name: form.name.trim(), is_active: form.isActive, planned_date: form.isActive ? form.plannedDate : null }), onSuccess: async () => { setForm(emptyForm); setError(null); setNotice("Pendiente creado."); await refreshRelated(); }, onError: (caught) => { setNotice(null); setError(axios.isAxiosError(caught) && caught.response?.status === 409 ? "No se pudo crear porque la información relacionada cambió." : "No pudimos crear el Pendiente."); } });
-  const update = useMutation({ mutationFn: (payload: PendingItemUpdatePayload) => updatePlanningPendingItem(editing!.id, payload), onSuccess: async () => { setEditing(null); setError(null); setNotice("Pendiente actualizado."); await refreshRelated(); }, onError: async (caught) => { setEditing(null); setNotice(null); setError(axios.isAxiosError(caught) && caught.response?.status === 409 ? conflictMessage : "No pudimos actualizar el Pendiente."); await client.invalidateQueries({ queryKey: queryKeys.planningPendingItemsRoot }); } });
+  const items = useQuery({ queryKey: queryKeys.v2PendingItems(workspaceId, page, pageSize), queryFn: () => listV2PendingItems(workspaceId, page, pageSize), enabled: Boolean(workspaceId) });
+  const members = useQuery({ queryKey: queryKeys.workspaceMembers(workspaceId), queryFn: () => listWorkspaceMembers(workspaceId), enabled: Boolean(workspaceId && shared) });
+  const refresh = async () => client.invalidateQueries({ queryKey: queryKeys.v2PendingItemsRoot(workspaceId) });
+  const mutation = useMutation({ mutationFn: (operation: () => Promise<unknown>) => operation(), onSuccess: async () => { setEditing(null); setProgressing(null); setReactivating(null); setFeedback("Cambios guardados."); await refresh(); }, onError: async (error) => { setEditing(null); setProgressing(null); setReactivating(null); setFeedback(safeError(error)); await refresh(); } });
 
-  function submitCreate(event: FormEvent) { event.preventDefault(); const issue = valid(form); if (issue) return setError(issue); create.mutate(); }
-  function beginEdit(item: PlanningPendingItem) { setEditing({ id: item.id, lockVersion: item.lock_version, categoryId: item.category_id, name: item.name, isActive: item.is_active, plannedDate: item.planned_date ?? "" }); setError(null); }
-  function submitEdit(event: FormEvent) { event.preventDefault(); if (!editing) return; const issue = valid(editing); if (issue) return setError(issue); update.mutate({ category_id: editing.categoryId, name: editing.name.trim(), is_active: editing.isActive, planned_date: editing.isActive ? editing.plannedDate : null, lock_version: editing.lockVersion }); }
-  const categoryList = categories.data ?? [];
+  const responsible = shared ? responsibleId : userId;
+  function submitCreate(event: FormEvent) {
+    event.preventDefault(); setFeedback(null);
+    if (!categoryId || !name.trim() || !plannedDate || !responsible) { setFeedback("Completa los campos requeridos."); return; }
+    mutation.mutate(() => createV2PendingItem(workspaceId, { category_id: categoryId, responsible_user_id: shared ? responsible : undefined, name: name.trim(), planned_date: plannedDate }).then((value) => { setName(""); setPlannedDate(""); return value; }));
+  }
 
   return <section className="pending-planning-page">
     <header><p className="eyebrow">Planificación</p><h1>Planificación · Pendientes</h1></header>
-    <section className="pending-planning-panel" aria-labelledby="pending-create-title"><h2 id="pending-create-title">Crear Pendiente</h2>
-      {categories.isPending ? <p role="status">Cargando Categorías…</p> : categories.isError ? <div role="alert"><p>No pudimos cargar las Categorías.</p><button className="secondary-button" type="button" onClick={() => void categories.refetch()}>Reintentar</button></div> : categoryList.length === 0 ? <p>Aún no hay Categorías configuradas en Tablas &gt; Categorías.</p> : <form className="pending-planning-form" onSubmit={submitCreate}>
-        <label>Categoría<select required value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}><option value="">Selecciona una Categoría</option>{categoryList.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-        <label>Nombre<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <label>Vigencia<select value={form.isActive ? "active" : "inactive"} onChange={(e) => setForm({ ...form, isActive: e.target.value === "active", plannedDate: e.target.value === "active" ? form.plannedDate : "" })}><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label>
-        <label>Fecha planificada<input disabled={!form.isActive} required={form.isActive} type="date" value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} /></label>
-        <button className="primary-button" disabled={create.isPending} type="submit">{create.isPending ? "Creando…" : "Crear"}</button>
-      </form>}
+    <section className="pending-planning-panel"><h2>Crear Pendiente</h2><form className="pending-planning-form" onSubmit={submitCreate}>
+      <CategorySelector workspaceId={workspaceId} value={categoryId} onChange={setCategoryId} required />
+      <label>Nombre<input required maxLength={255} value={name} onChange={(event) => setName(event.target.value)} /></label>
+      {shared ? <label>Responsable<select required value={responsibleId} onChange={(event) => setResponsibleId(event.target.value)}><option value="">Selecciona una persona</option>{(members.data ?? []).filter((member) => member.status === "ACTIVE").map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}
+      <label>Fecha planificada<input required type="date" value={plannedDate} onChange={(event) => setPlannedDate(event.target.value)} /></label>
+      <button className="primary-button" disabled={mutation.isPending} type="submit">Crear</button>
+    </form></section>
+    <section className="pending-planning-panel"><h2>Registro de Pendientes</h2>
+      {feedback ? <p className="review-notice" role="status">{feedback}</p> : null}
+      {items.isPending ? <p role="status">Cargando Pendientes…</p> : items.isError ? <div role="alert"><p>No pudimos cargar los Pendientes.</p><button type="button" onClick={() => void items.refetch()}>Reintentar</button></div> : items.data.items.length === 0 ? <p className="review-empty">No hay Pendientes.</p> : <div className="v2-pending-list">{items.data.items.map((item) => <PendingRow key={item.id} item={item} mutationPending={mutation.isPending} onEdit={() => setEditing(item)} onProgress={() => { setProgressing(item); setProgress(item.progress); }} onDeactivate={() => mutation.mutate(() => deactivateV2PendingItem(workspaceId, item.id, item.lock_version))} onReactivate={() => setReactivating(item)} onDelete={() => { if (window.confirm(`¿Eliminar ${item.name}?`)) mutation.mutate(() => deleteV2PendingItem(workspaceId, item.id, item.lock_version)); }} />)}</div>}
+      {items.data ? <div className="planning-pagination"><span>Página {items.data.page} de {Math.max(1, items.data.total_pages)}</span><label>Por página<select value={pageSize} onChange={(event) => { setPage(1); setPageSize(Number(event.target.value)); }}><option>25</option><option>50</option><option>100</option></select></label><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</button><button type="button" disabled={page >= items.data.total_pages} onClick={() => setPage(page + 1)}>Siguiente</button></div> : null}
     </section>
-    <section className="pending-planning-panel" aria-labelledby="pending-register-title"><h2 id="pending-register-title">Registro de Pendientes</h2>
-      <div className="pending-planning-filters"><label>Vigencia<select value={params.is_active === undefined ? "" : String(params.is_active)} onChange={(e) => setParams({ ...params, page: 1, is_active: e.target.value === "" ? undefined : e.target.value === "true" })}><option value="">Todas</option><option value="true">Activos</option><option value="false">Inactivos</option></select></label><label>Categoría<select value={params.category_id ?? ""} onChange={(e) => setParams({ ...params, page: 1, category_id: e.target.value || undefined })}><option value="">Todas</option>{categoryList.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Desde<input type="date" value={params.planned_from ?? ""} onChange={(e) => setParams({ ...params, page: 1, planned_from: e.target.value || undefined })} /></label><label>Hasta<input type="date" value={params.planned_to ?? ""} onChange={(e) => setParams({ ...params, page: 1, planned_to: e.target.value || undefined })} /></label></div>
-      {error ? <p className="review-notice review-notice--error" role="alert">{error}</p> : null}{notice ? <p className="review-notice review-notice--success" role="status">{notice}</p> : null}
-      {items.isPending ? <div className="planning-loading" role="status">Cargando Pendientes…</div> : items.isError ? <div role="alert"><p>No pudimos cargar los Pendientes.</p><button className="secondary-button" type="button" onClick={() => void items.refetch()}>Reintentar</button></div> : items.data.items.length === 0 ? <p className="review-empty">No hay Pendientes para los filtros seleccionados.</p> : <div className="pending-planning-table" role="table" aria-label="Registro de Pendientes"><div className="pending-planning-row pending-planning-row--head" role="row"><span role="columnheader">Vigencia</span><span role="columnheader">Fecha planificada</span><span role="columnheader">Pendiente</span><span role="columnheader">Categoría</span><span role="columnheader">Acciones</span></div>{items.data.items.map((item) => <div className="pending-planning-row" role="row" key={item.id}>{editing?.id === item.id ? <form className="pending-planning-edit" onSubmit={submitEdit}><label><span className="sr-only">Vigencia de {item.name}</span><select aria-label={`Vigencia de ${item.name}`} value={editing.isActive ? "active" : "inactive"} onChange={(e) => setEditing({ ...editing, isActive: e.target.value === "active", plannedDate: e.target.value === "active" ? editing.plannedDate : "" })}><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label><span className="sr-only">Fecha planificada de {item.name}</span><input aria-label={`Fecha planificada de ${item.name}`} disabled={!editing.isActive} required={editing.isActive} type="date" value={editing.plannedDate} onChange={(e) => setEditing({ ...editing, plannedDate: e.target.value })} /></label><label><span className="sr-only">Nombre de {item.name}</span><input aria-label={`Nombre de ${item.name}`} required value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></label><label><span className="sr-only">Categoría de {item.name}</span><select aria-label={`Categoría de ${item.name}`} value={editing.categoryId} onChange={(e) => setEditing({ ...editing, categoryId: e.target.value })}>{categoryList.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><span className="pending-planning-actions"><button aria-label={`Guardar ${item.name}`} type="submit">✓</button><button aria-label={`Cancelar edición de ${item.name}`} type="button" onClick={() => setEditing(null)}>×</button></span></form> : <><span role="cell">{item.is_active ? "Activo" : "Inactivo"}</span><span role="cell">{item.planned_date ? formatShortCalendarDate(item.planned_date) : "—"}</span><strong role="cell">{item.name}</strong><span role="cell">{item.category.name}</span><span role="cell" className="pending-planning-actions"><button aria-label={`Editar ${item.name}`} type="button" onClick={() => beginEdit(item)}>✎</button></span></>}</div>)}</div>}
-      {items.data ? <div className="planning-pagination"><span>Página {items.data.page} de {Math.max(1, items.data.total_pages)}</span><label>Por página<select value={params.page_size} onChange={(e) => setParams({ ...params, page: 1, page_size: Number(e.target.value) })}>{[25,50,100].map((size) => <option key={size}>{size}</option>)}</select></label><button disabled={params.page <= 1} type="button" onClick={() => setParams({ ...params, page: params.page - 1 })}>Anterior</button><button disabled={params.page >= items.data.total_pages} type="button" onClick={() => setParams({ ...params, page: params.page + 1 })}>Siguiente</button></div> : null}
-    </section>
+    {editing ? <dialog open><form onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); mutation.mutate(() => updateV2PendingItem(workspaceId, editing.id, { name: String(data.get("name")), category_id: editing.category_id, responsible_user_id: shared ? String(data.get("responsible")) : editing.responsible_user_id, planned_date: String(data.get("date")), lock_version: editing.lock_version })); }}><h2>Editar {editing.name}</h2><CategorySelector workspaceId={workspaceId} currentId={editing.category_id} value={editing.category_id} onChange={(value) => setEditing({ ...editing, category_id: value })} required /><label>Nombre<input name="name" defaultValue={editing.name} required /></label>{shared ? <label>Responsable<select name="responsible" defaultValue={editing.responsible_user_id}>{(members.data ?? []).filter((member) => member.status === "ACTIVE").map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}<label>Fecha planificada<input name="date" type="date" defaultValue={editing.planned_date ?? ""} required /></label><button>Guardar</button><button type="button" onClick={() => setEditing(null)}>Cancelar</button></form></dialog> : null}
+    {progressing ? <dialog open><form onSubmit={(event) => { event.preventDefault(); mutation.mutate(() => progressing.can_correct ? correctV2PendingItem(workspaceId, progressing.id, progress, progressing.lock_version) : updateV2PendingItemProgress(workspaceId, progressing.id, progress, progressing.lock_version)); }}><h2>{progressing.can_correct ? "Corregir" : "Actualizar avance"} {progressing.name}</h2>{progressing.can_correct ? <p>La corrección reabre el Pendiente y conserva el historial.</p> : null}<label>Avance<input type="number" min="0" max={progressing.can_correct ? 99 : 100} value={progress} onChange={(event) => setProgress(Number(event.target.value))} /></label><button>Guardar</button><button type="button" onClick={() => setProgressing(null)}>Cancelar</button></form></dialog> : null}
+    {reactivating ? <dialog open><form onSubmit={(event) => { event.preventDefault(); const date = String(new FormData(event.currentTarget).get("date")); mutation.mutate(() => reactivateV2PendingItem(workspaceId, reactivating.id, date, reactivating.lock_version)); }}><h2>Reactivar {reactivating.name}</h2><label>Nueva fecha planificada<input name="date" type="date" required /></label><button>Reactivar</button><button type="button" onClick={() => setReactivating(null)}>Cancelar</button></form></dialog> : null}
   </section>;
+}
+
+function PendingRow({ item, mutationPending, onEdit, onProgress, onDeactivate, onReactivate, onDelete }: { item: V2PendingItem; mutationPending: boolean; onEdit: () => void; onProgress: () => void; onDeactivate: () => void; onReactivate: () => void; onDelete: () => void }) {
+  const detail = item.compliance_detail_days === null ? "—" : `${item.compliance_detail_days} día(s)`;
+  return <article className="v2-pending-row"><div><strong>{item.name}</strong><small>{item.category_name} · {item.responsible_display_name}</small></div><span>{item.planned_date ? formatShortCalendarDate(item.planned_date) : "—"}</span><span>{item.progress}% · {item.state}</span><span>{item.compliance ?? "—"} · {detail}</span><div className="pending-planning-actions">{item.can_edit ? <button type="button" disabled={mutationPending} onClick={onEdit}>Editar</button> : null}{item.can_update_progress ? <button type="button" disabled={mutationPending} onClick={onProgress}>Avance</button> : null}{item.can_correct ? <button type="button" aria-label={`Corregir ${item.name}`} disabled={mutationPending} onClick={onProgress}>Corregir</button> : null}{item.can_deactivate ? <button type="button" disabled={mutationPending} onClick={onDeactivate}>Desactivar</button> : null}{item.can_reactivate ? <button type="button" disabled={mutationPending} onClick={onReactivate}>Reactivar</button> : null}{item.can_delete ? <button type="button" disabled={mutationPending} onClick={onDelete}>Eliminar</button> : null}</div></article>;
 }

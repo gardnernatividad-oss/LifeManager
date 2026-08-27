@@ -40,6 +40,16 @@ from app.schemas.v2_task import (
     TaskUpdate,
     TaskVersionRequest,
 )
+from app.schemas.v2_pending_item import (
+    PendingItemCorrection,
+    PendingItemCreate,
+    PendingItemListResponse,
+    PendingItemProgressUpdate,
+    PendingItemReactivate,
+    PendingItemRead,
+    PendingItemUpdate,
+    PendingItemVersion,
+)
 
 __all__ = [
     "CatalogItemCreate",
@@ -61,6 +71,14 @@ __all__ = [
     "TaskRecurrence",
     "TaskUpdate",
     "TaskVersionRequest",
+    "PendingItemCorrection",
+    "PendingItemCreate",
+    "PendingItemListResponse",
+    "PendingItemProgressUpdate",
+    "PendingItemReactivate",
+    "PendingItemRead",
+    "PendingItemUpdate",
+    "PendingItemVersion",
     "AdminAccountSummary",
     "AdminRegistrationList",
     "EmailVerificationRequest",

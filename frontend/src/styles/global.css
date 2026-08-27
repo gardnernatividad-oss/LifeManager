@@ -1576,6 +1576,9 @@ div.settings-toggles { border: 0; padding: 0; }
 .pending-planning-actions button { min-width: 2.4rem; min-height: 2.4rem; border: 1px solid var(--color-border); border-radius: 0.45rem; color: var(--color-primary); background: var(--color-surface); font-weight: 750; }
 .pending-planning-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
 .pending-planning-pagination > div { display: flex; gap: 0.5rem; }
+.v2-pending-list { display: grid; gap: 0.65rem; margin-top: 1rem; }
+.v2-pending-row { display: grid; grid-template-columns: minmax(12rem, 1.6fr) repeat(3, minmax(8rem, 1fr)) auto; align-items: center; gap: 0.75rem; padding: 0.8rem; border: 1px solid var(--color-border); border-radius: 0.65rem; }
+.v2-pending-row small { display: block; margin-top: 0.2rem; color: var(--color-muted); }
 .project-planning-page { display: grid; gap: 1.25rem; }
 .project-planning-page header h1, .project-planning-panel h2 { margin: 0.15rem 0; }
 .project-planning-panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }
@@ -1926,6 +1929,7 @@ div.settings-toggles { border: 0; padding: 0; }
 
   .pending-planning-form, .pending-planning-filters { grid-template-columns: 1fr; }
   .pending-planning-pagination { align-items: stretch; flex-direction: column; }
+  .v2-pending-row { grid-template-columns: 1fr; }
   .project-planning-step-fields { grid-template-columns: 1fr; }
   .tracking-task-filters { grid-template-columns: 1fr; }
   .pending-tracking-filters { grid-template-columns: 1fr; }

@@ -323,7 +323,7 @@ class PendingItem(BaseEntity):
 class PendingItemHistory(Base):
     __tablename__ = "pending_item_history"
     __table_args__ = (
-        ForeignKeyConstraint(["pending_item_id", "workspace_id"], ["pending_items.id", "pending_items.workspace_id"], name="fk_pending_item_history_item_workspace", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["pending_item_id", "workspace_id"], ["pending_items.id", "pending_items.workspace_id"], name="fk_pending_item_history_item_workspace", ondelete="CASCADE"),
         ForeignKeyConstraint(["workspace_id", "actor_user_id"], MEMBERSHIP_FK, name="fk_pending_item_history_actor_membership", ondelete="RESTRICT"),
         CheckConstraint("progress BETWEEN 0 AND 100", name="ck_pending_item_history_progress_range"),
         _enum_check("event_type", HistoryEventType, "ck_pending_item_history_event_type_valid"),

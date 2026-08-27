@@ -1,115 +1,33 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as api from "../../api/planningPendingItemApi";
-import type { PendingItemListResponse, PlanningPendingItem } from "../../types/planningPendingItem";
+import * as api from "../../api/v2PendingItemApi";
+import * as workspaceApi from "../../api/workspaceApi";
 import { PlanningPendingItemsPage } from "./PlanningPendingItemsPage";
 
-vi.mock("../../api/planningPendingItemApi", () => ({ listAllCategoryOptions: vi.fn(), listPlanningPendingItems: vi.fn(), createPlanningPendingItem: vi.fn(), updatePlanningPendingItem: vi.fn() }));
+vi.mock("../../api/v2PendingItemApi", () => ({ listV2PendingItems: vi.fn(), createV2PendingItem: vi.fn(), updateV2PendingItem: vi.fn(), updateV2PendingItemProgress: vi.fn(), correctV2PendingItem: vi.fn(), deactivateV2PendingItem: vi.fn(), reactivateV2PendingItem: vi.fn(), deleteV2PendingItem: vi.fn() }));
+vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
+vi.mock("../../components/common/V2CatalogSelector", () => ({ CategorySelector: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <label>Categoría<select aria-label="Categoría" value={value} onChange={(event) => onChange(event.target.value)}><option value="">Selecciona</option><option value="category-1">Casa</option></select></label> }));
 
-const categories = [{ id: "category-1", name: "Personal", created_at: "", updated_at: "" }, { id: "category-2", name: "Salud", created_at: "", updated_at: "" }];
-const item: PlanningPendingItem = { id: "pending-1", category_id: "category-1", category: { id: "category-1", name: "Personal" }, name: "Renovar documento", is_active: true, planned_date: "2026-08-20", progress: 20, state: "IN_PROGRESS", completion_date: null, compliance: null, detail_days: null, comment: "privado", lock_version: 7, created_at: "", updated_at: "" };
-const page: PendingItemListResponse = { items: [item], total: 30, page: 1, page_size: 25, total_pages: 2 };
+const auth = { user: { id: "user-1", email: "ana@example.com", first_name: "Ana", last_name: "Uno", timezone: "America/Lima" }, workspace: { id: "workspace-a", name: "Familia", kind: "SHARED" as "SHARED" | "PERSONAL", timezone: "America/Lima" } };
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => auth }));
+const item = { id: "pending-1", workspace_id: "workspace-a", category_id: "category-1", category_name: "Casa", responsible_user_id: "user-1", responsible_display_name: "Ana Uno", responsible_email: "ana@example.com", name: "Renovar documento", is_active: true, planned_date: "2026-08-20", progress: 20, state: "EN_PROCESO" as const, completion_date: null, compliance: "ATRASADO" as const, compliance_detail_days: 6, lock_version: 7, can_edit: true, can_update_progress: true, can_correct: false, can_deactivate: true, can_reactivate: false, can_delete: false, created_at: "", updated_at: "" };
 
-function renderPage() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><PlanningPendingItemsPage /></QueryClientProvider>);
-  return client;
-}
+function renderPage() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return { ...render(<QueryClientProvider client={client}><PlanningPendingItemsPage /></QueryClientProvider>), client }; }
 
-describe("PlanningPendingItemsPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(api.listAllCategoryOptions).mockResolvedValue(categories);
-    vi.mocked(api.listPlanningPendingItems).mockResolvedValue(page);
-    vi.mocked(api.createPlanningPendingItem).mockResolvedValue(item);
-    vi.mocked(api.updatePlanningPendingItem).mockResolvedValue(item);
-  });
+describe("V2 PlanningPendingItemsPage", () => {
+  beforeEach(() => { auth.workspace = { id: "workspace-a", name: "Familia", kind: "SHARED", timezone: "America/Lima" }; vi.clearAllMocks(); vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: "user-1", display_name: "Ana Uno", email: "ana@example.com", role: "Miembro", status: "ACTIVE", joined_at: "", ended_at: null }]); vi.mocked(api.listV2PendingItems).mockResolvedValue({ items: [item], total: 1, page: 1, page_size: 25, total_pages: 1 }); vi.mocked(api.createV2PendingItem).mockResolvedValue(item); vi.mocked(api.updateV2PendingItem).mockResolvedValue(item); vi.mocked(api.updateV2PendingItemProgress).mockResolvedValue(item); vi.mocked(api.correctV2PendingItem).mockResolvedValue(item); vi.mocked(api.deactivateV2PendingItem).mockResolvedValue(item); vi.mocked(api.reactivateV2PendingItem).mockResolvedValue(item); vi.mocked(api.deleteV2PendingItem).mockResolvedValue(); });
 
-  it("renders the Planning register without Tracking or deletion controls", async () => {
-    renderPage();
-    const register = await screen.findByRole("table", { name: "Registro de Pendientes" });
-    expect(within(register).getByText("Renovar documento")).toBeInTheDocument();
-    for (const heading of ["Vigencia", "Fecha planificada", "Pendiente", "Categoría", "Acciones"]) expect(within(register).getByRole("columnheader", { name: heading })).toBeInTheDocument();
-    expect(screen.queryByText("privado")).not.toBeInTheDocument();
-    expect(screen.queryByText("20")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /eliminar/i })).not.toBeInTheDocument();
-  });
+  it("creates in the active Shared Workspace with an explicit responsible member", async () => { const user = userEvent.setup(); renderPage(); const form = screen.getByRole("heading", { name: "Crear Pendiente" }).closest("section")!; await user.selectOptions(within(form).getByLabelText("Categoría"), "category-1"); await user.type(within(form).getByLabelText("Nombre"), "Comprar lentes"); await user.selectOptions(await within(form).findByLabelText("Responsable"), "user-1"); await user.type(within(form).getByLabelText("Fecha planificada"), "2026-08-30"); await user.click(within(form).getByRole("button", { name: "Crear" })); await waitFor(() => expect(api.createV2PendingItem).toHaveBeenCalledWith("workspace-a", { category_id: "category-1", responsible_user_id: "user-1", name: "Comprar lentes", planned_date: "2026-08-30" })); });
 
-  it("requires a planned date for active creation", async () => {
-    const user = userEvent.setup(); renderPage(); await screen.findByText("Renovar documento");
-    const creation = screen.getByRole("heading", { name: "Crear Pendiente" }).closest<HTMLElement>("section")!;
-    await user.selectOptions(within(creation).getByLabelText("Categoría"), "category-1");
-    await user.type(within(creation).getByLabelText("Nombre"), "Comprar lentes");
-    fireEvent.submit(within(creation).getByRole("button", { name: "Crear" }).closest("form")!);
-    expect(await screen.findByRole("alert")).toHaveTextContent("requiere fecha planificada");
-    expect(api.createPlanningPendingItem).not.toHaveBeenCalled();
-  });
+  it("derives the responsible user for Personal Workspace", async () => { auth.workspace = { id: "personal-a", name: "Personal", kind: "PERSONAL", timezone: "America/Lima" }; const user = userEvent.setup(); renderPage(); const form = screen.getByRole("heading", { name: "Crear Pendiente" }).closest("section")!; expect(within(form).queryByLabelText("Responsable")).not.toBeInTheDocument(); await user.selectOptions(within(form).getByLabelText("Categoría"), "category-1"); await user.type(within(form).getByLabelText("Nombre"), "Comprar lentes"); await user.type(within(form).getByLabelText("Fecha planificada"), "2026-08-30"); await user.click(within(form).getByRole("button", { name: "Crear" })); await waitFor(() => expect(api.createV2PendingItem).toHaveBeenCalledWith("personal-a", { category_id: "category-1", name: "Comprar lentes", planned_date: "2026-08-30" })); });
 
-  it("creates an inactive item with an explicit null planned date", async () => {
-    const user = userEvent.setup(); renderPage(); await screen.findByText("Renovar documento");
-    const creation = screen.getByRole("heading", { name: "Crear Pendiente" }).closest<HTMLElement>("section")!;
-    await user.selectOptions(within(creation).getByLabelText("Categoría"), "category-1");
-    await user.type(within(creation).getByLabelText("Nombre"), "Comprar lentes");
-    await user.selectOptions(within(creation).getByLabelText("Vigencia"), "inactive");
-    await user.click(within(creation).getByRole("button", { name: "Crear" }));
-    await waitFor(() => expect(api.createPlanningPendingItem).toHaveBeenCalledWith({ category_id: "category-1", name: "Comprar lentes", is_active: false, planned_date: null }));
-  });
+  it("shows progress, derived state and compliance detail", async () => { renderPage(); expect(await screen.findByText("20% · EN_PROCESO")).toBeInTheDocument(); expect(screen.getByText("ATRASADO · 6 día(s)")).toBeInTheDocument(); });
 
-  it("uses server-driven filters and resets pagination for page-size changes", async () => {
-    const user = userEvent.setup(); renderPage(); await screen.findByText("Renovar documento");
-    const registerSection = screen.getByRole("heading", { name: "Registro de Pendientes" }).closest<HTMLElement>("section")!;
-    await user.click(within(registerSection).getByRole("button", { name: "Siguiente" }));
-    await waitFor(() => expect(api.listPlanningPendingItems).toHaveBeenCalledWith(expect.objectContaining({ page: 2, page_size: 25 })));
-    await user.selectOptions(within(registerSection).getByLabelText("Vigencia"), "false");
-    await user.selectOptions(within(registerSection).getByLabelText("Categoría"), "category-2");
-    await user.type(within(registerSection).getByLabelText("Desde"), "2026-08-01");
-    await user.type(within(registerSection).getByLabelText("Hasta"), "2026-08-31");
-    await waitFor(() => expect(api.listPlanningPendingItems).toHaveBeenCalledWith(expect.objectContaining({ page: 1, page_size: 25, is_active: false, category_id: "category-2", planned_from: "2026-08-01", planned_to: "2026-08-31" })));
-    const perPage = within(registerSection).getByLabelText("Por página");
-    expect(within(perPage).getAllByRole("option").map((option) => option.textContent)).toEqual(["25", "50", "100"]);
-    await user.selectOptions(perPage, "50");
-    await waitFor(() => expect(api.listPlanningPendingItems).toHaveBeenCalledWith(expect.objectContaining({ page: 1, page_size: 50 })));
-  });
+  it("uses the explicit correction flow for finalized records", async () => { vi.mocked(api.listV2PendingItems).mockResolvedValue({ items: [{ ...item, progress: 100, state: "FINALIZADO", can_edit: false, can_update_progress: false, can_correct: true, can_deactivate: false }], total: 1, page: 1, page_size: 25, total_pages: 1 }); const user = userEvent.setup(); renderPage(); expect(await screen.findByRole("button", { name: "Corregir Renovar documento" })).toBeInTheDocument(); expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument(); await user.click(screen.getByRole("button", { name: "Corregir Renovar documento" })); expect(screen.getByText("La corrección reabre el Pendiente y conserva el historial.")).toBeInTheDocument(); await user.clear(screen.getByLabelText("Avance")); await user.type(screen.getByLabelText("Avance"), "80"); await user.click(screen.getByRole("button", { name: "Guardar" })); await waitFor(() => expect(api.correctV2PendingItem).toHaveBeenCalledWith("workspace-a", "pending-1", 80, 7)); });
 
-  it("shows a safe list error and retries the request", async () => {
-    vi.mocked(api.listPlanningPendingItems).mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce(page);
-    const user = userEvent.setup(); renderPage();
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar los Pendientes");
-    await user.click(screen.getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByText("Renovar documento")).toBeInTheDocument();
-  });
+  it("offers hard deletion only when projected by the server", async () => { vi.mocked(api.listV2PendingItems).mockResolvedValue({ items: [{ ...item, progress: 0, state: "NO_INICIADO", can_delete: true }], total: 1, page: 1, page_size: 25, total_pages: 1 }); vi.spyOn(window, "confirm").mockReturnValue(true); const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Eliminar" })); await waitFor(() => expect(api.deleteV2PendingItem).toHaveBeenCalledWith("workspace-a", "pending-1", 7)); });
 
-  it("edits only Planning fields, clears the date when deactivated and uses lock_version", async () => {
-    const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Renovar documento" }));
-    await user.selectOptions(screen.getByLabelText("Categoría de Renovar documento"), "category-2");
-    await user.clear(screen.getByLabelText("Nombre de Renovar documento")); await user.type(screen.getByLabelText("Nombre de Renovar documento"), "Renovar pasaporte");
-    await user.selectOptions(screen.getByLabelText("Vigencia de Renovar documento"), "inactive");
-    fireEvent.submit(screen.getByRole("button", { name: "Guardar Renovar documento" }).closest("form")!);
-    await waitFor(() => expect(api.updatePlanningPendingItem).toHaveBeenCalledWith("pending-1", { category_id: "category-2", name: "Renovar pasaporte", is_active: false, planned_date: null, lock_version: 7 }));
-  });
-
-  it("requires a new date when reactivating an inactive item", async () => {
-    vi.mocked(api.listPlanningPendingItems).mockResolvedValue({ ...page, items: [{ ...item, is_active: false, planned_date: null }] });
-    const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Renovar documento" }));
-    await user.selectOptions(screen.getByLabelText("Vigencia de Renovar documento"), "active");
-    fireEvent.submit(screen.getByRole("button", { name: "Guardar Renovar documento" }).closest("form")!);
-    expect(await screen.findByRole("alert")).toHaveTextContent("requiere fecha planificada");
-    expect(api.updatePlanningPendingItem).not.toHaveBeenCalled();
-  });
-
-  it("discards stale editing state after a 409", async () => {
-    vi.mocked(api.updatePlanningPendingItem).mockRejectedValue({ isAxiosError: true, response: { status: 409 } });
-    const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar Renovar documento" }));
-    await user.click(screen.getByRole("button", { name: "Guardar Renovar documento" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("cambió desde la última carga");
-    await waitFor(() => expect(screen.queryByLabelText("Nombre de Renovar documento")).not.toBeInTheDocument());
-  });
-
-  it("shows the neutral no-Categories state with no free-text fallback", async () => {
-    vi.mocked(api.listAllCategoryOptions).mockResolvedValue([]); renderPage();
-    expect(await screen.findByText("Aún no hay Categorías configuradas en Tablas > Categorías.")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument();
-  });
+  it("discards stale dialog state and refreshes after a conflict", async () => { vi.mocked(api.updateV2PendingItem).mockRejectedValue({ isAxiosError: true, response: { status: 409 } }); const user = userEvent.setup(); renderPage(); await user.click(await screen.findByRole("button", { name: "Editar" })); await user.click(screen.getByRole("button", { name: "Guardar" })); expect(await screen.findByText(/cambió desde la última carga/)).toBeInTheDocument(); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
 });
