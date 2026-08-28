@@ -233,7 +233,13 @@ Un Participante puede retirarla de su propio calendario sin eliminarla para los 
 
 `starts_at` es la frontera histórica autoritativa. Mientras `now < starts_at`, una Actividad standalone puede editarse o eliminarse y sus Participantes pueden modificarse o retirarse. Cuando `starts_at <= now`, tanto una Actividad en curso como una pasada son completamente read-only: no se editan fechas, catálogo, Organizador ni Participantes, no se eliminan y nadie abandona su participación. El backend revalida esta frontera bajo lock antes de mutar.
 
-Las Actividades recurrentes usan generación finita diaria, semanal o mensual con Desde y Hasta, incluyendo la regla 29/30/31 y deduplicación. Las operaciones de serie no modifican el pasado. Las opciones simplificadas incluyen `Solo esta` y `Todas las futuras`; no se añade otra opción semánticamente redundante.
+Las Actividades recurrentes usan generación finita diaria, semanal o mensual con Desde y Hasta, incluyendo la regla 29/30/31 y deduplicación. `GenerationBatch` es procedencia inmutable, no una serie editable. `Solo esta` opera sobre una ocurrencia futura. `Esta y todas las futuras` opera sobre la seleccionada y las posteriores futuras `SCHEDULED` del mismo batch: puede propagar hora/duración local, catálogo, Organizador y Participantes, pero conserva cada fecha de calendario y nunca modifica historia. Cambiar fecha se admite únicamente en `Solo esta`.
+
+En Workspace Personal la eliminación futura es física. En Shared, cancelar una
+Actividad futura conserva su fila con lifecycle `CANCELLED`. Un Participante
+Shared puede retirarse solo de esta ocurrencia o de esta y las futuras; la
+operación no afecta a otros Participantes y desactiva únicamente sus propios
+recordatorios futuros.
 
 ## 9. Mi calendario
 

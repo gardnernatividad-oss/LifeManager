@@ -38,6 +38,21 @@ describe("PlanningActivitiesPage", () => {
     vi.mocked(api.listV2Activities).mockResolvedValue({ items: [{ ...base, temporal_state: "IN_PROGRESS", can_edit: false, can_delete: false, can_leave_participation: false }], total: 1, page: 1, page_size: 25, total_pages: 1 });
     mount(); expect(await screen.findByText("En curso")).toBeInTheDocument(); expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument(); expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument(); expect(screen.queryByRole("button", { name: "Retirarme" })).not.toBeInTheDocument();
   });
+  it("offers occurrence scopes only for generated Activities", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listV2Activities).mockResolvedValue({ items: [{ ...base, is_generated: true }], total: 1, page: 1, page_size: 25, total_pages: 1 });
+    mount();
+    await user.click(await screen.findByRole("button", { name: "Cancelar" }));
+    expect(screen.getByRole("heading", { name: "Cancelar Actividad" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Esta y todas las futuras" }));
+    await waitFor(() => expect(api.deleteV2Activity).toHaveBeenCalledWith("workspace-a", "activity-1", 2, "THIS_AND_FUTURE"));
+  });
+  it("does not offer a future scope selector for standalone Activities", async () => {
+    const user = userEvent.setup(); mount();
+    await user.click(await screen.findByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(api.deleteV2Activity).toHaveBeenCalledWith("workspace-a", "activity-1", 2));
+    expect(screen.queryByRole("button", { name: "Esta y todas las futuras" })).not.toBeInTheDocument();
+  });
   it("derives Personal organizer and hides collaborative participants", async () => {
     auth.workspace = { id: "personal-a", name: "Personal", kind: "PERSONAL", timezone: "America/Lima" }; mount();
     expect(screen.getByText("Organizador: tú")).toBeInTheDocument(); expect(screen.queryByRole("group", { name: "Participantes" })).not.toBeInTheDocument();

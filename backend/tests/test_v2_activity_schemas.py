@@ -24,7 +24,10 @@ def test_activity_create_requires_aware_valid_range_and_unique_participants() ->
 
 def test_activity_update_is_strict_versioned_and_rejects_mass_assignment() -> None:
     assert ActivityUpdate(participant_user_ids=[], lock_version=1).participant_user_ids == []
+    assert ActivityUpdate(participant_user_ids=[], lock_version=1, scope="THIS_AND_FUTURE").scope == "THIS_AND_FUTURE"
     with pytest.raises(ValidationError):
         ActivityUpdate(lock_version=1)
     with pytest.raises(ValidationError):
         ActivityUpdate.model_validate({"starts_at": "2026-09-01T10:00:00Z", "lock_version": 1, "workspace_id": str(uuid.uuid4()), "can_edit": True})
+    with pytest.raises(ValidationError):
+        ActivityUpdate.model_validate({"participant_user_ids": [], "lock_version": 1, "scope": "ALL"})

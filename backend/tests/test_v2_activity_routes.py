@@ -60,6 +60,19 @@ def test_started_or_stale_activity_maps_to_409_and_rolls_back(update, client) ->
     db.rollback.assert_called_once(); db.commit.assert_not_called()
 
 
+@patch("app.api.v2.activities._read", return_value=read())
+@patch("app.api.v2.activities.update_activity", return_value=Activity())
+def test_generated_mutation_scope_is_forwarded_and_committed_atomically(update, projection, client) -> None:
+    http, db, *_ = client
+    response = http.patch(
+        f"/api/v2/workspaces/{WORKSPACE_ID}/activities/{ACTIVITY_ID}",
+        json={"participant_user_ids": [str(USER_ID)], "lock_version": 1, "scope": "THIS_AND_FUTURE"},
+    )
+    assert response.status_code == 200
+    assert update.call_args.kwargs["activity_in"].scope == "THIS_AND_FUTURE"
+    db.commit.assert_called_once(); db.refresh.assert_called_once(); db.rollback.assert_not_called()
+
+
 def test_activity_openapi_surface_and_mass_assignment(client) -> None:
     http, db, *_ = client
     body = payload() | {"workspace_id": str(WORKSPACE_ID), "generation_batch_id": str(uuid.uuid4()), "can_edit": True}
@@ -71,6 +84,10 @@ def test_activity_openapi_surface_and_mass_assignment(client) -> None:
         "/api/v2/workspaces/{workspace_id}/activities/{activity_id}": {"get", "patch", "delete"},
         "/api/v2/workspaces/{workspace_id}/activities/{activity_id}/leave": {"post"},
     }
+    schema = app.openapi()
+    assert schema["components"]["schemas"]["ActivityUpdate"]["properties"]["scope"]["enum"] == ["THIS", "THIS_AND_FUTURE"]
+    delete_parameters = schema["paths"]["/api/v2/workspaces/{workspace_id}/activities/{activity_id}"]["delete"]["parameters"]
+    assert next(item for item in delete_parameters if item["name"] == "scope")["schema"]["enum"] == ["THIS", "THIS_AND_FUTURE"]
     db.commit.assert_not_called()
 
 

@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.models import Activity, ActivityMaster, Category, User
 from app.models.enums import ParticipantCalendarStatus, WorkspaceKind
-from app.schemas.v2_activity import ActivityCreate, ActivityListResponse, ActivityParticipantRead, ActivityRead, ActivityUpdate, ActivityVersion, RecurringActivityCreate, RecurringActivityCreateResponse
+from app.schemas.v2_activity import ActivityCreate, ActivityListResponse, ActivityMutationScope, ActivityParticipantRead, ActivityRead, ActivityUpdate, ActivityVersion, RecurringActivityCreate, RecurringActivityCreateResponse
 from app.services.v2_activity import (
     ActivityConflictError, ActivityNotFoundError, ActivityRecurrenceError, ActivityReferenceUnavailableError,
     activity_projection, create_activity, create_recurring_activities, delete_activity, get_activity, leave_activity,
@@ -34,7 +34,7 @@ def _raise(error: Exception) -> None:
 
 def _read(db: SessionDependency, activity: Activity, account: User, *, personal: bool, projection=None) -> ActivityRead:
     master, category, organizer, participants, state = projection or activity_projection(db, activity=activity, actor_id=account.id)
-    standalone_future = state == "FUTURE" and activity.generation_batch_id is None and activity.status == "SCHEDULED"
+    mutable_future = state == "FUTURE" and activity.status == "SCHEDULED"
     participating = any(item.user_id == account.id and item.calendar_status == ParticipantCalendarStatus.VISIBLE for item, _ in participants)
     return ActivityRead(
         id=activity.id, workspace_id=activity.workspace_id,
@@ -47,8 +47,8 @@ def _read(db: SessionDependency, activity: Activity, account: User, *, personal:
         starts_at=activity.starts_at, ends_at=activity.ends_at, status=activity.status,
         temporal_state=state, lock_version=activity.lock_version,
         is_generated=activity.generation_batch_id is not None,
-        can_edit=standalone_future, can_delete=standalone_future,
-        can_leave_participation=standalone_future and participating and not personal,
+        can_edit=mutable_future, can_delete=mutable_future,
+        can_leave_participation=mutable_future and participating and not personal,
         created_at=activity.created_at, updated_at=activity.updated_at,
     )
 
@@ -145,9 +145,9 @@ def patch(workspace_id: uuid.UUID, activity_id: uuid.UUID, activity_in: Activity
 
 
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove(workspace_id: uuid.UUID, activity_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, lock_version: int = Query(ge=1)) -> Response:
-    del workspace_id, account
-    _write(db, lambda: delete_activity(db, access=access, activity_id=activity_id, expected_version=lock_version))
+def remove(workspace_id: uuid.UUID, activity_id: uuid.UUID, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership, lock_version: int = Query(ge=1), scope: ActivityMutationScope = Query(default="THIS")) -> Response:
+    del workspace_id
+    _write(db, lambda: delete_activity(db, access=access, actor=account, activity_id=activity_id, expected_version=lock_version, scope=scope))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -156,5 +156,5 @@ def leave(workspace_id: uuid.UUID, activity_id: uuid.UUID, version_in: ActivityV
     del workspace_id
     if access.workspace.kind == WorkspaceKind.PERSONAL:
         raise V2APIError(status_code=409, code="ACTIVITY_CONFLICT", message="La Actividad no admite esta acción.")
-    activity = _write(db, lambda: leave_activity(db, access=access, actor=account, activity_id=activity_id, expected_version=version_in.lock_version))
+    activity = _write(db, lambda: leave_activity(db, access=access, actor=account, activity_id=activity_id, expected_version=version_in.lock_version, scope=version_in.scope))
     return _read(db, activity, account, personal=False)

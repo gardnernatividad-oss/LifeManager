@@ -316,7 +316,13 @@ No existe un segundo sistema de comentarios. Cada cambio de avance o comentario 
 
 No se aplica exclusión de solapamiento: el producto puede permitir eventos simultáneos y solo necesita mostrar disponibilidad.
 
-Una Activity pasada es inmutable. Solo el Organizador puede modificar/cancelar una futura para todos; “Todas las futuras” selecciona ocurrencias no pasadas del mismo GenerationBatch y actualiza cada fila con locking optimista, sin cambiar las anteriores.
+Una Activity iniciada es inmutable. Cualquier miembro ACTIVE del mismo Workspace
+ACTIVE puede modificar una futura para todos; Organizador y owner son
+atribuciones sin privilegio. `THIS_AND_FUTURE` selecciona la ocurrencia y las
+posteriores `SCHEDULED` que aún no iniciaron dentro del mismo GenerationBatch,
+sin cambiar historia ni la procedencia. Propaga hora/duración local, catálogo,
+Organizador y Participantes conservando las fechas. Personal elimina físicamente;
+Shared cancela y conserva la fila histórica.
 
 ### 10.2 `activity_participants`
 
@@ -326,7 +332,7 @@ Una Activity pasada es inmutable. Solo el Organizador puede modificar/cancelar u
 - FK Activity+Workspace y membresía Workspace+User.
 - `VISIBLE` exige removed_at NULL; `REMOVED` exige timestamp.
 - índice `(user_id, calendar_status, activity_id)` y, mediante join con Activity, consulta por rango.
-- el Organizador es autoridad separada y no se duplica como participante; puede tener su propio ActivityReminder.
+- el Organizador es una atribución funcional separada, sin privilegio de autorización, y no se duplica como participante; puede tener su propio ActivityReminder.
 - retirar del calendario cambia a REMOVED y desactiva su recordatorio en una transacción. La fila se conserva.
 
 ### 10.3 `activity_reminders`
@@ -428,7 +434,7 @@ Transferencia: lock Workspace, membresía de propietario actual y nueva persona 
 | PendingItem | Active/Inactive; conservar si tiene historia |
 | Project | Active/Inactive; conservar si tiene Etapas/historia |
 | ProjectStage | hard delete solo antes de seguimiento; después conservar |
-| Activity | futura puede cancelarse; pasada se conserva; hard delete solo borrador sin participantes/historia |
+| Activity | futura: hard delete en Personal o `CANCELLED` persistente en Shared; iniciada: siempre se conserva |
 | ActivityParticipant | VISIBLE/REMOVED; conservar |
 | Histories/state events | append-only, sin edición/borrado operativo |
 | Notification | hard delete por retención; no es auditoría |

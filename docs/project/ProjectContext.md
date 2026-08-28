@@ -187,8 +187,7 @@ conserva su instante UTC; los huecos y ambigüedades DST se rechazan. La regla
 mensual 29/30/31 cae al último día disponible y deduplica convergencias antes
 de persistir. La identidad de catálogo
 `workspace_id + activity_master_id + organizer_user_id + starts_at` evita
-duplicados standalone/recurrentes y entre batches. La edición de series,
-recordatorios configurables y privacidad permanecen diferidos. Stage 8.3
+duplicados standalone/recurrentes y entre batches. Stage 8.3
 implementa `Mi calendario` como consulta global por participación propia a
 través de todos los Workspaces, con intersección temporal `[from,to)`, semana
 desktop iniciada en lunes, día mobile y presentación en la zona IANA del
@@ -199,6 +198,12 @@ preferencia direccional existente de la membresía (`HIDE` por defecto) decide
 entre una proyección mínima de detalles, bloques ocupados opacos fusionados o
 ningún dato. Incluso la vista de detalles consolida Personal y otros Workspaces
 del target sin revelar origen, IDs ni autoridad sobre esos recursos.
+Stage 8.5 cierra Calendario con scopes `THIS` y `THIS_AND_FUTURE` sobre
+ocurrencias futuras materializadas. GenerationBatch no se edita; las fechas e
+historia se preservan, mientras hora/duración local, catálogo, Organizador y
+Participantes pueden propagarse. Personal elimina; Shared cancela conservando
+la fila. El retiro propio no afecta a terceros y desactiva solo recordatorios
+del actor.
 
 ## Principios
 

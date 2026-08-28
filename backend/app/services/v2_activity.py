@@ -10,7 +10,7 @@ from app.core.activity_recurrence import InvalidLocalActivityTimeError, local_ac
 from app.core.recurrence import recurrence_dates
 from app.models import Activity, ActivityMaster, ActivityParticipant, ActivityReminder, Category, GenerationBatch, User, WorkspaceMember
 from app.models.enums import AccountStatus, ActivityStatus, GenerationEntityType, MembershipStatus, ParticipantCalendarStatus, WorkspaceKind
-from app.schemas.v2_activity import ActivityCreate, ActivityTemporalState, ActivityUpdate, RecurringActivityCreate
+from app.schemas.v2_activity import ActivityCreate, ActivityMutationScope, ActivityTemporalState, ActivityUpdate, RecurringActivityCreate
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -92,9 +92,9 @@ def _activity(db: Session, *, workspace_id: uuid.UUID, activity_id: uuid.UUID, l
     return activity
 
 
-def _require_future_standalone(activity: Activity) -> None:
+def _require_future(activity: Activity, *, now: datetime) -> None:
     # Deliberately evaluated after SELECT FOR UPDATE: starts_at is the historical boundary.
-    if activity.generation_batch_id is not None or activity.status != ActivityStatus.SCHEDULED or _now() >= activity.starts_at:
+    if activity.status != ActivityStatus.SCHEDULED or now >= activity.starts_at:
         raise ActivityConflictError("Activity is immutable")
 
 
@@ -213,17 +213,97 @@ def get_activity(db: Session, *, workspace_id: uuid.UUID, activity_id: uuid.UUID
     return _activity(db, workspace_id=workspace_id, activity_id=activity_id)
 
 
+def _mutation_scope_activities(
+    db: Session, *, workspace_id: uuid.UUID, activity_id: uuid.UUID,
+    scope: ActivityMutationScope, now: datetime,
+) -> tuple[Activity, list[Activity], GenerationBatch | None]:
+    if scope == "THIS":
+        activity = _activity(db, workspace_id=workspace_id, activity_id=activity_id, lock=True)
+        _require_future(activity, now=now)
+        return activity, [activity], None
+    identified = _activity(db, workspace_id=workspace_id, activity_id=activity_id)
+    if identified.generation_batch_id is None:
+        raise ActivityConflictError("Standalone Activity does not support future scope")
+    batch = db.scalar(select(GenerationBatch).where(
+        GenerationBatch.id == identified.generation_batch_id,
+        GenerationBatch.workspace_id == workspace_id,
+        GenerationBatch.entity_type == GenerationEntityType.ACTIVITY,
+    ).with_for_update())
+    if batch is None:
+        raise ActivityConflictError("Activity batch unavailable")
+    activities = list(db.scalars(select(Activity).options(selectinload(Activity.participants)).where(
+        Activity.workspace_id == workspace_id,
+        Activity.generation_batch_id == batch.id,
+    ).order_by(Activity.starts_at, Activity.id).with_for_update().execution_options(populate_existing=True)).unique().all())
+    activity = next((item for item in activities if item.id == activity_id), None)
+    if activity is None:
+        raise ActivityConflictError("Activity changed during scope selection")
+    _require_future(activity, now=now)
+    affected = [item for item in activities if item.starts_at >= activity.starts_at and item.starts_at > now and item.status == ActivityStatus.SCHEDULED]
+    if activity not in affected:
+        raise ActivityConflictError("Activity cannot initiate future scope")
+    return activity, affected, batch
+
+
+def _set_participants(
+    db: Session, *, activities: list[Activity], requested: set[uuid.UUID], changed_at: datetime,
+) -> None:
+    activity_ids = [item.id for item in activities]
+    rows = list(db.scalars(select(ActivityParticipant).where(
+        ActivityParticipant.activity_id.in_(activity_ids),
+        ActivityParticipant.workspace_id == activities[0].workspace_id,
+    ).order_by(ActivityParticipant.activity_id, ActivityParticipant.user_id).with_for_update()))
+    by_activity = {(item.activity_id, item.user_id): item for item in rows}
+    reminders = list(db.scalars(select(ActivityReminder).where(
+        ActivityReminder.activity_id.in_(activity_ids),
+        ActivityReminder.workspace_id == activities[0].workspace_id,
+    ).order_by(ActivityReminder.activity_id, ActivityReminder.user_id).with_for_update()))
+    reminder_by_key = {(item.activity_id, item.user_id): item for item in reminders}
+    additions: list[ActivityParticipant] = []
+    for activity in activities:
+        current_users = {user_id for (activity_id, user_id) in by_activity if activity_id == activity.id}
+        for user_id in current_users:
+            item = by_activity[(activity.id, user_id)]
+            desired = user_id in requested
+            if desired and item.calendar_status != ParticipantCalendarStatus.VISIBLE:
+                item.calendar_status, item.removed_at, item.lock_version = ParticipantCalendarStatus.VISIBLE, None, item.lock_version + 1
+            elif not desired and item.calendar_status == ParticipantCalendarStatus.VISIBLE:
+                item.calendar_status, item.removed_at, item.lock_version = ParticipantCalendarStatus.REMOVED, changed_at, item.lock_version + 1
+                reminder = reminder_by_key.get((activity.id, user_id))
+                if reminder is not None and reminder.is_enabled:
+                    reminder.is_enabled = False; reminder.lock_version += 1
+        additions.extend(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id) for user_id in sorted(requested - current_users, key=str))
+    db.add_all(additions)
+
+
 def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.UUID, activity_in: ActivityUpdate) -> Activity:
-    activity = _activity(db, workspace_id=access.workspace.id, activity_id=activity_id, lock=True)
-    _require_future_standalone(activity)
+    now = _now()
+    activity, affected, batch = _mutation_scope_activities(db, workspace_id=access.workspace.id, activity_id=activity_id, scope=activity_in.scope, now=now)
     _check_version(activity, activity_in.lock_version)
-    values = activity_in.model_dump(exclude_unset=True, exclude={"lock_version", "participant_user_ids"})
+    values = activity_in.model_dump(exclude_unset=True, exclude={"lock_version", "scope", "participant_user_ids"})
     if access.workspace.kind == WorkspaceKind.PERSONAL:
         values.pop("organizer_user_id", None)
-    starts_at = values.get("starts_at", activity.starts_at)
-    ends_at = values.get("ends_at", activity.ends_at)
-    if starts_at <= _now() or ends_at <= starts_at:
+    starts_at = values.get("starts_at", activity.starts_at); ends_at = values.get("ends_at", activity.ends_at)
+    if starts_at <= now or ends_at <= starts_at:
         raise ActivityConflictError("Invalid Activity time range")
+    if activity_in.scope == "THIS_AND_FUTURE" and ("starts_at" in values or "ends_at" in values):
+        if batch is None:
+            raise ActivityConflictError("Activity batch unavailable")
+        from zoneinfo import ZoneInfo
+        zone = ZoneInfo(batch.timezone)
+        selected_date = activity.starts_at.astimezone(zone).date()
+        if starts_at.astimezone(zone).date() != selected_date or ends_at.astimezone(zone).date() != selected_date:
+            raise ActivityConflictError("Future scope cannot change occurrence dates")
+        start_time, end_time = starts_at.astimezone(zone).time().replace(tzinfo=None), ends_at.astimezone(zone).time().replace(tzinfo=None)
+        try:
+            propagated = [(item, local_activity_datetime(local_date=item.starts_at.astimezone(zone).date(), local_time=start_time, timezone_name=batch.timezone), local_activity_datetime(local_date=item.starts_at.astimezone(zone).date(), local_time=end_time, timezone_name=batch.timezone)) for item in affected]
+        except InvalidLocalActivityTimeError as error:
+            raise ActivityConflictError("Invalid local Activity time") from error
+        if any(new_start <= now or new_end <= new_start for _, new_start, new_end in propagated):
+            raise ActivityConflictError("Invalid propagated Activity time")
+        values.pop("starts_at", None); values.pop("ends_at", None)
+    else:
+        propagated = [(activity, starts_at, ends_at)] if ("starts_at" in values or "ends_at" in values) else []
     if "activity_master_id" in values and values["activity_master_id"] != activity.activity_master_id:
         master = _master(db, workspace_id=access.workspace.id, master_id=values["activity_master_id"], assignable=True)
         activity.activity_master_id, activity.title, activity.custom_category_id = master.id, master.name, None
@@ -235,52 +315,59 @@ def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.U
     if participant_ids is not None:
         requested = set(participant_ids)
         _eligible_users(db, workspace_id=access.workspace.id, user_ids=requested)
-        current = list(db.scalars(select(ActivityParticipant).where(ActivityParticipant.activity_id == activity.id).order_by(ActivityParticipant.id).with_for_update()))
-        by_user = {item.user_id: item for item in current}
-        changed_at = _now()
-        for user_id, item in by_user.items():
-            desired = user_id in requested
-            if desired and item.calendar_status != ParticipantCalendarStatus.VISIBLE:
-                item.calendar_status, item.removed_at, item.lock_version = ParticipantCalendarStatus.VISIBLE, None, item.lock_version + 1
-            elif not desired and item.calendar_status == ParticipantCalendarStatus.VISIBLE:
-                item.calendar_status, item.removed_at, item.lock_version = ParticipantCalendarStatus.REMOVED, changed_at, item.lock_version + 1
-        db.add_all(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id) for user_id in sorted(requested - set(by_user), key=str))
-    for field in ("organizer_user_id", "starts_at", "ends_at"):
-        if field in values: setattr(activity, field, values[field])
-    activity.lock_version += 1
+        _set_participants(db, activities=affected, requested=requested, changed_at=now)
+    for item in affected:
+        if "activity_master_id" in values:
+            item.activity_master_id, item.title, item.custom_category_id = activity.activity_master_id, activity.title, None
+        for field in ("organizer_user_id",):
+            if field in values: setattr(item, field, values[field])
+        item.lock_version += 1
+    for item, new_start, new_end in propagated:
+        item.starts_at, item.ends_at = new_start, new_end
     _flush(db)
     return activity
 
 
-def delete_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.UUID, expected_version: int) -> None:
-    activity = _activity(db, workspace_id=access.workspace.id, activity_id=activity_id, lock=True)
-    _require_future_standalone(activity)
+def delete_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.UUID, expected_version: int, actor: User | None = None, scope: ActivityMutationScope = "THIS") -> None:
+    now = _now(); activity, affected, _ = _mutation_scope_activities(db, workspace_id=access.workspace.id, activity_id=activity_id, scope=scope, now=now)
     _check_version(activity, expected_version)
-    db.delete(activity)
+    if access.workspace.kind == WorkspaceKind.PERSONAL:
+        for item in affected: db.delete(item)
+    else:
+        cancelled_by_user_id = actor.id if actor is not None else access.membership.user_id
+        for item in affected:
+            item.status = ActivityStatus.CANCELLED; item.cancelled_at = now
+            item.cancelled_by_user_id = cancelled_by_user_id; item.lock_version += 1
+        reminders = list(db.scalars(select(ActivityReminder).where(
+            ActivityReminder.workspace_id == access.workspace.id,
+            ActivityReminder.activity_id.in_([item.id for item in affected]),
+        ).order_by(ActivityReminder.activity_id, ActivityReminder.user_id).with_for_update()))
+        for reminder in reminders:
+            if reminder.is_enabled:
+                reminder.is_enabled = False
+                reminder.lock_version += 1
     _flush(db)
 
 
-def leave_activity(db: Session, *, access: WorkspaceAccess, actor: User, activity_id: uuid.UUID, expected_version: int) -> Activity:
-    activity = _activity(db, workspace_id=access.workspace.id, activity_id=activity_id, lock=True)
-    _require_future_standalone(activity)
+def leave_activity(db: Session, *, access: WorkspaceAccess, actor: User, activity_id: uuid.UUID, expected_version: int, scope: ActivityMutationScope = "THIS") -> Activity:
+    now = _now(); activity, affected, _ = _mutation_scope_activities(db, workspace_id=access.workspace.id, activity_id=activity_id, scope=scope, now=now)
     _check_version(activity, expected_version)
-    participant = db.scalar(select(ActivityParticipant).where(
-        ActivityParticipant.activity_id == activity.id, ActivityParticipant.workspace_id == activity.workspace_id,
-        ActivityParticipant.user_id == actor.id,
-    ).with_for_update())
-    if participant is None or participant.calendar_status != ParticipantCalendarStatus.VISIBLE:
+    participants = list(db.scalars(select(ActivityParticipant).where(
+        ActivityParticipant.activity_id.in_([item.id for item in affected]), ActivityParticipant.user_id == actor.id,
+    ).order_by(ActivityParticipant.activity_id).with_for_update()))
+    if not any(item.activity_id == activity.id and item.calendar_status == ParticipantCalendarStatus.VISIBLE for item in participants):
         raise ActivityConflictError("Active participation not found")
-    participant.calendar_status = ParticipantCalendarStatus.REMOVED
-    participant.removed_at = _now()
-    participant.lock_version += 1
+    for participant in participants:
+        if participant.calendar_status == ParticipantCalendarStatus.VISIBLE:
+            participant.calendar_status = ParticipantCalendarStatus.REMOVED; participant.removed_at = now; participant.lock_version += 1
     reminders = list(db.scalars(select(ActivityReminder).where(
-        ActivityReminder.activity_id == activity.id, ActivityReminder.workspace_id == activity.workspace_id,
+        ActivityReminder.activity_id.in_([item.id for item in affected]), ActivityReminder.workspace_id == activity.workspace_id,
         ActivityReminder.user_id == actor.id,
-    ).order_by(ActivityReminder.id).with_for_update()))
+    ).order_by(ActivityReminder.activity_id, ActivityReminder.id).with_for_update()))
     for reminder in reminders:
         reminder.is_enabled = False
         reminder.lock_version += 1
-    activity.lock_version += 1
+    for item in affected: item.lock_version += 1
     _flush(db)
     return activity
 

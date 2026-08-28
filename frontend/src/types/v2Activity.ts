@@ -1,4 +1,5 @@
 export type ActivityTemporalState = "FUTURE" | "IN_PROGRESS" | "PAST";
+export type ActivityMutationScope = "THIS" | "THIS_AND_FUTURE";
 
 export interface V2ActivityParticipant {
   user_id: string;
@@ -61,6 +62,7 @@ export interface V2ActivityCreate {
 
 export interface V2ActivityUpdate extends Partial<V2ActivityCreate> {
   lock_version: number;
+  scope?: ActivityMutationScope;
 }
 
 export type ActivityRecurrencePattern = "DAILY" | "WEEKLY" | "MONTHLY";

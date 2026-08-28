@@ -58,6 +58,10 @@ en curso y pasadas se presentan en modo de solo lectura. Personal deriva al
 Organizador y omite controles colaborativos. La query key incluye Workspace y
 el cambio de selección desmonta formulario y diálogo privados.
 
+Las ocurrencias generadas futuras ofrecen `Solo esta` y `Esta y todas las
+futuras`; las standalone no muestran selector de alcance. En Shared la acción
+es Cancelar y conserva historia; en Personal es Eliminar.
+
 - Seguimiento: Tareas, Pendientes y Proyectos.
 - Reportes, cuando el análisis pertenece a un Workspace.
 - Tablas: Tareas, Actividades y Categorías.

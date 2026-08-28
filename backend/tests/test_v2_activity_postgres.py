@@ -65,8 +65,13 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             assert participant.calendar_status == "REMOVED" and created.lock_version == 3
             with pytest.raises(ActivityConflictError):
                 delete_activity(db, access=access, activity_id=created.id, expected_version=2)
-            db.rollback(); created = db.get(Activity, created.id); delete_activity(db, access=access, activity_id=created.id, expected_version=created.lock_version); db.commit()
-            assert db.get(Activity, created.id) is None
+            db.rollback(); created = db.get(Activity, created.id); delete_activity(db, access=access, actor=actor, activity_id=created.id, expected_version=created.lock_version); db.commit()
+            cancelled = db.get(Activity, created.id)
+            assert cancelled.status == "CANCELLED" and cancelled.cancelled_by_user_id == member_id
+            assert list_my_calendar(
+                db, user_id=owner_id, range_start=start - timedelta(minutes=1),
+                range_end=start + timedelta(hours=3), now=datetime.now(timezone.utc),
+            ) == []
             recurring = RecurringActivityCreate.model_validate({
                 "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),
                 "participant_user_ids": [str(member_id)], "start_time": "09:00", "end_time": "10:00",
@@ -129,8 +134,8 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             with pytest.raises(ActivityConflictError):
                 create_recurring_activities(db, access=access, actor=actor, activity_in=recurring)
             db.rollback()
-            assert db.scalar(sa.select(sa.func.count()).select_from(Activity)) == 5
-            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant)) == 5
+            assert db.scalar(sa.select(sa.func.count()).select_from(Activity)) == 6
+            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant)) == 7
             assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == 1
             with pytest.raises(ActivityConflictError):
                 create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(
@@ -152,6 +157,42 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             with pytest.raises(ActivityConflictError):
                 create_recurring_activities(db, access=access, actor=actor, activity_in=standalone_collision)
             db.rollback()
+            actor = db.get(User, member_id); workspace = db.get(Workspace, workspace_id)
+            access = WorkspaceAccess(workspace, db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id)))
+            scope_recurring = RecurringActivityCreate.model_validate({
+                "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),
+                "participant_user_ids": [str(member_id)], "start_time": "13:00", "end_time": "14:00",
+                "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2027-04-01", "date_until": "2027-04-02"},
+            })
+            scoped = create_recurring_activities(db, access=access, actor=actor, activity_in=scope_recurring); db.commit()
+            scope_activity_id, scope_batch_id, scope_version = scoped[0].id, scoped[0].generation_batch_id, scoped[0].lock_version
+
+        scope_barrier = Barrier(2)
+
+        def update_same_activity_scope() -> str:
+            with Session(engine) as concurrent_db:
+                concurrent_workspace = concurrent_db.get(Workspace, workspace_id)
+                membership = concurrent_db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))
+                scope_barrier.wait()
+                try:
+                    update_activity(
+                        concurrent_db, access=WorkspaceAccess(concurrent_workspace, membership), activity_id=scope_activity_id,
+                        activity_in=ActivityUpdate(organizer_user_id=member_id, lock_version=scope_version, scope="THIS_AND_FUTURE"),
+                    )
+                    concurrent_db.commit()
+                    return "updated"
+                except ActivityConflictError:
+                    concurrent_db.rollback()
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            scope_outcomes = sorted(executor.map(lambda _: update_same_activity_scope(), range(2)))
+        assert scope_outcomes == ["conflict", "updated"]
+        with Session(engine) as verification_db:
+            scoped_rows = verification_db.scalars(sa.select(Activity).where(Activity.generation_batch_id == scope_batch_id).order_by(Activity.starts_at)).all()
+            assert len(scoped_rows) == 2
+            assert all(item.organizer_user_id == member_id and item.lock_version == 2 for item in scoped_rows)
+
         barrier = Barrier(2)
         concurrent_request = RecurringActivityCreate.model_validate({
             "activity_master_id": str(master_id), "organizer_user_id": str(owner_id),

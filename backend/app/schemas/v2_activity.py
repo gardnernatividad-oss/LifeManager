@@ -11,6 +11,7 @@ from app.models.enums import ActivityStatus, GenerationPattern, ParticipantCalen
 
 
 ActivityTemporalState = Literal["FUTURE", "IN_PROGRESS", "PAST"]
+ActivityMutationScope = Literal["THIS", "THIS_AND_FUTURE"]
 
 
 class _StrictModel(BaseModel):
@@ -87,6 +88,7 @@ class ActivityUpdate(_StrictModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     lock_version: int = Field(ge=1)
+    scope: ActivityMutationScope = "THIS"
 
     @model_validator(mode="before")
     @classmethod
@@ -115,6 +117,7 @@ class ActivityUpdate(_StrictModel):
 
 class ActivityVersion(_StrictModel):
     lock_version: int = Field(ge=1)
+    scope: ActivityMutationScope = "THIS"
 
 
 class ActivityParticipantRead(_StrictModel):

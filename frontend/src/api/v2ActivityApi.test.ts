@@ -20,8 +20,8 @@ describe("v2ActivityApi", () => {
     await deleteV2Activity("workspace-a", "activity-1", 4);
     expect(apiClient.post).toHaveBeenNthCalledWith(1, expect.stringContaining("/activities"), create);
     expect(apiClient.patch).toHaveBeenCalledWith(expect.stringContaining("/activities/activity-1"), { ends_at: "2027-01-01T17:00:00Z", lock_version: 2 });
-    expect(apiClient.post).toHaveBeenNthCalledWith(2, expect.stringContaining("/leave"), { lock_version: 3 });
-    expect(apiClient.delete).toHaveBeenCalledWith(expect.stringContaining("/activities/activity-1"), { params: { lock_version: 4 } });
+    expect(apiClient.post).toHaveBeenNthCalledWith(2, expect.stringContaining("/leave"), { lock_version: 3, scope: "THIS" });
+    expect(apiClient.delete).toHaveBeenCalledWith(expect.stringContaining("/activities/activity-1"), { params: { lock_version: 4, scope: "THIS" } });
   });
   it("uses the recurring Activity endpoint", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { created_count: 1, items: [] } });

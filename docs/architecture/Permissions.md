@@ -87,6 +87,12 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   en curso y pasadas son read-only. Un Participante solo puede retirar su propia
   participación futura y el servidor revalida lifecycle y `lock_version` bajo
   lock.
+- Stage 8.5 aplica la misma autoridad a ocurrencias recurrentes. `THIS` afecta
+  únicamente la ocurrencia futura elegida; `THIS_AND_FUTURE` deriva el batch en
+  servidor y alcanza solo la seleccionada y posteriores futuras `SCHEDULED`.
+  Organizador y owner no obtienen privilegio. Un Participante solo puede retirar
+  su propia relación; Personal elimina y Shared cancela conservando historia.
+  Ver `docs/security/V2-Calendar-Gate.md`.
 
 ## Arquitectura de enforcement V2
 

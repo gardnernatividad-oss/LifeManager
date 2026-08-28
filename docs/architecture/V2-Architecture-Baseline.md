@@ -255,7 +255,7 @@ GenerationBatch es procedencia inmutable, no plantilla. Unicidad DB e identifica
 
 Services separados:
 
-- Activity CRUD y organizer-only mutation/cancellation;
+- Activity CRUD y mutación/cancelación futura por cualquier miembro ACTIVE del mismo Workspace ACTIVE;
 - participant lifecycle/visibility/reminder;
 - generation de Activity;
 - query service de Mi calendario global;
@@ -263,6 +263,15 @@ Services separados:
 - availability comparison service.
 
 Una Activity es compartida: no se copia por participante. Calendar agrega Activities donde User sea organizer o participant VISIBLE, respetando pasado/futuro y status.
+
+`GenerationBatch` permanece como procedencia inmutable. Las operaciones `THIS`
+y `THIS_AND_FUTURE` parten de una ocurrencia, bloquean de forma determinista y
+solo alcanzan ocurrencias `SCHEDULED` cuyo `starts_at` continúa en el futuro.
+El scope futuro propaga hora/duración local, catálogo, Organizador y
+Participantes sin reescribir fechas de calendario ni historia. En Personal la
+eliminación es física; en Shared se conserva la fila como `CANCELLED`. Retirar
+participación solo afecta al usuario actor y desactiva únicamente sus
+recordatorios futuros.
 
 Privacidad se aplica antes de serializar:
 

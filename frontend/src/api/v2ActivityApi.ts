@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import { env } from "../utils/env";
-import type { V2Activity, V2ActivityCreate, V2ActivityFilters, V2ActivityList, V2ActivityUpdate, V2RecurringActivityCreate, V2RecurringActivityCreateResponse } from "../types/v2Activity";
+import type { ActivityMutationScope, V2Activity, V2ActivityCreate, V2ActivityFilters, V2ActivityList, V2ActivityUpdate, V2RecurringActivityCreate, V2RecurringActivityCreateResponse } from "../types/v2Activity";
 
 const url = (workspaceId: string, suffix = "") => new URL(`/api/v2/workspaces/${workspaceId}/activities${suffix}`, env.apiBaseUrl).toString();
 
@@ -16,9 +16,9 @@ export async function createRecurringV2Activities(workspaceId: string, payload: 
 export async function updateV2Activity(workspaceId: string, activityId: string, payload: V2ActivityUpdate): Promise<V2Activity> {
   return (await apiClient.patch<V2Activity>(url(workspaceId, `/${activityId}`), payload)).data;
 }
-export async function deleteV2Activity(workspaceId: string, activityId: string, lockVersion: number): Promise<void> {
-  await apiClient.delete(url(workspaceId, `/${activityId}`), { params: { lock_version: lockVersion } });
+export async function deleteV2Activity(workspaceId: string, activityId: string, lockVersion: number, scope: ActivityMutationScope = "THIS"): Promise<void> {
+  await apiClient.delete(url(workspaceId, `/${activityId}`), { params: { lock_version: lockVersion, scope } });
 }
-export async function leaveV2Activity(workspaceId: string, activityId: string, lockVersion: number): Promise<V2Activity> {
-  return (await apiClient.post<V2Activity>(url(workspaceId, `/${activityId}/leave`), { lock_version: lockVersion })).data;
+export async function leaveV2Activity(workspaceId: string, activityId: string, lockVersion: number, scope: ActivityMutationScope = "THIS"): Promise<V2Activity> {
+  return (await apiClient.post<V2Activity>(url(workspaceId, `/${activityId}/leave`), { lock_version: lockVersion, scope })).data;
 }

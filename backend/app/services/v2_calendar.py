@@ -43,6 +43,7 @@ def list_my_calendar(
         .outerjoin(current_membership, and_(current_membership.workspace_id == Activity.workspace_id, current_membership.user_id == user_id))
         .where(
             own_participation.user_id == user_id,
+            Activity.status == ActivityStatus.SCHEDULED,
             Activity.starts_at < range_end,
             Activity.ends_at > range_start,
             or_(

@@ -401,7 +401,18 @@ la solicitud completa. Cualquier Miembro ACTIVE administra una Actividad futura;
 Organizador y owner no añaden autoridad. La respuesta deriva `can_edit`,
 `can_delete`, `can_leave_participation` y estado temporal sin exponer batch ni
 recordatorios internos. Desde `starts_at`, una Actividad en curso o pasada es
-read-only. Edición/cancelación de series y Calendario permanecen diferidos.
+read-only.
+
+Stage 8.5 extiende las mutaciones existentes sin exponer GenerationBatch:
+
+- `PATCH .../activities/{activity_id}` acepta `scope=THIS|THIS_AND_FUTURE`;
+- `DELETE .../activities/{activity_id}` acepta el mismo scope y elimina en
+  Personal o cancela en Shared;
+- `POST .../activities/{activity_id}/leave` acepta el mismo scope y solo retira
+  al actor;
+- standalone acepta únicamente `THIS`;
+- `THIS_AND_FUTURE` conserva fechas e historia, y propaga hora/duración local,
+  catálogo, Organizador o Participantes entre futuras elegibles.
 
 - `SHOW_DETAILS`: puede retornar detalle autorizado;
 - `AVAILABILITY_ONLY`: solo intervalos busy/free sin ID, título, categoría, participants ni deep link;
