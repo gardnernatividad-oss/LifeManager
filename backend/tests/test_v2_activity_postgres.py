@@ -15,6 +15,7 @@ from app.db import session as db_session
 from app.models import Activity, ActivityParticipant, GenerationBatch, User, Workspace, WorkspaceMember
 from app.schemas.v2_activity import ActivityCreate, ActivityUpdate, RecurringActivityCreate
 from app.services.v2_activity import ActivityConflictError, ActivityReferenceUnavailableError, create_activity, create_recurring_activities, delete_activity, leave_activity, update_activity
+from app.services.v2_calendar import list_my_calendar
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -72,11 +73,45 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             generated = create_recurring_activities(db, access=access, actor=actor, activity_in=recurring); db.commit()
             assert len(generated) == 2 and len({item.generation_batch_id for item in generated}) == 1
             assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == 1
+            db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": foreign_workspace_id, "user": member_id})
+            db.commit(); actor = db.get(User, member_id)
+            foreign_access = WorkspaceAccess(db.get(Workspace, foreign_workspace_id), db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == foreign_workspace_id, WorkspaceMember.user_id == member_id)))
+            foreign_activity = create_activity(db, access=foreign_access, actor=actor, activity_in=ActivityCreate(
+                activity_master_id=foreign_master_id, organizer_user_id=foreign_id, participant_user_ids=[member_id],
+                starts_at=datetime(2027, 1, 5, 14, tzinfo=timezone.utc), ends_at=datetime(2027, 1, 5, 16, tzinfo=timezone.utc),
+            )); db.commit()
+            personal_workspace_id, personal_category_id, personal_master_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+            db.execute(sa.text("INSERT INTO workspaces (id,name,kind,owner_user_id) VALUES (:id,'Personal','PERSONAL',:owner)"), {"id": personal_workspace_id, "owner": member_id})
+            db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id) VALUES (:id,:workspace,:user)"), {"id": uuid.uuid4(), "workspace": personal_workspace_id, "user": member_id})
+            db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Personal','personal')"), {"id": personal_category_id, "workspace": personal_workspace_id})
+            db.execute(sa.text("INSERT INTO activity_masters (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Ejercicio','ejercicio')"), {"id": personal_master_id, "workspace": personal_workspace_id, "category": personal_category_id}); db.commit()
+            personal_access = WorkspaceAccess(db.get(Workspace, personal_workspace_id), db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == personal_workspace_id, WorkspaceMember.user_id == member_id)))
+            personal_activity = create_activity(db, access=personal_access, actor=actor, activity_in=ActivityCreate(
+                activity_master_id=personal_master_id, starts_at=datetime(2027, 1, 4, 14, 45, tzinfo=timezone.utc), ends_at=datetime(2027, 1, 4, 15, 15, tzinfo=timezone.utc),
+            )); db.commit()
+            consolidated = list_my_calendar(db, user_id=member_id, range_start=datetime(2027, 1, 4, 14, 30, tzinfo=timezone.utc), range_end=datetime(2027, 1, 5, 15, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            assert {item.activity.id for item in consolidated} == {generated[0].id, generated[1].id, foreign_activity.id, personal_activity.id}
+            assert [(item.activity.starts_at, item.activity.ends_at, str(item.activity.id)) for item in consolidated] == sorted((item.activity.starts_at, item.activity.ends_at, str(item.activity.id)) for item in consolidated)
+            withdrawn_activity = create_activity(db, access=foreign_access, actor=actor, activity_in=ActivityCreate(
+                activity_master_id=foreign_master_id, organizer_user_id=foreign_id, participant_user_ids=[member_id],
+                starts_at=datetime(2027, 1, 8, 14, tzinfo=timezone.utc), ends_at=datetime(2027, 1, 8, 15, tzinfo=timezone.utc),
+            )); db.commit()
+            foreign_participant = db.scalar(sa.select(ActivityParticipant).where(ActivityParticipant.activity_id == foreign_activity.id, ActivityParticipant.user_id == member_id))
+            foreign_participant.calendar_status = "REMOVED"; foreign_participant.removed_at = datetime(2027, 1, 6, tzinfo=timezone.utc)
+            withdrawn_participant = db.scalar(sa.select(ActivityParticipant).where(ActivityParticipant.activity_id == withdrawn_activity.id, ActivityParticipant.user_id == member_id))
+            withdrawn_participant.calendar_status = "REMOVED"; withdrawn_participant.removed_at = datetime(2027, 1, 6, tzinfo=timezone.utc)
+            foreign_membership = foreign_access.membership; foreign_membership.status = "LEFT"; foreign_membership.ended_at = datetime(2027, 1, 6, tzinfo=timezone.utc)
+            foreign_access.workspace.lifecycle = "INACTIVE"; foreign_access.workspace.deactivated_at = datetime(2027, 1, 6, tzinfo=timezone.utc); db.commit()
+            historical = list_my_calendar(db, user_id=member_id, range_start=datetime(2027, 1, 5, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2027, 1, 7, tzinfo=timezone.utc))
+            assert {item.activity.id for item in historical} == {generated[1].id, foreign_activity.id}
+            foreign_projection = next(item for item in historical if item.activity.id == foreign_activity.id)
+            assert foreign_projection.can_edit is False and foreign_projection.can_leave_participation is False
+            assert list_my_calendar(db, user_id=member_id, range_start=datetime(2027, 1, 8, tzinfo=timezone.utc), range_end=datetime(2027, 1, 9, tzinfo=timezone.utc), now=datetime(2027, 1, 7, tzinfo=timezone.utc)) == []
             with pytest.raises(ActivityConflictError):
                 create_recurring_activities(db, access=access, actor=actor, activity_in=recurring)
             db.rollback()
-            assert db.scalar(sa.select(sa.func.count()).select_from(Activity)) == 2
-            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant)) == 2
+            assert db.scalar(sa.select(sa.func.count()).select_from(Activity)) == 5
+            assert db.scalar(sa.select(sa.func.count()).select_from(ActivityParticipant)) == 5
             assert db.scalar(sa.select(sa.func.count()).select_from(GenerationBatch)) == 1
             with pytest.raises(ActivityConflictError):
                 create_activity(db, access=access, actor=actor, activity_in=ActivityCreate(

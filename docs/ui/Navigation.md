@@ -71,7 +71,10 @@ Actividades comparten lifecycle, autorización, aislamiento de caché y patrones
 responsive/accesibles coherentes.
 - Administración pertinente de miembros/Workspace dentro de Configuración.
 
-Mi calendario usa sus propios controles internos para colaboración y comparación.
+Mi calendario es una ruta global sin selector de Workspace. Stage 8.3 la
+implementa con controles Día/Semana, anterior/Hoy/siguiente, semana iniciada en
+lunes y diferenciación visual y textual discreta por Workspace. La comparación
+colaborativa continúa diferida.
 
 ### Patrones de ruta
 

@@ -155,3 +155,7 @@ autoritativa y evidencia están en
 [`V2-Workspace-Gate.md`](../security/V2-Workspace-Gate.md). La autorización de
 acciones dentro de cada dominio posterior debe reutilizar esta frontera sin
 crear bypass global.
+- Stage 8.3 agrega `Mi calendario` exclusivamente desde participación propia.
+  Organizador, owner y `GLOBAL_ADMIN` no implican inclusión. Las futuras exigen
+  participación, membership y Workspace activos; la historia legítima propia
+  puede seguir visible sin conceder acceso general ni capacidades de mutación.

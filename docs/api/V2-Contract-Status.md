@@ -358,6 +358,14 @@ Task usa DATE. Activity añade hora local y timezone IANA; backend rechaza horas
 
 ## 10. Activity y Calendar
 
+Stage 8.3 implementa `GET /api/v2/calendar/me?from=...&to=...`. El rango
+timezone-aware es obligatorio, usa intersección estricta
+`starts_at < to AND ends_at > from` y se limita a 366 días. La respuesta deriva
+el usuario de sesión, agrega participación Personal/Shared sin N requests por
+Workspace y expone solo proyecciones mínimas, participantes y capacidades. No
+existe endpoint arbitrario por `user_id`; la comparación y privacidad Shared
+permanecen diferidas.
+
 Fronteras diferentes:
 
 - Activity scoped implementada en Stage 8.1:

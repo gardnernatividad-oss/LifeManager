@@ -1,4 +1,6 @@
 export const queryKeys = {
+  myCalendar: (userId: string, rangeStart: string, rangeEnd: string) => ["calendar-me", userId, rangeStart, rangeEnd] as const,
+  myCalendarRoot: (userId: string) => ["calendar-me", userId] as const,
   v2Tasks: (workspaceId: string, params: object) => ["v2-tasks", workspaceId, params] as const,
   v2TasksRoot: (workspaceId: string) => ["v2-tasks", workspaceId] as const,
   v2PendingItems: (workspaceId: string, filters: object) => ["v2-pending-items", workspaceId, filters] as const,

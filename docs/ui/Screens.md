@@ -18,7 +18,7 @@ Las pantallas implementadas son Login, Registro, Inicio, Revisión, Planificaci�
 |---|---|---|
 | Global | Inicio | Resumen conciso del día entre Workspaces. |
 | Global | Revisión | Guardado independiente de Tareas, Pendientes y Etapas asignadas. |
-| Global | Mi calendario | Actividades del usuario entre todos los Workspaces. |
+| Global | Mi calendario | Actividades donde el usuario participa entre todos sus Workspaces; semana desktop, día mobile, detalle interno y contexto visual de Workspace sin selector global. |
 | Workspace | Planificación · Tareas | Crear Tareas puntuales o recurrencias finitas; filtrar por fecha, Responsable, catálogo, Categoría, estado derivado y origen; editar/eliminar futuras con `Solo esta`/`Todas las futuras` cuando son generadas; resolver Pendientes sin reprogramarlas. Desktop usa tabla compacta y móvil tarjetas legibles. |
 
 Stage 5.4 cierra el gate de esta pantalla: las acciones visibles proceden de

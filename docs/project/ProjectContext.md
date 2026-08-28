@@ -188,7 +188,12 @@ mensual 29/30/31 cae al último día disponible y deduplica convergencias antes
 de persistir. La identidad de catálogo
 `workspace_id + activity_master_id + organizer_user_id + starts_at` evita
 duplicados standalone/recurrentes y entre batches. La edición de series,
-recordatorios configurables, Mi calendario y privacidad permanecen diferidos.
+recordatorios configurables y privacidad permanecen diferidos. Stage 8.3
+implementa `Mi calendario` como consulta global por participación propia a
+través de todos los Workspaces, con intersección temporal `[from,to)`, semana
+desktop iniciada en lunes, día mobile y presentación en la zona IANA del
+usuario. Conserva la participación histórica legítima sin restaurar acceso al
+Workspace y oculta futuras retiradas o sin membership vigente.
 
 ## Principios
 

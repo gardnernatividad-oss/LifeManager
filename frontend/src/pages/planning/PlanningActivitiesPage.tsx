@@ -19,10 +19,10 @@ const safeError = (error: unknown) => axios.isAxiosError(error) && error.respons
 export function PlanningActivitiesPage() {
   const { workspace, user } = useAuth();
   if (!workspace || !user) return <section><h1>Planificación · Actividades</h1><p>Selecciona un espacio.</p></section>;
-  return <WorkspaceActivities key={workspace.id} workspace={workspace} timeZone={user.timezone} />;
+  return <WorkspaceActivities key={workspace.id} workspace={workspace} userId={user.id} timeZone={user.timezone} />;
 }
 
-function WorkspaceActivities({ workspace, timeZone }: { workspace: WorkspaceSummary; timeZone: string }) {
+function WorkspaceActivities({ workspace, userId, timeZone }: { workspace: WorkspaceSummary; userId: string; timeZone: string }) {
   const client = useQueryClient();
   const shared = workspace.kind === "SHARED";
   const [filters, setFilters] = useState<V2ActivityFilters>({ page: 1, page_size: 25 });
@@ -44,7 +44,10 @@ function WorkspaceActivities({ workspace, timeZone }: { workspace: WorkspaceSumm
   const activities = useQuery({ queryKey: queryKeys.v2Activities(workspace.id, filters), queryFn: () => listV2Activities(workspace.id, filters) });
   const members = useQuery({ queryKey: queryKeys.workspaceMembers(workspace.id), queryFn: () => listWorkspaceMembers(workspace.id), enabled: shared });
   const activeMembers = (members.data ?? []).filter((member) => member.status === "ACTIVE");
-  const refresh = () => client.invalidateQueries({ queryKey: queryKeys.v2ActivitiesRoot(workspace.id) });
+  const refresh = () => Promise.all([
+    client.invalidateQueries({ queryKey: queryKeys.v2ActivitiesRoot(workspace.id) }),
+    client.invalidateQueries({ queryKey: queryKeys.myCalendarRoot(userId) }),
+  ]);
   const mutation = useMutation({
     mutationFn: (operation: () => Promise<unknown>) => operation(),
     onSuccess: async () => { setEditing(null); setFeedback("Cambios guardados."); await refresh(); },

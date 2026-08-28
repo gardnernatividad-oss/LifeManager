@@ -239,6 +239,13 @@ Las Actividades recurrentes usan generación finita diaria, semanal o mensual co
 
 Mi calendario es global: muestra las Actividades del usuario a través de todos sus Workspaces y no muestra el selector global. Puede diferenciarlas visualmente por Workspace sin añadir texto antiestético al nombre.
 
+La fuente de inclusión es `ActivityParticipant`, no Organizador, owner ni rol
+global. La consulta usa intersección de intervalos y mantiene historia propia
+cuando la participación existía al comenzar la Actividad, incluso tras salir
+del Workspace; una participación retirada antes del inicio no se convierte
+posteriormente en historia visible. Desktop abre en Semana (lunes a domingo) y
+mobile en Día, siempre presentando los instantes en la zona IANA del usuario.
+
 Presentación predeterminada:
 
 - desktop: semanal;

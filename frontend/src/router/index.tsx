@@ -14,6 +14,7 @@ import { PlanningPendingItemsPage } from "../pages/planning/PlanningPendingItems
 import { PendingItemDetailPage } from "../pages/planning/PendingItemDetailPage";
 import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
 import { PlanningActivitiesPage } from "../pages/planning/PlanningActivitiesPage";
+import { MyCalendarPage } from "../pages/calendar/MyCalendarPage";
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { ActivityMastersTablePage } from "../pages/tables/ActivityMastersTablePage";
@@ -58,6 +59,7 @@ export const appRouter = createBrowserRouter([
           { index: true, element: <Navigate to="/inicio" replace /> },
           { path: "/inicio", element: <HomePage /> },
           { path: "/revision", element: <ReviewPage /> },
+          { path: "/calendario", element: <MyCalendarPage /> },
           { path: "/planificacion/tareas", element: <PlanningTasksPage /> },
           { path: "/planificacion/pendientes", element: <PlanningPendingItemsPage /> },
           { path: "/planificacion/pendientes/:pendingItemId", element: <PendingItemDetailPage /> },

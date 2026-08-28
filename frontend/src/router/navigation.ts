@@ -8,6 +8,7 @@ export interface NavigationSection {
 export const v1Navigation: readonly NavigationSection[] = [
   { label: "Inicio", path: "/inicio", icon: "⌂" },
   { label: "Revisión", path: "/revision", icon: "✓" },
+  { label: "Mi calendario", path: "/calendario", icon: "▦" },
   {
     label: "Planificación",
     icon: "＋",

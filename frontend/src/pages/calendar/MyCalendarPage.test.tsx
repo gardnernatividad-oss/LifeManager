@@ -1,0 +1,30 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import * as activityApi from "../../api/v2ActivityApi";
+import * as calendarApi from "../../api/v2CalendarApi";
+import { MyCalendarPage } from "./MyCalendarPage";
+import { calendarRange, localCalendarDate } from "../../utils/calendarRange";
+import { localDateTimeToIso } from "../../utils/taskDateTime";
+
+vi.mock("../../api/v2CalendarApi", () => ({ getMyCalendar: vi.fn() }));
+vi.mock("../../api/v2ActivityApi", () => ({ deleteV2Activity: vi.fn(), leaveV2Activity: vi.fn() }));
+vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1", timezone: "America/Lima" }, workspace: { id: "selected-but-irrelevant" } }) }));
+let item: ReturnType<typeof calendarItem>;
+function calendarItem() { const today = localCalendarDate(new Date(), "America/Lima"); return { activity_id: "activity-1", workspace: { id: "workspace-a", name: "Familia", kind: "SHARED" as const }, activity_name: "Reunión", category_name: "Familia", starts_at: localDateTimeToIso(`${today}T10:00`, "America/Lima"), ends_at: localDateTimeToIso(`${today}T11:00`, "America/Lima"), organizer: { user_id: "user-2", display_name: "Luis", email: "luis@test.local" }, participants: [{ user_id: "user-1", display_name: "Ana", email: "ana@test.local" }], status: "SCHEDULED" as const, temporal_state: "FUTURE" as const, lock_version: 1, can_edit: true, can_delete: true, can_leave_participation: true }; }
+function mount(mobile = false) { window.matchMedia = vi.fn().mockReturnValue({ matches: mobile, addEventListener: vi.fn(), removeEventListener: vi.fn() }); const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<QueryClientProvider client={client}><MyCalendarPage /></QueryClientProvider>); }
+
+describe("MyCalendarPage", () => {
+  beforeEach(() => { vi.clearAllMocks(); item = calendarItem(); vi.mocked(calendarApi.getMyCalendar).mockResolvedValue({ items: [item] }); vi.mocked(activityApi.deleteV2Activity).mockResolvedValue(); vi.mocked(activityApi.leaveV2Activity).mockResolvedValue(item as never); });
+  it("defaults to desktop week, Monday start and consolidates Workspace-labelled Activities", async () => {
+    const user = userEvent.setup(); mount(); expect(screen.getByRole("button", { name: "Semana" })).toHaveAttribute("aria-pressed", "true"); expect(await screen.findByText("Reunión")).toBeInTheDocument(); expect(screen.getByText("Familia")).toBeInTheDocument(); const today = localCalendarDate(new Date(), "America/Lima"); const range = calendarRange(today, "WEEK", "America/Lima"); expect(calendarApi.getMyCalendar).toHaveBeenCalledWith(range.from, range.to); await user.click(screen.getByText("Reunión")); expect(screen.getByRole("dialog")).toHaveTextContent("Organizador: Luis"); await user.click(screen.getByRole("button", { name: "Eliminar" })); await waitFor(() => expect(activityApi.deleteV2Activity).toHaveBeenCalledWith("workspace-a", "activity-1", 1));
+  });
+  it("defaults to mobile day and supports navigation/view controls", async () => {
+    const user = userEvent.setup(); mount(true); expect(screen.getByRole("button", { name: "Día" })).toHaveAttribute("aria-pressed", "true"); await user.click(screen.getByRole("button", { name: "Periodo siguiente" })); await waitFor(() => expect(vi.mocked(calendarApi.getMyCalendar).mock.calls.length).toBeGreaterThanOrEqual(2)); await user.click(screen.getByRole("button", { name: "Semana" })); expect(screen.getByRole("button", { name: "Semana" })).toHaveAttribute("aria-pressed", "true");
+  });
+  it("renders loading, error retry and empty states safely", async () => {
+    vi.mocked(calendarApi.getMyCalendar).mockRejectedValueOnce(new Error("private")); const user = userEvent.setup(); mount(); expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar"); vi.mocked(calendarApi.getMyCalendar).mockResolvedValueOnce({ items: [] }); await user.click(screen.getByRole("button", { name: "Reintentar" })); expect(await screen.findByText("No hay Actividades en este periodo.")).toBeInTheDocument();
+  });
+});
