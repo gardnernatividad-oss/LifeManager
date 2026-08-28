@@ -530,6 +530,14 @@ de Etapa, mutación directa de history, bypass de membership ni campos derivados
 en DTOs de escritura. El inventario OpenAPI y el gate PostgreSQL validan rutas,
 scope jerárquico, lifecycle y concurrencia.
 
+Stage 9.3 añade `PUT .../stages/configuration`, `POST .../stages/reorder` y
+`POST .../stages/{stage_id}/correction`. La configuración persistida debe sumar
+exactamente `100.00`; el orden es server-side y se normaliza a `1..N`; Peso,
+Avance e historial usan precisión decimal de dos posiciones. El seguimiento
+ordinario no modifica una Etapa finalizada. Solo la corrección explícita desde
+Planning permite `100.00 → <100.00`, elimina su fecha de cumplimiento y crea un
+evento `CORRECTION`. Un Proyecto inactivo rechaza todas estas mutaciones.
+
 ## 16. Terminología
 
 Stage 9.2 añade fuentes explícitas `CATALOG` y `CUSTOM` a Tareas y Actividades.

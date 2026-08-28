@@ -79,6 +79,10 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   `REMOVED`, no miembro, cuenta `DISABLED`, Workspace `INACTIVE` y
   `GLOBAL_ADMIN` sin membership no acceden. Owner, Líder y Responsable no
   reciben autoridad adicional. Ver `docs/security/V2-Project-Gate.md`.
+- Stage 9.3 mantiene la misma matriz para configuración, reorden y corrección
+  explícita de Etapas. Todas las operaciones exigen membership `ACTIVE`, scope
+  Workspace → Project → Etapa, Proyecto activo y optimistic locks vigentes;
+  `GLOBAL_ADMIN` sin membership no obtiene bypass.
 - Stage 8.1 autoriza crear, listar, consultar y administrar Actividades futuras
   standalone a cualquier membership `ACTIVE` del mismo Workspace `ACTIVE`.
   Organizador y owner son atribuciones sin privilegio especial; `GLOBAL_ADMIN`

@@ -171,6 +171,15 @@ aislamiento jerárquico, concurrencia, pesos/proyecciones derivadas, history
 append-only, cache privada y UX responsive. La evidencia del gate se conserva
 en `docs/security/V2-Project-Gate.md`.
 
+Stage 9.3 sustituye la configuración temporal incompleta: toda configuración
+guardada de Etapas suma exactamente `100.00`, el orden visible se administra
+con subir/bajar y `position` permanece interno. Peso, Avance, historial y
+agregación ponderada usan precisión decimal de dos posiciones. Una Etapa al
+`100.00` sigue congelada para seguimiento ordinario, pero Planning dispone de
+una corrección explícita que la reabre, limpia su fecha de cumplimiento y
+registra `CORRECTION`; esta operación también puede reabrir el Estado derivado
+del Proyecto. Los Proyectos inactivos no admiten seguimiento ni corrección.
+
 ## Estado V2 de Actividades
 
 Stage 8.1 implementa la planificación Workspace-scoped de Actividades

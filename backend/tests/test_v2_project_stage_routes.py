@@ -41,7 +41,7 @@ def client():
 @patch("app.api.v2.project_stages.create_project_stage", return_value=ProjectStage())
 def test_create_is_scoped_strict_and_route_owns_transaction(create, projection, client) -> None:
     http, db, user, access = client
-    payload = {"responsible_user_id": str(USER_ID), "name": "Empacar", "position": 0, "weight": "100.00", "planned_date": "2026-09-10", "project_lock_version": 1}
+    payload = {"responsible_user_id": str(USER_ID), "name": "Empacar", "weight": "100.00", "planned_date": "2026-09-10", "project_lock_version": 1}
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages", json=payload)
     assert response.status_code == 201 and response.json()["state"] == "NO_INICIADA"
     assert create.call_args.kwargs["access"] is access and create.call_args.kwargs["actor"] is user
@@ -79,3 +79,25 @@ def test_history_is_hierarchically_scoped_and_read_only(history, client) -> None
     assert history.call_args.args == (db,) and history.call_args.kwargs == {"workspace_id": WORKSPACE_ID, "project_id": PROJECT_ID, "stage_id": STAGE_ID}
     assert not db.commit.called and not db.flush.called and not db.rollback.called
     assert http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/history", json={}).status_code == 405
+
+
+@patch("app.api.v2.project_stages._list_read", return_value={"items": [], "total_weight": "0.00", "weights_complete": False})
+@patch("app.api.v2.project_stages.configure_project_stages", return_value=[])
+def test_configuration_is_atomic_and_position_is_not_client_controlled(configure, projection, client) -> None:
+    http, db, user, access = client
+    response = http.put(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/configuration", json={"items": [{"name": "Etapa", "responsible_user_id": str(USER_ID), "weight": "100.00", "planned_date": "2026-09-10"}], "project_lock_version": 1})
+    assert response.status_code == 200
+    assert configure.call_args.kwargs["actor"] is user and configure.call_args.kwargs["access"] is access
+    db.commit.assert_called_once(); db.rollback.assert_not_called()
+    invalid = http.put(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/configuration", json={"items": [{"name": "Etapa", "weight": "99.99", "planned_date": "2026-09-10", "position": 9}], "project_lock_version": 1})
+    assert invalid.status_code == 422
+
+
+@patch("app.api.v2.project_stages._read", return_value=stage_read())
+@patch("app.api.v2.project_stages.correct_project_stage_progress", return_value=ProjectStage())
+def test_explicit_correction_commits_once(correction, projection, client) -> None:
+    http, db, user, access = client
+    response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects/{PROJECT_ID}/stages/{STAGE_ID}/correction", json={"progress": "80.25", "comment": "Corrección", "lock_version": 1, "project_lock_version": 2})
+    assert response.status_code == 200
+    assert correction.call_args.kwargs["progress"] == Decimal("80.25") and correction.call_args.kwargs["actor"] is user and correction.call_args.kwargs["access"] is access
+    db.commit.assert_called_once(); db.refresh.assert_called_once()

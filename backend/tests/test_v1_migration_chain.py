@@ -30,7 +30,7 @@ def test_migrations_form_one_linear_v2_head() -> None:
     config = Config(str(BACKEND_ROOT / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_heads() == ["b9c0d1e2f3a4"]
+    assert script.get_heads() == ["c0d1e2f3a4b5"]
     current = script.get_revision("d5e6f7a8b9c0")
     rate_limits = script.get_revision("c3d172b18308")
     v2_reset = script.get_revision("e4f5a6b7c8d9")
@@ -146,7 +146,7 @@ def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
         with target_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "b9c0d1e2f3a4"
+                ).scalar_one() == "c0d1e2f3a4b5"
             tables = set(sa.inspect(connection).get_table_names())
             assert {
                 "users",
@@ -168,5 +168,5 @@ def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
         with roundtrip_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "b9c0d1e2f3a4"
+            ).scalar_one() == "c0d1e2f3a4b5"
         roundtrip_engine.dispose()

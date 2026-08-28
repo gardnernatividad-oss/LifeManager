@@ -88,13 +88,13 @@ No se detectaron desviaciones funcionales en Fase 6.
 | Líder sin privilegio especial | CONFORME | Toda membership ACTIVE comparte autoridad operativa; owner/creator tampoco elevan permisos. |
 | Etapa con Responsable, fecha, peso y posición | CONFORME | Modelo y relaciones mantienen jerarquía Project→Stage. |
 | Peso decimal hasta dos decimales | CONFORME | `Numeric(5,2)` y schema Decimal. |
-| Configuración válida exige suma exacta 100.00 | DESVIACIÓN | Servicio permite persistir etapas con subtotal <100 y documentación actual lo aprueba como temporal. La decisión final exige guardar configuración completa de forma atómica. Etapa 9.3. |
-| Orden mediante subir/bajar; posición no editable | DESVIACIÓN | UI calcula `position`, pero API create/update acepta el entero aportado y no existen comandos subir/bajar. Etapa 9.3. |
-| Avance de Etapa con hasta dos decimales | FALTANTE | Modelo/history/schema usan `SmallInteger`/`int`; requiere migración a Numeric y actualización de cálculos. Etapa 9.3. |
+| Configuración válida exige suma exacta 100.00 | CONFORME | La configuración completa se guarda atómicamente bajo lock del Proyecto y rechaza cualquier total distinto de `100.00`. |
+| Orden mediante subir/bajar; posición no editable | CONFORME | `position` es interno; el comando de reorden bloquea y normaliza la secuencia visible `1..N` sin huecos. |
+| Avance de Etapa con hasta dos decimales | CONFORME | Stage e history usan `NUMERIC(5,2)` y los cálculos ponderados usan `Decimal`. |
 | Avance/Estado/Cumplimiento del Proyecto derivados | CONFORME | Agregación ponderada y fechas se calculan desde Etapas. |
 | Proyecto inactivo bloquea seguimiento | CONFORME | `_check_project()` se ejecuta bajo lock antes de mutar Etapa. |
 | Etapa 100% congelada en operación ordinaria | CONFORME | Mutación normal y capacidades la vuelven read-only. |
-| Corrección explícita de Etapa finalizada | FALTANTE | No hay endpoint/service/capability de corrección ni evento CORRECTION accesible. Debe recalcular fecha y agregado. Etapa 9.3. |
+| Corrección explícita de Etapa finalizada | CONFORME | Planning ofrece corrección explícita `100.00 → <100.00`, limpia finalización, reabre las proyecciones y registra `CORRECTION`. |
 | Historial, comentario-only y navegación jerárquica | CONFORME | History append-only y páginas Proyecto→Etapa. |
 | Terminología visible “Etapa” | DESVIACIÓN | Páginas V2 principales usan Etapa, pero Inicio y Reportes activos todavía muestran “Paso/Pasos”. Se corrige con el dominio correspondiente y se verifica transversalmente en 9.5. |
 

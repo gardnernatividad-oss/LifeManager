@@ -43,7 +43,7 @@ def client():
 def test_create_uses_active_member_and_route_owns_transaction(create, projection, client) -> None:
     http, db, user, access = client
     response = http.post(f"/api/v2/workspaces/{WORKSPACE_ID}/projects", json={"category_id": str(uuid.uuid4()), "leader_user_id": str(USER_ID), "name": "Mudanza"})
-    assert response.status_code == 201 and response.json()["progress"] == 0.0
+    assert response.status_code == 201 and response.json()["progress"] == "0"
     assert create.call_args.kwargs["actor"] is user and create.call_args.kwargs["access"] is access
     db.commit.assert_called_once(); db.refresh.assert_called_once(); db.rollback.assert_not_called()
 
@@ -89,8 +89,11 @@ def test_mass_assignment_and_openapi_surface(client) -> None:
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}": {"get", "patch"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/deactivate": {"post"},
         "/api/v2/workspaces/{workspace_id}/projects/{project_id}/reactivate": {"post"},
-        "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages": {"get", "post"},
-            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}": {"get", "patch"},
+            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages": {"get", "post"},
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/configuration": {"put"},
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/reorder": {"post"},
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}": {"get", "patch"},
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/correction": {"post"},
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/history": {"get"},
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress": {"post"},
     }

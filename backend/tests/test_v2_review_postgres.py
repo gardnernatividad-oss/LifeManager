@@ -62,7 +62,7 @@ def test_global_review_selection_on_disposable_postgres(monkeypatch: pytest.Monk
             db.execute(sa.text("INSERT INTO pending_items (id,workspace_id,category_id,responsible_user_id,name,planned_date,progress,created_by_user_id) VALUES (:id,:workspace,:category,:responsible,'Pendiente',:planned,25,:creator)"), {"id": pending_id, "workspace": active_workspace, "category": category_ids[active_workspace], "responsible": user_id, "planned": date(2026, 8, 28), "creator": user_id})
             project_id, stage_id = uuid.uuid4(), uuid.uuid4()
             db.execute(sa.text("INSERT INTO projects (id,workspace_id,category_id,leader_user_id,name,created_by_user_id) VALUES (:id,:workspace,:category,:leader,'Proyecto',:creator)"), {"id": project_id, "workspace": second_workspace, "category": category_ids[second_workspace], "leader": user_id, "creator": user_id})
-            db.execute(sa.text("INSERT INTO project_stages (id,workspace_id,project_id,responsible_user_id,name,position,weight,planned_date,progress) VALUES (:id,:workspace,:project,:responsible,'Etapa',0,100,:planned,50)"), {"id": stage_id, "workspace": second_workspace, "project": project_id, "responsible": user_id, "planned": date(2026, 8, 26)})
+            db.execute(sa.text("INSERT INTO project_stages (id,workspace_id,project_id,responsible_user_id,name,position,weight,planned_date,progress) VALUES (:id,:workspace,:project,:responsible,'Etapa',1,100,:planned,50)"), {"id": stage_id, "workspace": second_workspace, "project": project_id, "responsible": user_id, "planned": date(2026, 8, 26)})
             db.commit()
             result = get_global_review(db, user_id=user_id, local_date=date(2026, 8, 28))
             assert [row[0].id for row in result.tasks] == [task_ids[1], task_ids[0]]

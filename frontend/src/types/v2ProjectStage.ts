@@ -1,7 +1,11 @@
-export interface V2ProjectStage { id: string; workspace_id: string; project_id: string; responsible_user_id: string; responsible_display_name: string; responsible_email: string; name: string; position: number; weight: string; planned_date: string; progress: number; state: "NO_INICIADA" | "EN_PROCESO" | "FINALIZADA"; completion_date: string | null; compliance: "EN_PLAZO" | "ATRASADO" | "A_TIEMPO" | "CON_ADELANTO" | "CON_RETRASO"; compliance_detail_days: number; lock_version: number; can_edit: boolean; can_update_progress: boolean; created_at: string; updated_at: string; }
+export interface V2ProjectStage { id: string; workspace_id: string; project_id: string; responsible_user_id: string; responsible_display_name: string; responsible_email: string; name: string; position: number; weight: string; planned_date: string; progress: string; state: "NO_INICIADA" | "EN_PROCESO" | "FINALIZADA"; completion_date: string | null; compliance: "EN_PLAZO" | "ATRASADO" | "A_TIEMPO" | "CON_ADELANTO" | "CON_RETRASO"; compliance_detail_days: number; lock_version: number; can_edit: boolean; can_update_progress: boolean; can_correct_progress: boolean; created_at: string; updated_at: string; }
 export interface V2ProjectStageList { items: V2ProjectStage[]; total_weight: string; weights_complete: boolean; }
-export interface V2ProjectStageCreate { responsible_user_id?: string; name: string; position: number; weight: string; planned_date: string; project_lock_version: number; }
-export interface V2ProjectStageUpdate { responsible_user_id?: string; name?: string; position?: number; weight?: string; planned_date?: string; lock_version: number; project_lock_version: number; }
-export interface V2ProjectStageTracking { progress?: number; comment?: string; lock_version: number; project_lock_version: number; }
-export interface V2ProjectStageHistory { id: string; progress: number; comment: string | null; type: "TRACKING" | "CORRECTION"; actor_user_id: string; actor_display_name: string; recorded_at: string; }
+export interface V2ProjectStageCreate { responsible_user_id?: string; name: string; weight: string; planned_date: string; project_lock_version: number; }
+export interface V2ProjectStageUpdate { responsible_user_id?: string; name?: string; weight?: string; planned_date?: string; lock_version: number; project_lock_version: number; }
+export interface V2ProjectStageTracking { progress?: string; comment?: string; lock_version: number; project_lock_version: number; }
+export interface V2ProjectStageCorrection { progress: string; comment?: string; lock_version: number; project_lock_version: number; }
+export interface V2ProjectStageConfigurationItem { id?: string; responsible_user_id?: string; name: string; weight: string; planned_date: string; lock_version?: number; }
+export interface V2ProjectStageConfiguration { items: V2ProjectStageConfigurationItem[]; project_lock_version: number; }
+export interface V2ProjectStageReorder { items: Array<{ id: string; lock_version: number }>; project_lock_version: number; }
+export interface V2ProjectStageHistory { id: string; previous_progress: string | null; progress: string; comment: string | null; type: "TRACKING" | "CORRECTION"; actor_user_id: string; actor_display_name: string; recorded_at: string; }
 export interface V2ProjectStageHistoryList { items: V2ProjectStageHistory[]; }

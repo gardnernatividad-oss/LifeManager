@@ -75,7 +75,7 @@ class ProjectRead(_StrictModel):
     description: str | None
     is_active: bool
     planned_date: date | None
-    progress: float | None
+    progress: Decimal | None
     state: str | None
     compliance: str | None
     compliance_detail_days: int | None

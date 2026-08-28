@@ -395,7 +395,7 @@ class ProjectStage(BaseEntity):
         UniqueConstraint("project_id", "position", name="uq_project_stages_project_position"),
         UniqueConstraint("id", "workspace_id", name="uq_project_stages_id_workspace"),
         CheckConstraint("length(btrim(name)) > 0", name="ck_project_stages_name_not_blank"),
-        CheckConstraint("position >= 0", name="ck_project_stages_position_nonnegative"),
+        CheckConstraint("position >= 1", name="ck_project_stages_position_positive"),
         CheckConstraint("weight > 0 AND weight <= 100", name="ck_project_stages_weight_range"),
         CheckConstraint("progress BETWEEN 0 AND 100", name="ck_project_stages_progress_range"),
         CheckConstraint("(progress = 100 AND completion_date IS NOT NULL) OR (progress < 100 AND completion_date IS NULL)", name="ck_project_stages_completion_consistent"),
@@ -410,7 +410,7 @@ class ProjectStage(BaseEntity):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     weight: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     planned_date: Mapped[date] = mapped_column(Date, nullable=False)
-    progress: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"), nullable=False)
+    progress: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), server_default=text("0.00"), nullable=False)
     completion_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
     project: Mapped[Project] = relationship(back_populates="stages")
@@ -431,7 +431,8 @@ class ProjectStageHistory(Base):
     project_stage_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    progress: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    previous_progress: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    progress: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     event_type: Mapped[HistoryEventType] = mapped_column(String(16), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)

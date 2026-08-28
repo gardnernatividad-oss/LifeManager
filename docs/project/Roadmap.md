@@ -75,7 +75,7 @@ El roadmap conservará exactamente estas columnas:
 | Fase 8 | 8.5 | Gestión de ocurrencias/series, cancelación, salida de participantes, autorización y gate | Completado |
 | 9. Corrección de paridad funcional | 9.1 | Auditoría integral de Fases 3–8 contra el diseño funcional final y detección de desviaciones | Completado |
 | 9. Corrección de paridad funcional | 9.2 | Corrección de Tareas y Tablas: resultados corregibles, Otra tarea/Otra actividad y clasificación/reportabilidad | Pendiente |
-| 9. Corrección de paridad funcional | 9.3 | Corrección de Proyectos/Etapas: orden visual, pesos 100.00%, precisión, vigencia y corrección de finalizados | Pendiente |
+| 9. Corrección de paridad funcional | 9.3 | Corrección de Proyectos/Etapas: orden visual, pesos 100.00%, precisión, vigencia y corrección de finalizados | Completado |
 | 9. Corrección de paridad funcional | 9.4 | Corrección de Calendario: vistas Día/Semana/Mes, resúmenes diarios, vistas Workspace y comparación colaborativa | Pendiente |
 | 9. Corrección de paridad funcional | 9.5 | Regresión integral, autorización, PostgreSQL, responsive y gate de paridad funcional de Fases 3–8 | Pendiente |
 | 10. Revisión | 10.1 | Motor global y reglas de selección de Tareas, Pendientes y Etapas para Revisión | Completado |

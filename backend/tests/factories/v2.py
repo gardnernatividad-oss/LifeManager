@@ -478,9 +478,9 @@ class V2Factory:
         )
         self.db.flush()
         stages = (
-            self.project_stage(projects[0], member_a, "Preparación", position=0, weight=Decimal("30.00"), progress=100, planned_date=DEFAULT_TODAY),
-            self.project_stage(projects[0], member_b, "Ejecución", position=1, weight=Decimal("40.00"), progress=50, planned_date=DEFAULT_TODAY + timedelta(days=7)),
-            self.project_stage(projects[0], member_c, "Cierre", position=2, weight=Decimal("30.00"), progress=0, planned_date=DEFAULT_TODAY + timedelta(days=14)),
+            self.project_stage(projects[0], member_a, "Preparación", position=1, weight=Decimal("30.00"), progress=100, planned_date=DEFAULT_TODAY),
+            self.project_stage(projects[0], member_b, "Ejecución", position=2, weight=Decimal("40.00"), progress=50, planned_date=DEFAULT_TODAY + timedelta(days=7)),
+            self.project_stage(projects[0], member_c, "Cierre", position=3, weight=Decimal("30.00"), progress=0, planned_date=DEFAULT_TODAY + timedelta(days=14)),
         )
         self.db.flush()
         stage_history = (

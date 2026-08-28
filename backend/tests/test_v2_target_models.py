@@ -83,6 +83,10 @@ def test_catalog_and_generation_shapes_are_constrained() -> None:
 def test_progress_weight_participant_and_reminder_constraints_exist() -> None:
     assert "ck_project_stages_weight_range" in names(ProjectStage.__table__, CheckConstraint)
     assert "ck_project_stages_progress_range" in names(ProjectStage.__table__, CheckConstraint)
+    assert "ck_project_stages_position_positive" in names(ProjectStage.__table__, CheckConstraint)
+    assert str(ProjectStage.__table__.c.progress.type) == "NUMERIC(5, 2)"
+    assert str(ProjectStageHistory.__table__.c.progress.type) == "NUMERIC(5, 2)"
+    assert str(ProjectStageHistory.__table__.c.previous_progress.type) == "NUMERIC(5, 2)"
     assert "uq_activity_participants_activity_user" in names(ActivityParticipant.__table__, UniqueConstraint)
     assert "uq_activity_reminders_activity_user" in names(ActivityReminder.__table__, UniqueConstraint)
     assert "uq_reminder_preferences_user_type" in names(ReminderPreference.__table__, UniqueConstraint)

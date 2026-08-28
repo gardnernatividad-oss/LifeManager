@@ -1,6 +1,7 @@
 import uuid
 
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,7 +29,7 @@ class ReviewProjectStageItem(_ReviewItem):
     project_id: uuid.UUID
     project_name: str
     stage_name: str
-    progress: int = Field(ge=0, le=100)
+    progress: Decimal = Field(ge=0, le=100, max_digits=5, decimal_places=2)
 
 
 class GlobalReviewRead(BaseModel):
