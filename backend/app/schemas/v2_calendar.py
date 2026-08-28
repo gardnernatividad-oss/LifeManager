@@ -1,11 +1,11 @@
 import uuid
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ActivityStatus, WorkspaceKind
+from app.models.enums import ActivityStatus, CalendarVisibility, WorkspaceKind
 
 
 class _StrictModel(BaseModel):
@@ -43,3 +43,46 @@ class CalendarActivityRead(_StrictModel):
 
 class MyCalendarResponse(_StrictModel):
     items: list[CalendarActivityRead]
+
+
+class CalendarComparisonDetail(_StrictModel):
+    activity_name: str
+    starts_at: datetime
+    ends_at: datetime
+    temporal_state: Literal["FUTURE", "IN_PROGRESS", "PAST"]
+
+
+class CalendarBusyBlock(_StrictModel):
+    starts_at: datetime
+    ends_at: datetime
+    occupied: Literal[True] = True
+
+
+class CalendarComparisonDetails(_StrictModel):
+    visibility: Literal[CalendarVisibility.SHOW_DETAILS]
+    detailed_events: list[CalendarComparisonDetail]
+
+
+class CalendarComparisonAvailability(_StrictModel):
+    visibility: Literal[CalendarVisibility.AVAILABILITY_ONLY]
+    busy_blocks: list[CalendarBusyBlock]
+
+
+class CalendarComparisonHidden(_StrictModel):
+    visibility: Literal[CalendarVisibility.HIDE]
+
+
+CalendarComparisonResponse = Annotated[
+    Union[CalendarComparisonDetails, CalendarComparisonAvailability, CalendarComparisonHidden],
+    Field(discriminator="visibility"),
+]
+
+
+class CalendarVisibilityRead(_StrictModel):
+    visibility: CalendarVisibility
+    lock_version: int
+
+
+class CalendarVisibilityUpdate(_StrictModel):
+    visibility: CalendarVisibility
+    lock_version: int

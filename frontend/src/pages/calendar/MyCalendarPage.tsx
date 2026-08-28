@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { queryKeys } from "../../api/queryKeys";
 import { deleteV2Activity, leaveV2Activity } from "../../api/v2ActivityApi";
@@ -30,7 +31,7 @@ export function MyCalendarPage() {
   if (!user || !range) return <section><h1>Mi calendario</h1><p>Cargando calendario…</p></section>;
   const days = Array.from({ length: view === "WEEK" ? 7 : 1 }, (_, index) => addCalendarDays(range.first, index));
   const move = (direction: number) => setAnchor(addCalendarDays(anchor, direction * (view === "WEEK" ? 7 : 1)));
-  return <section className="my-calendar-page"><header><p className="eyebrow">Calendario personal</p><h1>Mi calendario</h1></header>
+  return <section className="my-calendar-page"><header><p className="eyebrow">Calendario personal</p><h1>Mi calendario</h1><Link className="primary-button" to="/calendario/comparar">Comparar</Link></header>
     <div className="calendar-toolbar" aria-label="Navegación del calendario"><div><button type="button" aria-label="Periodo anterior" onClick={() => move(-1)}>‹</button><button type="button" onClick={() => setAnchor(localCalendarDate(new Date(), user.timezone))}>Hoy</button><button type="button" aria-label="Periodo siguiente" onClick={() => move(1)}>›</button></div><strong>{view === "WEEK" ? `${dateLabel(range.first, user.timezone)} – ${dateLabel(addCalendarDays(range.after, -1), user.timezone)}` : dateLabel(range.first, user.timezone, true)}</strong><div role="group" aria-label="Vista del calendario"><button type="button" aria-pressed={view === "DAY"} onClick={() => setView("DAY")}>Día</button><button type="button" aria-pressed={view === "WEEK"} onClick={() => setView("WEEK")}>Semana</button></div></div>
     {feedback ? <p role="status">{feedback}</p> : null}
     {calendar.isPending ? <p role="status">Cargando calendario…</p> : calendar.isError ? <div role="alert"><p>No pudimos cargar Mi calendario.</p><button type="button" onClick={() => void calendar.refetch()}>Reintentar</button></div> : calendar.data.items.length === 0 ? <p className="review-empty">No hay Actividades en este periodo.</p> : <div className={view === "WEEK" ? "calendar-grid calendar-grid--week" : "calendar-grid calendar-grid--day"}>{days.map((day) => <section className="calendar-day" key={day} aria-label={dateLabel(day, user.timezone, true)}><h2>{dateLabel(day, user.timezone, true)}</h2><div className="calendar-day__activities">{calendar.data.items.filter((item) => activityLocalDate(item.starts_at, user.timezone) === day).map((item) => <button type="button" className={`calendar-activity calendar-activity--tone-${workspaceTone(item.workspace.id)}`} key={item.activity_id} onClick={() => setSelected(item)}><strong>{item.activity_name}</strong><span>{timeLabel(item.starts_at, user.timezone)}–{timeLabel(item.ends_at, user.timezone)}</span><small>{item.workspace.name}</small></button>)}</div></section>)}</div>}

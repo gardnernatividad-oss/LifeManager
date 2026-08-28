@@ -16,6 +16,8 @@ from app.models import Activity, ActivityParticipant, GenerationBatch, User, Wor
 from app.schemas.v2_activity import ActivityCreate, ActivityUpdate, RecurringActivityCreate
 from app.services.v2_activity import ActivityConflictError, ActivityReferenceUnavailableError, create_activity, create_recurring_activities, delete_activity, leave_activity, update_activity
 from app.services.v2_calendar import list_my_calendar
+from app.services.v2_calendar_comparison import CalendarComparisonNotFoundError, compare_calendar
+from app.models.enums import CalendarVisibility
 from app.services.v2_workspace import WorkspaceAccess
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
@@ -92,6 +94,23 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             consolidated = list_my_calendar(db, user_id=member_id, range_start=datetime(2027, 1, 4, 14, 30, tzinfo=timezone.utc), range_end=datetime(2027, 1, 5, 15, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
             assert {item.activity.id for item in consolidated} == {generated[0].id, generated[1].id, foreign_activity.id, personal_activity.id}
             assert [(item.activity.starts_at, item.activity.ends_at, str(item.activity.id)) for item in consolidated] == sorted((item.activity.starts_at, item.activity.ends_at, str(item.activity.id)) for item in consolidated)
+            target_membership = db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))
+            target_membership.calendar_visibility = CalendarVisibility.SHOW_DETAILS; db.commit()
+            comparison = compare_calendar(db, workspace_id=workspace_id, viewer_id=owner_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            assert {item.activity.id for item in comparison.events} >= {generated[0].id, generated[1].id, foreign_activity.id, personal_activity.id}
+            target_membership = db.get(WorkspaceMember, target_membership.id); target_membership.calendar_visibility = CalendarVisibility.AVAILABILITY_ONLY; db.commit()
+            comparison = compare_calendar(db, workspace_id=workspace_id, viewer_id=owner_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            assert comparison.events == [] and comparison.busy_blocks
+            assert [(block.starts_at, block.ends_at) for block in comparison.busy_blocks] == sorted((block.starts_at, block.ends_at) for block in comparison.busy_blocks)
+            target_membership = db.get(WorkspaceMember, target_membership.id); target_membership.calendar_visibility = CalendarVisibility.HIDE; db.commit()
+            comparison = compare_calendar(db, workspace_id=workspace_id, viewer_id=owner_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            assert comparison.events == [] and comparison.busy_blocks == []
+            foreign_user = db.get(User, foreign_id); foreign_user.global_role = "GLOBAL_ADMIN"; db.commit()
+            with pytest.raises(CalendarComparisonNotFoundError):
+                compare_calendar(db, workspace_id=workspace_id, viewer_id=foreign_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            with pytest.raises(CalendarComparisonNotFoundError):
+                compare_calendar(db, workspace_id=personal_workspace_id, viewer_id=member_id, target_id=owner_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
+            db.rollback()
             withdrawn_activity = create_activity(db, access=foreign_access, actor=actor, activity_in=ActivityCreate(
                 activity_master_id=foreign_master_id, organizer_user_id=foreign_id, participant_user_ids=[member_id],
                 starts_at=datetime(2027, 1, 8, 14, tzinfo=timezone.utc), ends_at=datetime(2027, 1, 8, 15, tzinfo=timezone.utc),

@@ -270,6 +270,10 @@ La política se aplica al calendario consolidado de la persona, no solo a las Ac
 
 La comparación abre una página interna separada, diaria, y compara solo miembros seleccionados que permiten visibilidad. No se anexa debajo del Calendario normal.
 
+Stage 8.4 implementa esta frontera con `HIDE` como default físico: la
+preferencia del target es direccional, disponibilidad fusiona bloques opacos y
+detalles nunca transfieren capacidades ni acceso a los Workspaces de origen.
+
 ## 11. Revisión
 
 Revisión es un flujo global, accesible en cualquier momento y sin selector global de Workspace. Los recordatorios no limitan su acceso por horario.

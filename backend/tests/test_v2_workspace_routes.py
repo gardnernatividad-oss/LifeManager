@@ -310,7 +310,10 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
 
     assert operations == {
         ("GET", "/api/v2/workspaces"),
-        ("GET", "/api/v2/workspaces/management"),
+            ("GET", "/api/v2/workspaces/management"),
+            ("GET", "/api/v2/workspaces/{workspace_id}/calendar-comparison"),
+            ("GET", "/api/v2/workspaces/{workspace_id}/calendar-visibility"),
+            ("PATCH", "/api/v2/workspaces/{workspace_id}/calendar-visibility"),
         ("POST", "/api/v2/workspaces"),
         ("GET", "/api/v2/workspaces/{workspace_id}/members"),
         ("DELETE", "/api/v2/workspaces/{workspace_id}/members/{user_id}"),

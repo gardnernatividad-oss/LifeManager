@@ -19,6 +19,8 @@ import {
   transferWorkspaceOwnership,
   type MemberExitResolution,
 } from "../../api/workspaceApi";
+import { getCalendarVisibility, setCalendarVisibility } from "../../api/v2CalendarComparisonApi";
+import type { CalendarVisibility } from "../../types/v2CalendarComparison";
 import { useAuth } from "../../hooks/useAuth";
 import type { WorkspaceSummary } from "../../types/auth";
 
@@ -56,6 +58,23 @@ export function WorkspaceManagement() {
     queryKey: queryKeys.workspaceInvitations(selected?.id ?? ""),
     queryFn: () => listWorkspaceInvitations(selected!.id),
     enabled: canLoadDetails && selected?.visible_role === "Propietario",
+  });
+  const calendarVisibility = useQuery({
+    queryKey: queryKeys.calendarVisibility(user?.id ?? "anonymous", selected?.id ?? ""),
+    queryFn: () => getCalendarVisibility(selected!.id),
+    enabled: Boolean(user && selected?.kind === "SHARED" && selected.lifecycle === "ACTIVE"),
+  });
+  const visibilityMutation = useMutation({
+    mutationFn: (visibility: CalendarVisibility) => setCalendarVisibility(selected!.id, visibility, calendarVisibility.data!.lock_version),
+    onSuccess: async (saved) => {
+      client.setQueryData(queryKeys.calendarVisibility(user!.id, selected!.id), saved);
+      client.removeQueries({ queryKey: queryKeys.calendarComparisonRoot(user!.id, selected!.id) });
+      setFeedback("Privacidad de calendario actualizada.");
+    },
+    onError: async (error) => {
+      setFeedback(safeMessage(error));
+      await calendarVisibility.refetch();
+    },
   });
   const activeMembers = useMemo(
     () => members.data?.filter((member) => member.status === "ACTIVE") ?? [],
@@ -158,6 +177,8 @@ export function WorkspaceManagement() {
               {selected.visible_role === "Propietario" && member.role === "Miembro" ? <button onClick={() => window.confirm(`¿Retirar a ${member.display_name}?`) && action.mutate(() => removeWorkspaceMember(selected.id, member.user_id), { onError: (error) => { setFeedback(safeMessage(error)); if (axios.isAxiosError(error) && error.response?.status === 409) setResolutionTarget({ userId: member.user_id }); } })}>Retirar</button> : null}
             </li>
           ))}</ul> : null}
+
+          {selected.kind === "SHARED" && selected.lifecycle === "ACTIVE" ? <section className="calendar-privacy" aria-labelledby="calendar-privacy-heading"><h4 id="calendar-privacy-heading">Privacidad de calendario</h4><p>Controla lo que los miembros de este Workspace pueden ver de tu calendario consolidado.</p>{calendarVisibility.isPending ? <p role="status">Cargando privacidad…</p> : calendarVisibility.isError ? <button onClick={() => void calendarVisibility.refetch()}>Reintentar privacidad</button> : <label>Compartir<select aria-label="Privacidad de calendario" value={calendarVisibility.data.visibility} disabled={visibilityMutation.isPending} onChange={(event) => visibilityMutation.mutate(event.target.value as CalendarVisibility)}><option value="SHOW_DETAILS">Mostrar detalles</option><option value="AVAILABILITY_ONLY">Solo disponibilidad</option><option value="HIDE">Ocultar</option></select></label>}</section> : null}
 
           {selected.visible_role === "Propietario" && activeMembers.length > 1 ? <div className="workspace-management__inline"><label>Nuevo propietario<select value={transferTarget} onChange={(event) => setTransferTarget(event.target.value)}><option value="">Selecciona</option>{activeMembers.filter((member) => member.role === "Miembro").map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label><button disabled={!transferTarget} onClick={() => window.confirm("La transferencia cambia tus permisos inmediatamente. ¿Continuar?") && action.mutate(() => transferWorkspaceOwnership(selected.id, transferTarget))}>Transferir propiedad</button></div> : null}
 

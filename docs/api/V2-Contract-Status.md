@@ -363,8 +363,17 @@ timezone-aware es obligatorio, usa intersección estricta
 `starts_at < to AND ends_at > from` y se limita a 366 días. La respuesta deriva
 el usuario de sesión, agrega participación Personal/Shared sin N requests por
 Workspace y expone solo proyecciones mínimas, participantes y capacidades. No
-existe endpoint arbitrario por `user_id`; la comparación y privacidad Shared
-permanecen diferidas.
+existe endpoint global arbitrario por `user_id`.
+
+Stage 8.4 añade
+`GET /api/v2/workspaces/{workspace_id}/calendar-comparison` y
+`GET|PATCH /api/v2/workspaces/{workspace_id}/calendar-visibility`. Viewer y
+target deben ser cuentas y membresías activas del mismo Shared Workspace
+activo. La respuesta discriminada contiene exclusivamente `detailed_events`,
+`busy_blocks` opacos fusionados o solo `visibility=HIDE`. Los detalles no
+incluyen IDs, Workspace de origen, participantes ni capacidades. El PATCH
+modifica únicamente la preferencia de la membresía autenticada con
+`lock_version`; el default físico continúa siendo `HIDE`.
 
 Fronteras diferentes:
 
@@ -373,7 +382,7 @@ Fronteras diferentes:
   `GET|PATCH|DELETE /api/v2/workspaces/{workspace_id}/activities/{activity_id}`
   y `POST .../{activity_id}/leave`;
 - `/api/v2/calendar`: Mi calendario global;
-- `/api/v2/workspaces/{workspace_id}/calendar`: vista colaborativa;
+- `/api/v2/workspaces/{workspace_id}/calendar-comparison`: comparación colaborativa;
 - availability comparison: intervalos autorizados;
 - privacy preference: `WorkspaceMember.calendar_visibility`.
 

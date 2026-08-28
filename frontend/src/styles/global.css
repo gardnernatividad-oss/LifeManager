@@ -1896,6 +1896,21 @@ div.settings-toggles { border: 0; padding: 0; }
 
 .v2-activity-page { display: grid; gap: 1rem; }
 .my-calendar-page { display: grid; gap: 1rem; }
+.my-calendar-page > header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.my-calendar-page > header .eyebrow { width: 100%; }
+.my-calendar-page > header h1 { margin-right: auto; }
+.calendar-comparison-page { display: grid; gap: 1rem; }
+.calendar-comparison-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.calendar-comparison-controls label { display: grid; gap: 0.3rem; }
+.calendar-comparison-controls select, .calendar-comparison-controls input { min-height: 2.6rem; min-width: 0; padding: 0.55rem; border: 1px solid var(--color-border); border-radius: 0.5rem; background: var(--color-surface); color: var(--color-text); }
+.calendar-comparison-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.calendar-comparison-columns > section { display: grid; align-content: start; gap: 0.55rem; padding: 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.calendar-privacy { display: grid; gap: 0.5rem; margin-block: 1rem; padding: 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.calendar-privacy h4, .calendar-privacy p { margin: 0; }
+.calendar-privacy label { display: grid; gap: 0.3rem; max-width: 20rem; }
+.comparison-event { display: grid; gap: 0.2rem; padding: 0.65rem; border-left: 0.35rem solid #2563eb; border-radius: 0.45rem; background: var(--color-surface-muted); }
+.comparison-event--target { border-left-color: #7c3aed; }
+.comparison-event--busy { border-left-color: #64748b; }
 .calendar-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; }
 .calendar-toolbar > div { display: flex; gap: 0.4rem; }
 .calendar-grid { display: grid; gap: 0.6rem; }
@@ -1944,6 +1959,7 @@ div.settings-toggles { border: 0; padding: 0; }
 .compact-link { display: inline-grid; place-items: center; min-width: 2rem; min-height: 2rem; font-size: 1.5rem; text-decoration: none; }
 
 @media (max-width: 48rem) {
+  .calendar-comparison-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2-project-form, .v2-project-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2-activity-form, .v2-activity-filters, .v2-activity-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .v2-project-row { grid-template-columns: 1fr 1fr; }
@@ -1953,6 +1969,7 @@ div.settings-toggles { border: 0; padding: 0; }
 }
 
 @media (max-width: 32rem) {
+  .calendar-comparison-controls, .calendar-comparison-columns { grid-template-columns: 1fr; }
   .topbar__label,
   .topbar__identity span {
     display: none;

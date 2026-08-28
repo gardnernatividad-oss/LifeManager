@@ -194,6 +194,11 @@ través de todos los Workspaces, con intersección temporal `[from,to)`, semana
 desktop iniciada en lunes, día mobile y presentación en la zona IANA del
 usuario. Conserva la participación histórica legítima sin restaurar acceso al
 Workspace y oculta futuras retiradas o sin membership vigente.
+Stage 8.4 añade comparación diaria desde un Shared Workspace común. La
+preferencia direccional existente de la membresía (`HIDE` por defecto) decide
+entre una proyección mínima de detalles, bloques ocupados opacos fusionados o
+ningún dato. Incluso la vista de detalles consolida Personal y otros Workspaces
+del target sin revelar origen, IDs ni autoridad sobre esos recursos.
 
 ## Principios
 

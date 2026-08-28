@@ -146,6 +146,8 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
         "/api/v2/auth/login",
             "/api/v2/me",
             "/api/v2/calendar/me",
+            "/api/v2/workspaces/{workspace_id}/calendar-comparison",
+            "/api/v2/workspaces/{workspace_id}/calendar-visibility",
         "/api/v2/auth/logout",
         "/api/v2/auth/registration-requests",
         "/api/v2/auth/email-verifications",

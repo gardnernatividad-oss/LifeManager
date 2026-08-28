@@ -73,8 +73,9 @@ responsive/accesibles coherentes.
 
 Mi calendario es una ruta global sin selector de Workspace. Stage 8.3 la
 implementa con controles Día/Semana, anterior/Hoy/siguiente, semana iniciada en
-lunes y diferenciación visual y textual discreta por Workspace. La comparación
-colaborativa continúa diferida.
+lunes y diferenciación visual y textual discreta por Workspace. `Comparar`
+abre `/calendario/comparar` como pantalla diaria separada, selecciona un Shared
+Workspace y uno de sus miembros activos, y vuelve mediante flecha explícita.
 
 ### Patrones de ruta
 

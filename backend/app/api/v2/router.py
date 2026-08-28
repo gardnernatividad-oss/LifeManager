@@ -12,6 +12,7 @@ from app.api.v2.projects import router as project_router
 from app.api.v2.project_stages import router as project_stage_router
 from app.api.v2.activities import router as activity_router
 from app.api.v2.calendar import router as calendar_router
+from app.api.v2.calendar_comparison import router as calendar_comparison_router
 
 
 api_router = APIRouter()
@@ -27,3 +28,4 @@ api_router.include_router(project_router)
 api_router.include_router(project_stage_router)
 api_router.include_router(activity_router)
 api_router.include_router(calendar_router)
+api_router.include_router(calendar_comparison_router)

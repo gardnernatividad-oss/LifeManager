@@ -97,6 +97,10 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
 - Una sesión ausente/inválida produce 401; una operación reservada al owner produce 403 después de resolver una membresía ACTIVE válida.
 - `GLOBAL_ADMIN` protege rutas de plataforma, pero no concede acceso implícito a contenido privado ni reemplaza membership.
 - `AVAILABILITY_ONLY` devuelve intervalos sin objetos/detalles de Activity; `HIDE` no devuelve datos subyacentes.
+- La comparación de Stage 8.4 exige viewer y target `ACTIVE` dentro del mismo
+  Shared Workspace `ACTIVE`. La preferencia del target es direccional;
+  `GLOBAL_ADMIN`, owner y conocer UUIDs no conceden bypass. `SHOW_DETAILS`
+  tampoco concede capacidades ni acceso al Workspace de origen.
 
 La convención completa está en [`V2-Architecture-Baseline.md`](V2-Architecture-Baseline.md) y ADR-011. La matriz detallada por operación se incorporará con cada contrato vertical; ningún permiso se concede por omisión.
 
