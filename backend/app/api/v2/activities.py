@@ -40,7 +40,10 @@ def _read(db: SessionDependency, activity: Activity, account: User, *, personal:
         id=activity.id, workspace_id=activity.workspace_id,
         activity_master_id=activity.activity_master_id,
         activity_master_name=master.name if master else None,
-        category_id=category.id, category_name=category.name, title=activity.title,
+        is_custom=master is None,
+        custom_category_id=activity.custom_category_id,
+        category_id=category.id, category_name=category.name,
+        title=master.name if master else activity.title,
         organizer_user_id=organizer.id,
         organizer_display_name=f"{organizer.first_name} {organizer.last_name}".strip(), organizer_email=organizer.email,
         participants=[ActivityParticipantRead(user_id=user.id, display_name=f"{user.first_name} {user.last_name}".strip(), email=user.email, calendar_status=item.calendar_status) for item, user in participants],
@@ -78,7 +81,10 @@ def _write(db: SessionDependency, operation):
     try:
         result = operation()
         db.commit()
-        if result is not None:
+        if isinstance(result, list):
+            for item in result:
+                db.refresh(item)
+        elif result is not None:
             db.refresh(result)
         return result
     except (ActivityNotFoundError, ActivityConflictError, ActivityReferenceUnavailableError, ActivityRecurrenceError) as error:
@@ -117,13 +123,14 @@ def index(
     starts_from: datetime | None = None, starts_until: datetime | None = None,
     activity_master_id: uuid.UUID | None = None, category_id: uuid.UUID | None = None,
     organizer_user_id: uuid.UUID | None = None, participant_user_id: uuid.UUID | None = None,
+    custom: bool | None = None,
 ) -> ActivityListResponse:
     for value in (starts_from, starts_until):
         if value is not None and (value.tzinfo is None or value.utcoffset() is None):
             raise V2APIError(status_code=422, code="INVALID_DATETIME", message="Las fechas deben incluir zona horaria.")
     if starts_from and starts_until and starts_from > starts_until:
         raise V2APIError(status_code=422, code="INVALID_DATE_RANGE", message="El rango de fechas no es válido.")
-    items, total = list_activities(db, workspace_id=workspace_id, page=page, page_size=page_size, starts_from=starts_from, starts_until=starts_until, activity_master_id=activity_master_id, category_id=category_id, organizer_user_id=organizer_user_id, participant_user_id=participant_user_id)
+    items, total = list_activities(db, workspace_id=workspace_id, page=page, page_size=page_size, starts_from=starts_from, starts_until=starts_until, activity_master_id=activity_master_id, category_id=category_id, organizer_user_id=organizer_user_id, participant_user_id=participant_user_id, custom=custom)
     personal = access.workspace.kind == WorkspaceKind.PERSONAL
     projections = _list_projections(db, items)
     return ActivityListResponse(items=[_read(db, item, account, personal=personal, projection=projections[item.id]) for item in items], total=total, page=page, page_size=page_size, total_pages=math.ceil(total / page_size))

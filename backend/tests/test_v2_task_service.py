@@ -8,7 +8,7 @@ import pytest
 from app.models import Category, MasterTask, Task, User, Workspace, WorkspaceMember
 from app.models.enums import TaskResult, WorkspaceKind
 from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskUpdate
-from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, _mutation_scope_tasks, create_recurring_tasks, create_task, delete_task, list_tasks, resolve_task, task_projection, update_task
+from app.services.v2_task import MAX_RECURRING_TASK_OCCURRENCES, TaskConflictError, TaskPermissionError, TaskRecurrenceError, _mutation_scope_tasks, correct_task_result, create_recurring_tasks, create_task, delete_task, list_tasks, resolve_task, task_projection, update_task
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -104,6 +104,47 @@ def test_only_current_responsible_can_resolve_once(task_lookup) -> None:
     with pytest.raises(TaskConflictError):
         resolve_task(db, access=access, actor=actor, task_id=task.id, expected_version=2, result=TaskResult.COMPLETED, local_date=date(2026, 9, 1))
     db.commit.assert_not_called()
+
+
+@patch("app.services.v2_task._task")
+def test_terminal_result_can_only_be_corrected_to_the_other_terminal_result(task_lookup) -> None:
+    actor, access = _context()
+    task = Task(id=uuid.uuid4(), workspace_id=access.workspace.id, master_task_id=uuid.uuid4(), responsible_user_id=actor.id, created_by_user_id=actor.id, planned_date=date(2026, 9, 1), result=TaskResult.COMPLETED, resolved_at=datetime(2026, 9, 1, tzinfo=timezone.utc), resolved_by_user_id=actor.id, lock_version=2)
+    task_lookup.return_value = task
+    db = MagicMock()
+    corrected = correct_task_result(db, access=access, actor=actor, task_id=task.id, expected_version=2, result=TaskResult.NOT_COMPLETED, now=datetime(2026, 9, 2, tzinfo=timezone.utc))
+    assert corrected.result == TaskResult.NOT_COMPLETED
+    assert corrected.lock_version == 3
+    with pytest.raises(TaskConflictError):
+        correct_task_result(db, access=access, actor=actor, task_id=task.id, expected_version=3, result=TaskResult.NOT_COMPLETED)
+    assert task.planned_date == date(2026, 9, 1)
+    db.commit.assert_not_called()
+
+
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._category")
+def test_custom_task_stores_real_name_and_manual_category_without_master(category, responsible) -> None:
+    actor, access = _context()
+    category_id = uuid.uuid4()
+    task = create_task(MagicMock(), access=access, actor=actor, task_in=TaskCreate(custom_name="  Comprar   adaptador ", custom_category_id=category_id, planned_date=date(2026, 9, 1)))
+    assert task.master_task_id is None
+    assert task.custom_name == "Comprar adaptador"
+    assert task.custom_category_id == category_id
+    category.assert_called_once()
+
+
+@patch("app.services.v2_task._responsible")
+@patch("app.services.v2_task._category")
+def test_recurring_custom_tasks_share_batch_and_preserve_custom_source(category, responsible) -> None:
+    actor, access = _context()
+    db = MagicMock()
+    db.flush.side_effect = lambda: setattr(db.add.call_args.args[0], "id", uuid.uuid4()) if getattr(db.add.call_args.args[0], "id", None) is None else None
+    category_id = uuid.uuid4()
+    payload = RecurringTaskCreate.model_validate({"custom_name": "Comprar adaptador", "custom_category_id": str(category_id), "recurrence": {"pattern": "DAILY", "date_from": "2026-09-01", "date_until": "2026-09-02"}})
+    tasks = create_recurring_tasks(db, access=access, actor=actor, task_in=payload)
+    assert len(tasks) == 2
+    assert len({item.generation_batch_id for item in tasks}) == 1
+    assert all(item.master_task_id is None and item.custom_name == "Comprar adaptador" and item.custom_category_id == category_id for item in tasks)
 
 
 @patch("app.services.v2_task._task")

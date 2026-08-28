@@ -25,7 +25,9 @@ def _aware(value: datetime) -> datetime:
 
 
 class ActivityCreate(_StrictModel):
-    activity_master_id: uuid.UUID
+    activity_master_id: uuid.UUID | None = None
+    custom_name: str | None = Field(default=None, min_length=1, max_length=255)
+    custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] = Field(default_factory=list)
     starts_at: datetime
@@ -36,6 +38,10 @@ class ActivityCreate(_StrictModel):
 
     @model_validator(mode="after")
     def validate_activity(self) -> "ActivityCreate":
+        catalog = self.activity_master_id is not None
+        custom = self.custom_name is not None or self.custom_category_id is not None
+        if catalog == custom or (custom and (self.custom_name is None or self.custom_category_id is None)):
+            raise ValueError("exactly one complete Activity source is required")
         if self.ends_at <= self.starts_at:
             raise ValueError("ends_at must be after starts_at")
         if len(set(self.participant_user_ids)) != len(self.participant_user_ids):
@@ -58,7 +64,9 @@ class ActivityRecurrence(_StrictModel):
 
 
 class RecurringActivityCreate(_StrictModel):
-    activity_master_id: uuid.UUID
+    activity_master_id: uuid.UUID | None = None
+    custom_name: str | None = Field(default=None, min_length=1, max_length=255)
+    custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] = Field(default_factory=list)
     start_time: time
@@ -68,6 +76,10 @@ class RecurringActivityCreate(_StrictModel):
 
     @model_validator(mode="after")
     def validate_activity(self) -> "RecurringActivityCreate":
+        catalog = self.activity_master_id is not None
+        custom = self.custom_name is not None or self.custom_category_id is not None
+        if catalog == custom or (custom and (self.custom_name is None or self.custom_category_id is None)):
+            raise ValueError("exactly one complete Activity source is required")
         if self.start_time.tzinfo is not None or self.end_time.tzinfo is not None:
             raise ValueError("local times must not include a timezone")
         if self.end_time <= self.start_time:
@@ -83,6 +95,8 @@ class RecurringActivityCreate(_StrictModel):
 
 class ActivityUpdate(_StrictModel):
     activity_master_id: uuid.UUID | None = None
+    custom_name: str | None = Field(default=None, min_length=1, max_length=255)
+    custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] | None = None
     starts_at: datetime | None = None
@@ -94,7 +108,7 @@ class ActivityUpdate(_StrictModel):
     @classmethod
     def validate_input(cls, value: object) -> object:
         if isinstance(value, dict):
-            editable = ("activity_master_id", "organizer_user_id", "participant_user_ids", "starts_at", "ends_at")
+            editable = ("activity_master_id", "custom_name", "custom_category_id", "organizer_user_id", "participant_user_ids", "starts_at", "ends_at")
             for field in editable:
                 if field in value and value[field] is None:
                     raise ValueError(f"{field} cannot be null")
@@ -132,6 +146,8 @@ class ActivityRead(_StrictModel):
     workspace_id: uuid.UUID
     activity_master_id: uuid.UUID | None
     activity_master_name: str | None
+    is_custom: bool = False
+    custom_category_id: uuid.UUID | None = None
     category_id: uuid.UUID
     category_name: str
     title: str

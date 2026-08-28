@@ -7,8 +7,8 @@ import pytest
 
 from app.models import Activity, ActivityParticipant, ActivityReminder, GenerationBatch, User, Workspace, WorkspaceMember
 from app.models.enums import ActivityStatus, ParticipantCalendarStatus, WorkspaceKind
-from app.schemas.v2_activity import ActivityUpdate
-from app.services.v2_activity import ActivityConflictError, ActivityNotFoundError, _mutation_scope_activities, _set_participants, delete_activity, get_activity, leave_activity, temporal_state, update_activity
+from app.schemas.v2_activity import ActivityCreate, ActivityUpdate, RecurringActivityCreate
+from app.services.v2_activity import ActivityConflictError, ActivityNotFoundError, _mutation_scope_activities, _set_participants, create_activity, create_recurring_activities, delete_activity, get_activity, leave_activity, temporal_state, update_activity
 from app.services.v2_workspace import WorkspaceAccess
 
 
@@ -23,6 +23,36 @@ def scope() -> tuple[WorkspaceAccess, User]:
 
 def activity(access: WorkspaceAccess, *, start: datetime, generated: bool = False) -> Activity:
     return Activity(id=uuid.uuid4(), workspace_id=access.workspace.id, organizer_user_id=access.workspace.owner_user_id, activity_master_id=uuid.uuid4(), title="Reunión", starts_at=start, ends_at=start + timedelta(hours=1), status=ActivityStatus.SCHEDULED, generation_batch_id=uuid.uuid4() if generated else None, lock_version=2)
+
+
+@patch("app.services.v2_activity._now", return_value=NOW)
+@patch("app.services.v2_activity._eligible_users")
+@patch("app.services.v2_activity._category")
+def test_custom_activity_preserves_real_name_and_manual_category(category, users, now) -> None:
+    access, actor = scope()
+    category_id = uuid.uuid4()
+    category.return_value.id = category_id
+    created = create_activity(MagicMock(), access=access, actor=actor, activity_in=ActivityCreate(custom_name="  Cita   médica ", custom_category_id=category_id, starts_at=NOW + timedelta(days=1), ends_at=NOW + timedelta(days=1, hours=1)))
+    assert created.activity_master_id is None
+    assert created.title == "Cita médica"
+    assert created.custom_category_id == category_id
+
+
+@patch("app.services.v2_activity._now", return_value=NOW)
+@patch("app.services.v2_activity._eligible_users")
+@patch("app.services.v2_activity._category")
+def test_recurring_custom_activities_share_batch_and_source(category, users, now) -> None:
+    access, actor = scope()
+    category_id = uuid.uuid4()
+    category.return_value.id = category_id
+    db = MagicMock()
+    db.scalar.return_value = None
+    db.flush.side_effect = lambda: setattr(db.add.call_args.args[0], "id", uuid.uuid4()) if getattr(db.add.call_args.args[0], "id", None) is None else None
+    payload = RecurringActivityCreate.model_validate({"custom_name": "Cita médica", "custom_category_id": str(category_id), "start_time": "15:00", "end_time": "16:00", "timezone": "America/Lima", "recurrence": {"pattern": "DAILY", "date_from": "2026-09-03", "date_until": "2026-09-04"}})
+    created = create_recurring_activities(db, access=access, actor=actor, activity_in=payload)
+    assert len(created) == 2
+    assert len({item.generation_batch_id for item in created}) == 1
+    assert all(item.activity_master_id is None and item.title == "Cita médica" and item.custom_category_id == category_id for item in created)
 
 
 @pytest.mark.parametrize(("start", "expected"), ((NOW + timedelta(hours=1), "FUTURE"), (NOW - timedelta(minutes=30), "IN_PROGRESS"), (NOW - timedelta(hours=2), "PAST")))

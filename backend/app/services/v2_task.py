@@ -2,12 +2,13 @@ import uuid
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.recurrence import recurrence_dates
-from app.models import GenerationBatch, MasterTask, Task, User, WorkspaceMember
+from app.core.names import normalize_name
+from app.models import Category, GenerationBatch, MasterTask, Task, User, WorkspaceMember
 from app.models.enums import AccountStatus, GenerationEntityType, MembershipStatus, TaskResult, WorkspaceKind
 from app.schemas.v2_task import RecurringTaskCreate, TaskCreate, TaskMutationScope, TaskState, TaskUpdate
 from app.services.v2_workspace import WorkspaceAccess
@@ -38,10 +39,11 @@ MAX_RECURRING_TASK_OCCURRENCES = 1000
 
 def _translate_integrity(error: IntegrityError) -> None:
     constraint = getattr(getattr(error.orig, "diag", None), "constraint_name", "")
-    if constraint == "uq_tasks_workspace_master_date_responsible":
+    if constraint in {"uq_tasks_workspace_master_date_responsible", "uq_tasks_catalog_occurrence", "uq_tasks_custom_occurrence"}:
         raise TaskConflictError("Task occurrence already exists") from error
     if constraint in {
         "fk_tasks_master_task_workspace",
+        "fk_tasks_custom_category_workspace",
         "fk_tasks_responsible_membership",
         "fk_tasks_creator_membership",
         "fk_tasks_resolver_membership",
@@ -65,6 +67,25 @@ def _master(db: Session, *, workspace_id: uuid.UUID, master_task_id: uuid.UUID, 
     if master is None or (assignable and not master.is_active):
         raise TaskReferenceUnavailableError("Task catalog entry unavailable")
     return master
+
+
+def _category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, assignable: bool) -> Category:
+    statement = select(Category).where(Category.id == category_id, Category.workspace_id == workspace_id)
+    if assignable:
+        statement = statement.with_for_update()
+    category = db.scalar(statement)
+    if category is None or (assignable and not category.is_active):
+        raise TaskReferenceUnavailableError("Task Category unavailable")
+    return category
+
+
+def _source_values(db: Session, *, workspace_id: uuid.UUID, source) -> dict[str, object | None]:
+    if source.master_task_id is not None:
+        _master(db, workspace_id=workspace_id, master_task_id=source.master_task_id, assignable=True)
+        return {"master_task_id": source.master_task_id, "custom_name": None, "custom_category_id": None}
+    name, _ = normalize_name(source.custom_name, max_length=150, field_label="Task")
+    _category(db, workspace_id=workspace_id, category_id=source.custom_category_id, assignable=True)
+    return {"master_task_id": None, "custom_name": name, "custom_category_id": source.custom_category_id}
 
 
 def _responsible(db: Session, *, workspace_id: uuid.UUID, user_id: uuid.UUID) -> User:
@@ -95,12 +116,12 @@ def _task(db: Session, *, workspace_id: uuid.UUID, task_id: uuid.UUID, lock: boo
 
 
 def create_task(db: Session, *, access: WorkspaceAccess, actor: User, task_in: TaskCreate) -> Task:
-    _master(db, workspace_id=access.workspace.id, master_task_id=task_in.master_task_id, assignable=True)
+    source = _source_values(db, workspace_id=access.workspace.id, source=task_in)
     responsible_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (task_in.responsible_user_id or actor.id)
     _responsible(db, workspace_id=access.workspace.id, user_id=responsible_id)
     task = Task(
         workspace_id=access.workspace.id,
-        master_task_id=task_in.master_task_id,
+        **source,
         responsible_user_id=responsible_id,
         planned_date=task_in.planned_date,
         created_by_user_id=actor.id,
@@ -118,7 +139,7 @@ def create_recurring_tasks(
     actor: User,
     task_in: RecurringTaskCreate,
 ) -> list[Task]:
-    _master(db, workspace_id=access.workspace.id, master_task_id=task_in.master_task_id, assignable=True)
+    source = _source_values(db, workspace_id=access.workspace.id, source=task_in)
     responsible_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (task_in.responsible_user_id or actor.id)
     _responsible(db, workspace_id=access.workspace.id, user_id=responsible_id)
     recurrence = task_in.recurrence
@@ -149,7 +170,7 @@ def create_recurring_tasks(
     tasks = [
         Task(
             workspace_id=access.workspace.id,
-            master_task_id=task_in.master_task_id,
+            **source,
             responsible_user_id=responsible_id,
             planned_date=planned_date,
             created_by_user_id=actor.id,
@@ -177,6 +198,7 @@ def list_tasks(
     unresolved: bool | None = None,
     state: TaskState | None = None,
     generated: bool | None = None,
+    custom: bool | None = None,
     local_date: date | None = None,
 ) -> tuple[list[Task], int]:
     filters = [Task.workspace_id == workspace_id]
@@ -189,7 +211,7 @@ def list_tasks(
     if master_task_id is not None:
         filters.append(Task.master_task_id == master_task_id)
     if category_id is not None:
-        filters.append(MasterTask.category_id == category_id)
+        filters.append(or_(MasterTask.category_id == category_id, Task.custom_category_id == category_id))
     if result is not None:
         filters.append(Task.result == result)
     if unresolved is True:
@@ -211,12 +233,16 @@ def list_tasks(
         filters.append(Task.generation_batch_id.is_not(None))
     elif generated is False:
         filters.append(Task.generation_batch_id.is_(None))
+    if custom is True:
+        filters.append(Task.master_task_id.is_(None))
+    elif custom is False:
+        filters.append(Task.master_task_id.is_not(None))
     joined = category_id is not None
     count_statement = select(func.count()).select_from(Task)
     items_statement = select(Task).options(selectinload(Task.master_task).selectinload(MasterTask.category))
     if joined:
-        count_statement = count_statement.join(MasterTask, Task.master_task_id == MasterTask.id)
-        items_statement = items_statement.join(MasterTask, Task.master_task_id == MasterTask.id)
+        count_statement = count_statement.outerjoin(MasterTask, and_(Task.master_task_id == MasterTask.id, Task.workspace_id == MasterTask.workspace_id))
+        items_statement = items_statement.outerjoin(MasterTask, and_(Task.master_task_id == MasterTask.id, Task.workspace_id == MasterTask.workspace_id))
     total = db.scalar(count_statement.where(*filters)) or 0
     items = list(db.scalars(items_statement.where(*filters).order_by(Task.planned_date, Task.id).offset((page - 1) * page_size).limit(page_size)).all())
     return items, total
@@ -257,8 +283,19 @@ def update_task(
         raise TaskConflictError("Future recurrence schedule editing is not supported")
     if "planned_date" in values and values["planned_date"] <= local_date:
         raise TaskConflictError("Task must remain in the future")
-    if "master_task_id" in values:
-        _master(db, workspace_id=access.workspace.id, master_task_id=values["master_task_id"], assignable=True)
+    source_fields = {"master_task_id", "custom_name", "custom_category_id"} & values.keys()
+    if task.master_task_id is not None:
+        if source_fields - {"master_task_id"}:
+            raise TaskConflictError("Task source cannot be converted")
+        if "master_task_id" in values:
+            _master(db, workspace_id=access.workspace.id, master_task_id=values["master_task_id"], assignable=True)
+    else:
+        if "master_task_id" in source_fields:
+            raise TaskConflictError("Task source cannot be converted")
+        if "custom_name" in values:
+            values["custom_name"], _ = normalize_name(values["custom_name"], max_length=150, field_label="Task")
+        if "custom_category_id" in values:
+            _category(db, workspace_id=access.workspace.id, category_id=values["custom_category_id"], assignable=True)
     if "responsible_user_id" in values:
         _responsible(db, workspace_id=access.workspace.id, user_id=values["responsible_user_id"])
     for affected_task in affected:
@@ -285,6 +322,29 @@ def resolve_task(
         raise TaskPermissionError("Only the responsible user may resolve the Task")
     if task.result is not None or task.planned_date > local_date or task.lock_version != expected_version:
         raise TaskConflictError("Task cannot be resolved")
+    task.result = result
+    task.resolved_at = now or datetime.now(timezone.utc)
+    task.resolved_by_user_id = actor.id
+    task.lock_version += 1
+    _flush(db)
+    return task
+
+
+def correct_task_result(
+    db: Session,
+    *,
+    access: WorkspaceAccess,
+    actor: User,
+    task_id: uuid.UUID,
+    expected_version: int,
+    result: TaskResult,
+    now: datetime | None = None,
+) -> Task:
+    task = _task(db, workspace_id=access.workspace.id, task_id=task_id, lock=True)
+    if task.responsible_user_id != actor.id:
+        raise TaskPermissionError("Only the responsible user may correct the Task")
+    if task.result is None or task.result == result or task.lock_version != expected_version:
+        raise TaskConflictError("Task result cannot be corrected")
     task.result = result
     task.resolved_at = now or datetime.now(timezone.utc)
     task.resolved_by_user_id = actor.id
@@ -356,11 +416,23 @@ def delete_task(
     _flush(db)
 
 
-def task_projection(db: Session, *, task: Task, actor_id: uuid.UUID, local_date: date) -> tuple[User, str, bool, bool, bool, bool, bool, bool]:
-    master = task.master_task if "master_task" in task.__dict__ else db.scalar(select(MasterTask).options(selectinload(MasterTask.category)).where(MasterTask.id == task.master_task_id))
-    if master is None:
-        raise TaskNotFoundError("Task not found")
-    task.master_task = master
+def task_source_projection(db: Session, *, task: Task):
+    master = None
+    if task.master_task_id is not None:
+        master = task.master_task if "master_task" in task.__dict__ else db.scalar(select(MasterTask).options(selectinload(MasterTask.category)).where(MasterTask.id == task.master_task_id))
+        if master is None:
+            raise TaskNotFoundError("Task not found")
+        category = master.category
+        task_name = master.name
+    else:
+        category = db.scalar(select(Category).where(Category.id == task.custom_category_id, Category.workspace_id == task.workspace_id))
+        task_name = task.custom_name
+        if category is None or task_name is None:
+            raise TaskNotFoundError("Task not found")
+    return master, category, task_name
+
+
+def task_projection(db: Session, *, task: Task, actor_id: uuid.UUID, local_date: date):
     responsible = db.scalar(select(User).where(User.id == task.responsible_user_id))
     if responsible is None:
         raise TaskNotFoundError("Task not found")

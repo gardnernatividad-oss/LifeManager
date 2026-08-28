@@ -43,11 +43,23 @@ def test_workspace_and_membership_invariants_are_structural() -> None:
 
 
 def test_task_occurrence_and_same_workspace_constraints_exist() -> None:
-    uniques = names(Task.__table__, UniqueConstraint)
     foreign_keys = names(Task.__table__, ForeignKeyConstraint)
-    assert "uq_tasks_workspace_master_date_responsible" in uniques
-    assert {"fk_tasks_master_task_workspace", "fk_tasks_responsible_membership", "fk_tasks_creator_membership"} <= foreign_keys
-    assert "ck_tasks_resolution_consistent" in names(Task.__table__, CheckConstraint)
+    indexes = names(Task.__table__, Index)
+    assert {
+        "uq_tasks_catalog_occurrence",
+        "uq_tasks_custom_occurrence",
+    } <= indexes
+    assert {
+        "fk_tasks_master_task_workspace",
+        "fk_tasks_custom_category_workspace",
+        "fk_tasks_responsible_membership",
+        "fk_tasks_creator_membership",
+    } <= foreign_keys
+    assert {
+        "ck_tasks_source_xor",
+        "ck_tasks_custom_name_not_blank",
+        "ck_tasks_resolution_consistent",
+    } <= names(Task.__table__, CheckConstraint)
 
 
 def test_catalog_and_generation_shapes_are_constrained() -> None:
@@ -89,6 +101,10 @@ def test_tokens_activity_and_delivery_safety_constraints_exist() -> None:
     assert "ck_account_tokens_terminal_exclusive" in names(AccountActionToken.__table__, CheckConstraint)
     assert "ck_activities_source_xor" in names(Activity.__table__, CheckConstraint)
     assert "ck_activities_time_range" in names(Activity.__table__, CheckConstraint)
+    assert {
+        "uq_activities_catalog_occurrence",
+        "uq_activities_custom_occurrence",
+    } <= names(Activity.__table__, Index)
     assert "uq_notification_deliveries_notification_subscription" in names(NotificationDelivery.__table__, UniqueConstraint)
 
 

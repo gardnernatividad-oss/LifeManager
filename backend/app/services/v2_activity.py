@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.activity_recurrence import InvalidLocalActivityTimeError, local_activity_datetime
+from app.core.names import normalize_name
 from app.core.recurrence import recurrence_dates
 from app.models import Activity, ActivityMaster, ActivityParticipant, ActivityReminder, Category, GenerationBatch, User, WorkspaceMember
 from app.models.enums import AccountStatus, ActivityStatus, GenerationEntityType, MembershipStatus, ParticipantCalendarStatus, WorkspaceKind
@@ -48,7 +49,7 @@ def _flush(db: Session) -> None:
             "uq_activity_participants_activity_user",
         }:
             raise ActivityReferenceUnavailableError("Activity reference unavailable") from error
-        if constraint in {"uq_activities_catalog_occurrence", "uq_activities_batch_starts"}:
+        if constraint in {"uq_activities_catalog_occurrence", "uq_activities_custom_occurrence", "uq_activities_batch_starts"}:
             raise ActivityConflictError("Activity occurrence already exists") from error
         raise
 
@@ -61,6 +62,25 @@ def _master(db: Session, *, workspace_id: uuid.UUID, master_id: uuid.UUID, assig
     if master is None or (assignable and not master.is_active):
         raise ActivityReferenceUnavailableError("Activity master unavailable")
     return master
+
+
+def _category(db: Session, *, workspace_id: uuid.UUID, category_id: uuid.UUID, assignable: bool) -> Category:
+    statement = select(Category).where(Category.id == category_id, Category.workspace_id == workspace_id)
+    if assignable:
+        statement = statement.with_for_update()
+    category = db.scalar(statement)
+    if category is None or (assignable and not category.is_active):
+        raise ActivityReferenceUnavailableError("Activity Category unavailable")
+    return category
+
+
+def _source_values(db: Session, *, workspace_id: uuid.UUID, source):
+    if source.activity_master_id is not None:
+        master = _master(db, workspace_id=workspace_id, master_id=source.activity_master_id, assignable=True)
+        return master.id, master.name, None
+    title, _ = normalize_name(source.custom_name, max_length=255, field_label="Activity")
+    category = _category(db, workspace_id=workspace_id, category_id=source.custom_category_id, assignable=True)
+    return None, title, category.id
 
 
 def _eligible_users(db: Session, *, workspace_id: uuid.UUID, user_ids: set[uuid.UUID]) -> dict[uuid.UUID, User]:
@@ -104,7 +124,7 @@ def _check_version(activity: Activity, expected: int) -> None:
 
 
 def create_activity(db: Session, *, access: WorkspaceAccess, actor: User, activity_in: ActivityCreate) -> Activity:
-    master = _master(db, workspace_id=access.workspace.id, master_id=activity_in.activity_master_id, assignable=True)
+    master_id, title, custom_category_id = _source_values(db, workspace_id=access.workspace.id, source=activity_in)
     if activity_in.starts_at <= _now():
         raise ActivityConflictError("Activity must start in the future")
     organizer_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (activity_in.organizer_user_id or actor.id)
@@ -112,7 +132,7 @@ def create_activity(db: Session, *, access: WorkspaceAccess, actor: User, activi
     _eligible_users(db, workspace_id=access.workspace.id, user_ids=participant_ids | {organizer_id})
     activity = Activity(
         workspace_id=access.workspace.id, organizer_user_id=organizer_id,
-        activity_master_id=master.id, title=master.name, custom_category_id=None,
+        activity_master_id=master_id, title=title, custom_category_id=custom_category_id,
         starts_at=activity_in.starts_at, ends_at=activity_in.ends_at,
         status=ActivityStatus.SCHEDULED, generation_batch_id=None,
     )
@@ -126,7 +146,7 @@ def create_activity(db: Session, *, access: WorkspaceAccess, actor: User, activi
 def create_recurring_activities(
     db: Session, *, access: WorkspaceAccess, actor: User, activity_in: RecurringActivityCreate,
 ) -> list[Activity]:
-    master = _master(db, workspace_id=access.workspace.id, master_id=activity_in.activity_master_id, assignable=True)
+    master_id, title, custom_category_id = _source_values(db, workspace_id=access.workspace.id, source=activity_in)
     organizer_id = access.workspace.owner_user_id if access.workspace.kind == WorkspaceKind.PERSONAL else (activity_in.organizer_user_id or actor.id)
     participant_ids = {access.workspace.owner_user_id} if access.workspace.kind == WorkspaceKind.PERSONAL else set(activity_in.participant_user_ids)
     _eligible_users(db, workspace_id=access.workspace.id, user_ids=participant_ids | {organizer_id})
@@ -151,7 +171,9 @@ def create_recurring_activities(
     starts = [starts_at for starts_at, _ in instants]
     collision = db.scalar(select(Activity.id).where(
         Activity.workspace_id == access.workspace.id,
-        Activity.activity_master_id == master.id,
+        Activity.activity_master_id == master_id,
+        Activity.custom_category_id == custom_category_id,
+        Activity.title == title,
         Activity.organizer_user_id == organizer_id,
         Activity.starts_at.in_(starts),
     ).limit(1))
@@ -167,7 +189,7 @@ def create_recurring_activities(
     _flush(db)
     activities = [Activity(
         workspace_id=access.workspace.id, organizer_user_id=organizer_id,
-        activity_master_id=master.id, title=master.name, custom_category_id=None,
+        activity_master_id=master_id, title=title, custom_category_id=custom_category_id,
         starts_at=starts_at, ends_at=ends_at, status=ActivityStatus.SCHEDULED,
         generation_batch_id=batch.id,
     ) for starts_at, ends_at in instants]
@@ -184,6 +206,7 @@ def list_activities(
     starts_from: datetime | None = None, starts_until: datetime | None = None,
     activity_master_id: uuid.UUID | None = None, category_id: uuid.UUID | None = None,
     organizer_user_id: uuid.UUID | None = None, participant_user_id: uuid.UUID | None = None,
+    custom: bool | None = None,
 ) -> tuple[list[Activity], int]:
     filters = [Activity.workspace_id == workspace_id]
     if starts_from is not None: filters.append(Activity.starts_at >= starts_from)
@@ -194,6 +217,8 @@ def list_activities(
     if participant_user_id is not None:
         filters.append(ActivityParticipant.user_id == participant_user_id)
         filters.append(ActivityParticipant.calendar_status == ParticipantCalendarStatus.VISIBLE)
+    if custom is True: filters.append(Activity.activity_master_id.is_(None))
+    elif custom is False: filters.append(Activity.activity_master_id.is_not(None))
     joins_master = category_id is not None
     joins_participant = participant_user_id is not None
     count = select(func.count(func.distinct(Activity.id))).select_from(Activity)
@@ -304,9 +329,20 @@ def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.U
         values.pop("starts_at", None); values.pop("ends_at", None)
     else:
         propagated = [(activity, starts_at, ends_at)] if ("starts_at" in values or "ends_at" in values) else []
-    if "activity_master_id" in values and values["activity_master_id"] != activity.activity_master_id:
-        master = _master(db, workspace_id=access.workspace.id, master_id=values["activity_master_id"], assignable=True)
-        activity.activity_master_id, activity.title, activity.custom_category_id = master.id, master.name, None
+    source_fields = {"activity_master_id", "custom_name", "custom_category_id"} & values.keys()
+    if activity.activity_master_id is not None:
+        if source_fields - {"activity_master_id"}:
+            raise ActivityConflictError("Activity source cannot be converted")
+        if "activity_master_id" in values and values["activity_master_id"] != activity.activity_master_id:
+            master = _master(db, workspace_id=access.workspace.id, master_id=values["activity_master_id"], assignable=True)
+            activity.activity_master_id, activity.title, activity.custom_category_id = master.id, master.name, None
+    else:
+        if "activity_master_id" in source_fields:
+            raise ActivityConflictError("Activity source cannot be converted")
+        if "custom_name" in values:
+            activity.title, _ = normalize_name(values["custom_name"], max_length=255, field_label="Activity")
+        if "custom_category_id" in values:
+            activity.custom_category_id = _category(db, workspace_id=access.workspace.id, category_id=values["custom_category_id"], assignable=True).id
     if "organizer_user_id" in values:
         _eligible_users(db, workspace_id=access.workspace.id, user_ids={values["organizer_user_id"]})
     participant_ids = activity_in.participant_user_ids
@@ -317,8 +353,8 @@ def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.U
         _eligible_users(db, workspace_id=access.workspace.id, user_ids=requested)
         _set_participants(db, activities=affected, requested=requested, changed_at=now)
     for item in affected:
-        if "activity_master_id" in values:
-            item.activity_master_id, item.title, item.custom_category_id = activity.activity_master_id, activity.title, None
+        if source_fields:
+            item.activity_master_id, item.title, item.custom_category_id = activity.activity_master_id, activity.title, activity.custom_category_id
         for field in ("organizer_user_id",):
             if field in values: setattr(item, field, values[field])
         item.lock_version += 1

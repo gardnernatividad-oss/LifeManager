@@ -13,6 +13,8 @@ export interface V2Activity {
   workspace_id: string;
   activity_master_id: string | null;
   activity_master_name: string | null;
+  is_custom?: boolean;
+  custom_category_id?: string | null;
   category_id: string;
   category_name: string;
   title: string;
@@ -50,25 +52,28 @@ export interface V2ActivityFilters {
   category_id?: string;
   organizer_user_id?: string;
   participant_user_id?: string;
+  custom?: boolean;
 }
 
-export interface V2ActivityCreate {
-  activity_master_id: string;
+export type V2ActivitySourceWrite = { activity_master_id: string; custom_name?: never; custom_category_id?: never } | { activity_master_id?: never; custom_name: string; custom_category_id: string };
+
+export type V2ActivityCreate = V2ActivitySourceWrite & {
   organizer_user_id?: string;
   participant_user_ids: string[];
   starts_at: string;
   ends_at: string;
-}
+};
 
-export interface V2ActivityUpdate extends Partial<V2ActivityCreate> {
-  lock_version: number;
-  scope?: ActivityMutationScope;
-}
+export type V2ActivityUpdate = Partial<V2ActivitySourceWrite & {
+  organizer_user_id: string;
+  participant_user_ids: string[];
+  starts_at: string;
+  ends_at: string;
+}> & { lock_version: number; scope?: ActivityMutationScope };
 
 export type ActivityRecurrencePattern = "DAILY" | "WEEKLY" | "MONTHLY";
 
-export interface V2RecurringActivityCreate {
-  activity_master_id: string;
+export type V2RecurringActivityCreate = V2ActivitySourceWrite & {
   organizer_user_id?: string;
   participant_user_ids: string[];
   start_time: string;
@@ -81,7 +86,7 @@ export interface V2RecurringActivityCreate {
     weekdays?: number[];
     month_days?: number[];
   };
-}
+};
 
 export interface V2RecurringActivityCreateResponse {
   created_count: number;

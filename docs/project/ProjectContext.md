@@ -218,6 +218,13 @@ corrección previa a Revisión. La matriz trazable está en
 etapas históricas, concentra las correcciones en 9.2–9.4 y reserva 9.5 para el
 gate integral.
 
+Stage 9.2 implementa la fuente custom simétrica para Tareas y Actividades:
+nombre real y Categoría manual, sin maestro implícito, con creación puntual o
+recurrencia finita materializada. La fuente de catálogo continúa derivando
+nombre y Categoría del master actual. Una Tarea terminal puede corregirse solo
+entre Completada y No realizada mediante una operación dedicada; nunca retorna
+a Pendiente ni reabre sus demás campos históricos.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.

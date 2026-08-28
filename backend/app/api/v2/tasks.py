@@ -10,7 +10,7 @@ from app.api.v2.errors import V2APIError
 from app.core.dates import local_today
 from app.models import Task, User
 from app.models.enums import TaskResult
-from app.schemas.v2_task import RecurringTaskCreate, RecurringTaskCreateResponse, TaskCreate, TaskListResponse, TaskMutationScope, TaskRead, TaskState, TaskUpdate, TaskVersionRequest
+from app.schemas.v2_task import RecurringTaskCreate, RecurringTaskCreateResponse, TaskCreate, TaskListResponse, TaskMutationScope, TaskRead, TaskResultCorrectionRequest, TaskState, TaskUpdate, TaskVersionRequest
 from app.services.v2_task import (
     TaskConflictError,
     TaskNotFoundError,
@@ -19,11 +19,13 @@ from app.services.v2_task import (
     TaskRecurrenceError,
     create_task,
     create_recurring_tasks,
+    correct_task_result,
     delete_task,
     get_task,
     list_tasks,
     resolve_task,
     task_projection,
+    task_source_projection,
     update_task,
 )
 
@@ -44,17 +46,22 @@ def _raise_domain_error(error: ValueError) -> None:
 
 
 def _read(db: SessionDependency, task: Task, account: User, today: date) -> TaskRead:
+    master, category, task_name = task_source_projection(db, task=task)
     responsible, state, is_generated, can_edit_this, can_edit_future, can_resolve, can_delete_this, can_delete_future = task_projection(
         db, task=task, actor_id=account.id, local_date=today
     )
-    master = task.master_task
+    can_correct = task.result is not None and task.responsible_user_id == account.id
     return TaskRead(
         id=task.id,
         workspace_id=task.workspace_id,
+        source="CATALOG" if master else "CUSTOM",
         master_task_id=task.master_task_id,
-        master_task_name=master.name,
-        category_id=master.category_id,
-        category_name=master.category.name,
+        master_task_name=master.name if master else None,
+        custom_name=task.custom_name,
+        custom_category_id=task.custom_category_id,
+        task_name=task_name,
+        category_id=category.id,
+        category_name=category.name,
         responsible_user_id=task.responsible_user_id,
         responsible_display_name=f"{responsible.first_name} {responsible.last_name}".strip(),
         responsible_email=responsible.email,
@@ -71,6 +78,7 @@ def _read(db: SessionDependency, task: Task, account: User, today: date) -> Task
         can_delete_future=can_delete_future,
         can_edit=can_edit_this,
         can_resolve=can_resolve,
+        can_correct_result=can_correct,
         can_delete=can_delete_this,
         created_at=task.created_at,
         updated_at=task.updated_at,
@@ -139,6 +147,7 @@ def index(
     unresolved: bool | None = None,
     state: TaskState | None = None,
     generated: bool | None = None,
+    custom: bool | None = None,
 ) -> TaskListResponse:
     del access
     if planned_from is not None and planned_until is not None and planned_from > planned_until:
@@ -158,6 +167,7 @@ def index(
         unresolved=unresolved,
         state=state,
         generated=generated,
+        custom=custom,
         local_date=today,
     )
     return TaskListResponse(
@@ -210,6 +220,13 @@ def complete(workspace_id: uuid.UUID, task_id: uuid.UUID, resolution_in: TaskVer
 def not_complete(workspace_id: uuid.UUID, task_id: uuid.UUID, resolution_in: TaskVersionRequest, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> TaskRead:
     del workspace_id
     return _resolve(task_id, resolution_in, db, account, access, TaskResult.NOT_COMPLETED)
+
+
+@router.post("/{task_id}/correct-result", response_model=TaskRead)
+def correct_result(workspace_id: uuid.UUID, task_id: uuid.UUID, correction_in: TaskResultCorrectionRequest, db: SessionDependency, account: UsableAccount, access: ActiveWorkspaceMembership) -> TaskRead:
+    del workspace_id
+    task = _write(db, lambda: correct_task_result(db, access=access, actor=account, task_id=task_id, expected_version=correction_in.lock_version, result=correction_in.result))
+    return _read(db, task, account, local_today(account.timezone))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

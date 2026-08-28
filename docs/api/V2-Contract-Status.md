@@ -532,6 +532,14 @@ scope jerárquico, lifecycle y concurrencia.
 
 ## 16. Terminología
 
+Stage 9.2 añade fuentes explícitas `CATALOG` y `CUSTOM` a Tareas y Actividades.
+Las fuentes de catálogo proyectan el nombre y la Categoría actuales del master;
+las custom conservan su nombre real y Categoría manual sin crear filas de
+catálogo. Ambos listados admiten filtro custom, y la recurrencia custom usa los
+mismos `GenerationBatch` y scopes que la recurrencia de catálogo. Tareas añade
+`POST .../tasks/{task_id}/correct-result`, limitado a
+`COMPLETED ↔ NOT_COMPLETED`; no existe transición terminal a Pendiente.
+
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.
 
 ## 17. Decisiones aún operativas

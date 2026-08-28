@@ -49,7 +49,7 @@ de seguridad sigue respaldada por `docs/security/V2-Workspace-Gate.md`.
 | Mutación/eliminación segura de maestros | CONFORME | Capabilities server-side, RESTRICT y locks contra primera referencia. |
 | Selectores reutilizables | CONFORME | Solo activos para nuevas referencias e inclusión del valor histórico actual. |
 | Reclasificación histórica dinámica | CONFORME | Tareas y Actividades de catálogo resuelven Categoría desde el master actual; reportes deben conservar ese join. |
-| Soporte coherente de “Otra tarea/actividad” desde selectores | FALTANTE | No existe opción reutilizable completa. Activity tiene base física parcial; Task no. Etapa correctiva 9.2. |
+| Soporte coherente de “Otra tarea/actividad” desde selectores | CORREGIDO EN 9.2 | Los selectores reutilizables ofrecen la opción custom sin crear maestros; nombre real y Categoría manual se conservan en cada ocurrencia. |
 
 ## Fase 5 — Tareas
 
@@ -58,12 +58,12 @@ de seguridad sigue respaldada por `docs/security/V2-Workspace-Gate.md`.
 | Planificación con fecha, Responsable y catálogo | CONFORME | DTO estricto, referencias scoped y Personal deriva Responsable. |
 | Estados Programada/Pendiente y resultados terminales | CONFORME | Estado derivado por fecha local; resultado persistido. |
 | Autoridad exclusiva del Responsable para resolver | CONFORME | `resolve_task()` revalida bajo lock; futura no se resuelve anticipadamente. |
-| Corrección explícita COMPLETED ↔ NOT_COMPLETED | FALTANTE | `resolve_task()` rechaza toda Task ya resuelta y tests afirman inmutabilidad. El frontend muestra “Corregir”, pero el backend devuelve conflicto. Etapa 9.2. |
+| Corrección explícita COMPLETED ↔ NOT_COMPLETED | CORREGIDO EN 9.2 | Una acción mínima dedicada alterna únicamente resultados terminales con autorización y optimistic concurrency; nunca permite volver a Pendiente. |
 | Recurrencia finita DAILY/WEEKLY/MONTHLY | CONFORME | Materialización atómica, fallback mensual, límite técnico y GenerationBatch. |
 | THIS / THIS_AND_FUTURE | CONFORME | Solo futuras no resueltas; historia y batch original no se reescriben. |
 | Listado, filtros, paginación y responsive | CONFORME | Query server-side, orden estable y tarjetas/filas responsive. |
 | Permisos, IDOR, locking y no bypass | CONFORME | Gate de Tareas cubre owner/member/LEFT/REMOVED/nonmember/admin global. |
-| “Otra tarea” puntual con nombre y Categoría manual | FALTANTE | `Task.master_task_id` es obligatorio, no hay nombre/categoría propios ni agrupación “Otras tareas”. Requiere migración y contratos 9.2. |
+| “Otra tarea” puntual con nombre y Categoría manual | CORREGIDO EN 9.2 | Task admite fuente XOR catálogo/custom. La fuente custom funciona puntual o con recurrencia finita y mantiene nombre, Categoría y GenerationBatch. |
 
 ## Fase 6 — Pendientes
 
@@ -104,7 +104,7 @@ No se detectaron desviaciones funcionales en Fase 6.
 |---|---|---|
 | Activity de catálogo, Organizador y participantes opcionales | CONFORME | Referencias scoped y participantes materializados. |
 | Base física de Actividad libre | CONFORME | `activity_master_id` nullable, `custom_category_id`, `title` y XOR ya existen. |
-| “Otra actividad” en API y UI | FALTANTE | DTO create/recurring/update exige `activity_master_id`; service y formulario solo usan catálogo. No crea ni conserva una libre desde runtime. Etapa 9.2. |
+| “Otra actividad” en API y UI | CORREGIDO EN 9.2 | API y UI aceptan fuente XOR catálogo/custom para creación puntual o recurrente y conservan nombre y Categoría manual. |
 | Recurrencia finita y GenerationBatch | CONFORME | DAILY/WEEKLY/MONTHLY, DST estricto y materialización atómica. |
 | Identidad de ocurrencia catalogada | CONFORME | Constraint Workspace+master+organizer+starts_at y conflictos seguros. |
 | Timezone IANA, huecos y ambigüedad DST | CONFORME | Conversión server-side y frontend rechazan horas inválidas/ambiguas. |
@@ -116,7 +116,7 @@ No se detectaron desviaciones funcionales en Fase 6.
 | Resumen mensual multi-dominio y acceso al día | FALTANTE | No existe agregación `N actividades / N tareas / N pendientes / N etapas` ni drill-down diario asociado. Puede requerir query API, no estado duplicado. Etapa 9.4. |
 | Privacidad SHOW_DETAILS/AVAILABILITY_ONLY/HIDE | CONFORME | Enforcement server-side direccional, bloques opacos y no filtración de origen. |
 | Comparación colaborativa y contextos Workspace | CONFORME | Shared común, target elegible y proyecciones mínimas. |
-| Agrupación/filtro “Otras actividades” y Categoría manual | FALTANTE | Al no existir creación libre, tampoco existen agrupación técnica ni filtros completos para ella. Etapa 9.2. |
+| Agrupación/filtro “Otras actividades” y Categoría manual | CORREGIDO EN 9.2 | La proyección identifica establemente la fuente custom y los listados filtran por fuente y por Categoría manual sin convertir nombres históricos en maestros. |
 
 ## Seguridad transversal
 

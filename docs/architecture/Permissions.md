@@ -93,6 +93,11 @@ ADR-008 define estas garantías de datos, implementadas en la base física V2 y 
   Organizador y owner no obtienen privilegio. Un Participante solo puede retirar
   su propia relación; Personal elimina y Shared cancela conservando historia.
   Ver `docs/security/V2-Calendar-Gate.md`.
+- Stage 9.2 conserva esas fronteras para fuentes custom. Crear o propagar
+  `Otra tarea`/`Otra actividad` exige Categoría activa del mismo Workspace y no
+  crea maestros. La corrección terminal de Tarea corresponde únicamente al
+  Responsable dentro de una membership y Workspace activos, usa
+  `lock_version` y no concede bypass a owner ni `GLOBAL_ADMIN`.
 
 ## Arquitectura de enforcement V2
 

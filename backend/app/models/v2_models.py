@@ -266,21 +266,28 @@ class Task(BaseEntity):
     __tablename__ = "tasks"
     __table_args__ = (
         ForeignKeyConstraint(["master_task_id", "workspace_id"], ["master_tasks.id", "master_tasks.workspace_id"], name="fk_tasks_master_task_workspace", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["custom_category_id", "workspace_id"], ["categories.id", "categories.workspace_id"], name="fk_tasks_custom_category_workspace", ondelete="RESTRICT"),
         ForeignKeyConstraint(["workspace_id", "responsible_user_id"], MEMBERSHIP_FK, name="fk_tasks_responsible_membership", ondelete="RESTRICT"),
         ForeignKeyConstraint(["workspace_id", "created_by_user_id"], MEMBERSHIP_FK, name="fk_tasks_creator_membership", ondelete="RESTRICT"),
         ForeignKeyConstraint(["workspace_id", "resolved_by_user_id"], MEMBERSHIP_FK, name="fk_tasks_resolver_membership", ondelete="RESTRICT"),
         ForeignKeyConstraint(["generation_batch_id", "workspace_id"], ["generation_batches.id", "generation_batches.workspace_id"], name="fk_tasks_batch_workspace", ondelete="RESTRICT"),
-        UniqueConstraint("workspace_id", "master_task_id", "planned_date", "responsible_user_id", name="uq_tasks_workspace_master_date_responsible"),
+        CheckConstraint("(master_task_id IS NOT NULL AND custom_name IS NULL AND custom_category_id IS NULL) OR (master_task_id IS NULL AND custom_name IS NOT NULL AND custom_category_id IS NOT NULL)", name="ck_tasks_source_xor"),
+        CheckConstraint("custom_name IS NULL OR length(btrim(custom_name)) > 0", name="ck_tasks_custom_name_not_blank"),
         _enum_check("result", TaskResult, "ck_tasks_result_valid", True),
         CheckConstraint("(result IS NULL AND resolved_at IS NULL AND resolved_by_user_id IS NULL) OR (result IS NOT NULL AND resolved_at IS NOT NULL AND resolved_by_user_id IS NOT NULL)", name="ck_tasks_resolution_consistent"),
         CheckConstraint("lock_version > 0", name="ck_tasks_lock_version_positive"),
         Index("ix_tasks_responsible_result_date_workspace_id", "responsible_user_id", "result", "planned_date", "workspace_id", "id"),
         Index("ix_tasks_workspace_date_id", "workspace_id", desc("planned_date"), "id"),
         Index("ix_tasks_workspace_master_date", "workspace_id", "master_task_id", desc("planned_date")),
+        Index("ix_tasks_workspace_custom_category_date", "workspace_id", "custom_category_id", desc("planned_date"), postgresql_where=text("custom_category_id IS NOT NULL")),
         Index("ix_tasks_batch_date_id", "generation_batch_id", "planned_date", "id", postgresql_where=text("generation_batch_id IS NOT NULL")),
+        Index("uq_tasks_catalog_occurrence", "workspace_id", "master_task_id", "planned_date", "responsible_user_id", unique=True, postgresql_where=text("master_task_id IS NOT NULL")),
+        Index("uq_tasks_custom_occurrence", "workspace_id", "custom_name", "custom_category_id", "planned_date", "responsible_user_id", unique=True, postgresql_where=text("master_task_id IS NULL")),
     )
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
-    master_task_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    master_task_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    custom_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    custom_category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     responsible_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     planned_date: Mapped[date] = mapped_column(Date, nullable=False)
     result: Mapped[TaskResult | None] = mapped_column(String(20), nullable=True)
@@ -289,7 +296,7 @@ class Task(BaseEntity):
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     generation_batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
-    master_task: Mapped[MasterTask] = relationship(back_populates="tasks")
+    master_task: Mapped[MasterTask | None] = relationship(back_populates="tasks")
 
 
 class PendingItem(BaseEntity):
@@ -450,6 +457,7 @@ class Activity(BaseEntity):
         Index("ix_activities_batch_starts_id", "generation_batch_id", "starts_at", "id"),
         Index("uq_activities_batch_starts", "generation_batch_id", "starts_at", unique=True, postgresql_where=text("generation_batch_id IS NOT NULL")),
         Index("uq_activities_catalog_occurrence", "workspace_id", "activity_master_id", "organizer_user_id", "starts_at", unique=True, postgresql_where=text("activity_master_id IS NOT NULL")),
+        Index("uq_activities_custom_occurrence", "workspace_id", "custom_category_id", "title", "organizer_user_id", "starts_at", unique=True, postgresql_where=text("activity_master_id IS NULL")),
     )
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     organizer_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
