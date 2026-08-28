@@ -1,6 +1,6 @@
 # Contrato API objetivo de LifeManager V2.0.0
 
-## Stage 9.1
+## Stage 10.1
 
 `GET /api/v2/review` implementa el motor global read-only de Revisión. No
 recibe selector de Workspace y devuelve tres bloques independientes: Tareas
@@ -9,7 +9,7 @@ no finalizadas de Proyectos activos. Cada elemento conserva el contexto mínimo
 de Workspace y califica cuando su fecha planificada es la fecha local efectiva
 o una anterior. Solo se agregan Workspaces y memberships `ACTIVE`; ser
 `GLOBAL_ADMIN` no concede bypass. El guardado independiente de cada bloque y
-la experiencia frontend corresponden a Stage 9.2.
+la experiencia frontend corresponden a Stage 10.2.
 
 ## Stage 5.1
 

@@ -130,91 +130,101 @@ Stage 1.7 se restaura entre 1.6 y 1.8 con respaldo documental, y se añaden
 | 8.4 | SHOW_DETAILS/AVAILABILITY_ONLY/HIDE; calendario consolidado por persona; comparación diaria de disponibilidad sin filtrar detalles privados. |
 | 8.5 | Organizador/participante, aislamiento, DST/timezone, privacidad, concurrencia, pruebas frontend/backend/PostgreSQL y gate. |
 
-### 9. Revisión
+### 9. Corrección de paridad funcional
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 9.1 | Motor global entre Workspaces; tres bloques Tareas/Pendientes/Etapas; elegibilidad `<= hoy`; vigencia ACTIVE y reglas de selección. |
-| 9.2 | Guardados independientes por bloque, atomicidad interna, timestamps de última revisión y experiencia mobile-first. |
-| 9.3 | Autorización, aislamiento, locking determinístico, concurrencia, pruebas y gate de Revisión. |
+| 9.1 | Auditoría integral de Fases 3–8 contra el diseño funcional final y detección trazable de desviaciones. |
+| 9.2 | Corrección de Tareas y Tablas: resultados corregibles, Otra tarea/Otra actividad y clasificación/reportabilidad. |
+| 9.3 | Corrección de Proyectos/Etapas: orden visual, pesos 100.00%, precisión, vigencia y corrección de finalizados. |
+| 9.4 | Corrección de Calendario: vistas Día/Semana/Mes, resúmenes diarios, vistas Workspace y comparación colaborativa. |
+| 9.5 | Regresión integral, autorización, PostgreSQL, responsive y gate de paridad funcional de Fases 3–8. |
 
-### 10. Inicio
-
-| Stage | Requisitos y trabajo absorbidos |
-|---|---|
-| 10.1 | Inicio global, resumen diario accionable, próximos/vencidos, Workspaces pertinentes y accesos rápidos sin duplicar Seguimiento/Reportes. |
-| 10.2 | Estados loading/error/empty, responsive, accesibilidad, agregaciones eficientes, pruebas y gate. |
-
-### 11. Notificaciones y recordatorios
+### 10. Revisión
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 11.1 | Eventos tipados, campana overlay, Notification, push subscriptions/deliveries, scheduler idempotente, retries y retención. |
-| 11.2 | Resumen diario, recordatorio de Revisión y seguimientos Pending/Project configurables por usuario. |
-| 11.3 | Recordatorios de Activities, cambios/cancelaciones, una notificación lógica por serie, agrupación y deep links. |
-| 11.4 | Consentimiento, privacidad, claves, abuso, jobs autenticados, pruebas de entrega/retry y gate. |
+| 10.1 | Motor global entre Workspaces; tres bloques Tareas/Pendientes/Etapas; elegibilidad `<= hoy`; vigencia ACTIVE y reglas de selección. |
+| 10.2 | Guardados independientes por bloque, atomicidad interna, timestamps de última revisión y experiencia mobile-first. |
+| 10.3 | Autorización, aislamiento, locking determinístico, concurrencia, pruebas y gate de Revisión. |
 
-### 12. Reportes
-
-| Stage | Requisitos y trabajo absorbidos |
-|---|---|
-| 12.1 | Infraestructura común, periodos abiertos/cerrados, filtros, agregaciones SQL, aislamiento y contratos estables. |
-| 12.2 | Resultados de Tareas; avance/cumplimiento de Pendientes; progreso de Proyectos y cumplimiento de Etapas. |
-| 12.3 | Reportes de Activities, recurrencia/participación y reclasificación histórica explícita sin reescribir historia silenciosamente. |
-| 12.4 | Tablas/gráficos aprobados, responsive, accesibilidad, autorización, rendimiento, pruebas y gate. |
-
-### 13. Configuración
+### 11. Inicio
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 13.1 | Perfil, timezone IANA, estructura general Spanish-first, convenciones de fecha y preferencias comunes. |
-| 13.2 | Preferencias de recordatorios/seguimientos y privacidad de Calendario por membresía. |
-| 13.3 | Gestión visible de Workspaces/membresías, seguridad de cuenta y Acerca de/versión, respetando fronteras globales. |
-| 13.4 | Responsive, accesibilidad, permisos, validación, pruebas y gate de Configuración. |
+| 11.1 | Inicio global, resumen diario accionable, próximos/vencidos, Workspaces pertinentes y accesos rápidos sin duplicar Seguimiento/Reportes. |
+| 11.2 | Estados loading/error/empty, responsive, accesibilidad, agregaciones eficientes, pruebas y gate. |
 
-### 14. Administración global
+### 12. Notificaciones y recordatorios
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 14.1 | Consola privada GLOBAL_ADMIN, solicitudes/cuentas, estados, auditoría operativa y administración estrictamente de plataforma. |
-| 14.2 | No acceso implícito a contenido, mass assignment, auditoría, seguridad, pruebas negativas y gate administrativo. |
+| 12.1 | Eventos tipados, campana overlay, Notification, push subscriptions/deliveries, scheduler idempotente, retries y retención. |
+| 12.2 | Resumen diario, recordatorio de Revisión y seguimientos Pending/Project configurables por usuario. |
+| 12.3 | Recordatorios de Activities, cambios/cancelaciones, una notificación lógica por serie, agrupación y deep links. |
+| 12.4 | Consentimiento, privacidad, claves, abuso, jobs autenticados, pruebas de entrega/retry y gate. |
 
-### 15. Integración UX y PWA
-
-| Stage | Requisitos y trabajo absorbidos |
-|---|---|
-| 15.1 | Navegación final, layouts, patrones comunes, estados de consulta/mutación, diseño compacto y coherencia visual. |
-| 15.2 | Auditoría desktop/móvil, mobile-first, teclado, foco, lectores de pantalla, contraste y targets táctiles. |
-| 15.3 | Manifest/service worker, offline shell, caché sin datos privados obsoletos, actualización segura y gate PWA. |
-
-### 16. Hardening de seguridad
+### 13. Reportes
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 16.1 | Threat model final, inventario de superficie, secretos, bundles, historial y configuración productiva. |
-| 16.2 | Sesión/cookies/CSRF, cuentas, roles, autorización, IDOR, aislamiento Workspace y privacidad final. |
-| 16.3 | SQL/injection, XSS, validación, envelopes, CORS, CSP, headers, navegador y exposición OpenAPI. |
-| 16.4 | Dependencias/supply chain, Render/Cloudflare/Neon, email, push, scheduler, rotación y operación segura. |
-| 16.5 | Matrices ofensivas, concurrencia, abuso, remediación, regresión y gate formal sin hallazgos HIGH/CRITICAL abiertos. |
+| 13.1 | Infraestructura común, periodos abiertos/cerrados, filtros, agregaciones SQL, aislamiento y contratos estables. |
+| 13.2 | Resultados de Tareas; avance/cumplimiento de Pendientes; progreso de Proyectos y cumplimiento de Etapas. |
+| 13.3 | Reportes de Activities, recurrencia/participación y reclasificación histórica explícita sin reescribir historia silenciosamente. |
+| 13.4 | Tablas/gráficos aprobados, responsive, accesibilidad, autorización, rendimiento, pruebas y gate. |
 
-### 17. QA integral V2
-
-| Stage | Requisitos y trabajo absorbidos |
-|---|---|
-| 17.1 | Suites backend/frontend, compile/typecheck/lint/build, Alembic base→head y gates PostgreSQL. |
-| 17.2 | E2E Personal/Shared, multiusuario, invitaciones, lifecycle, recurrencia, Review, Calendar y casos límite. |
-| 17.3 | Desktop, móvil, PWA, instalación/offline shell, accesibilidad y navegadores objetivo. |
-| 17.4 | Triage/corrección, regresión completa, documentación de evidencia y gate funcional V2.0.0. |
-
-### 18. Publicación V2.0.0
+### 14. Configuración
 
 | Stage | Requisitos y trabajo absorbidos |
 |---|---|
-| 18.1 | Release candidate, changelog/documentación, backups, plan de datos, rollback y checklist. |
-| 18.2 | Despliegue de infraestructura, backend Render, esquema Neon y frontend/PWA Cloudflare. |
-| 18.3 | Secretos únicos, dominios, HTTPS, CORS/CSP, email, push, jobs y observabilidad productiva. |
-| 18.4 | Smoke test, migraciones verificadas, seguridad, flujos críticos y QA final en producción. |
-| 18.5 | Tag/release oficial `v2.0.0`, inicio de datos reales, backups y cambio a migraciones preservadoras. |
+| 14.1 | Perfil, timezone IANA, estructura general Spanish-first, convenciones de fecha y preferencias comunes. |
+| 14.2 | Preferencias de recordatorios/seguimientos y privacidad de Calendario por membresía. |
+| 14.3 | Gestión visible de Workspaces/membresías, seguridad de cuenta y Acerca de/versión, respetando fronteras globales. |
+| 14.4 | Responsive, accesibilidad, permisos, validación, pruebas y gate de Configuración. |
+
+### 15. Administración global
+
+| Stage | Requisitos y trabajo absorbidos |
+|---|---|
+| 15.1 | Consola privada GLOBAL_ADMIN, solicitudes/cuentas, estados, auditoría operativa y administración estrictamente de plataforma. |
+| 15.2 | No acceso implícito a contenido, mass assignment, auditoría, seguridad, pruebas negativas y gate administrativo. |
+
+### 16. Integración UX y PWA
+
+| Stage | Requisitos y trabajo absorbidos |
+|---|---|
+| 16.1 | Navegación final, layouts, patrones comunes, estados de consulta/mutación, diseño compacto y coherencia visual. |
+| 16.2 | Auditoría desktop/móvil, mobile-first, teclado, foco, lectores de pantalla, contraste y targets táctiles. |
+| 16.3 | Manifest/service worker, offline shell, caché sin datos privados obsoletos, actualización segura y gate PWA. |
+
+### 17. Hardening de seguridad
+
+| Stage | Requisitos y trabajo absorbidos |
+|---|---|
+| 17.1 | Threat model final, inventario de superficie, secretos, bundles, historial y configuración productiva. |
+| 17.2 | Sesión/cookies/CSRF, cuentas, roles, autorización, IDOR, aislamiento Workspace y privacidad final. |
+| 17.3 | SQL/injection, XSS, validación, envelopes, CORS, CSP, headers, navegador y exposición OpenAPI. |
+| 17.4 | Dependencias/supply chain, Render/Cloudflare/Neon, email, push, scheduler, rotación y operación segura. |
+| 17.5 | Matrices ofensivas, concurrencia, abuso, remediación, regresión y gate formal sin hallazgos HIGH/CRITICAL abiertos. |
+
+### 18. QA integral V2
+
+| Stage | Requisitos y trabajo absorbidos |
+|---|---|
+| 18.1 | Suites backend/frontend, compile/typecheck/lint/build, Alembic base→head y gates PostgreSQL. |
+| 18.2 | E2E Personal/Shared, multiusuario, invitaciones, lifecycle, recurrencia, Review, Calendar y casos límite. |
+| 18.3 | Desktop, móvil, PWA, instalación/offline shell, accesibilidad y navegadores objetivo. |
+| 18.4 | Triage/corrección, regresión completa, documentación de evidencia y gate funcional V2.0.0. |
+
+### 19. Publicación V2.0.0
+
+| Stage | Requisitos y trabajo absorbidos |
+|---|---|
+| 19.1 | Release candidate, changelog/documentación, backups, plan de datos, rollback y checklist. |
+| 19.2 | Despliegue de infraestructura, backend Render, esquema Neon y frontend/PWA Cloudflare. |
+| 19.3 | Secretos únicos, dominios, HTTPS, CORS/CSP, email, push, jobs y observabilidad productiva. |
+| 19.4 | Smoke test, migraciones verificadas, seguridad, flujos críticos y QA final en producción. |
+| 19.5 | Tag/release oficial `v2.0.0`, inicio de datos reales, backups y cambio a migraciones preservadoras. |
 
 ## Matriz de cobertura transversal
 
@@ -225,10 +235,11 @@ Stage 1.7 se restaura entre 1.6 y 1.8 con respaldo documental, y se añaden
 | Recurrencia diaria/semanal/mensual, 29/30/31, febrero, dedupe y unicidad | 5.2–5.3 |
 | Historias Pending y ProjectStage, comentarios, pesos y cumplimiento | 6.2, 7.2–7.3 |
 | Organizer, participants, recurrencia, reminders, privacidad y comparación | 8.1–8.5 |
-| Tres bloques de Review, `<= hoy` y guardados independientes | 9.1–9.3 |
-| Campana, push, reminders, seguimientos, agrupación y deep links | 11.1–11.4 |
-| Reportes de cuatro dominios, filtros y reclasificación | 12.1–12.4 |
-| Configuración, administración, UX/PWA, seguridad, QA y publicación | 13.1–18.5 |
+| Paridad funcional de Fases 3–8 y gate correctivo | 9.1–9.5 |
+| Tres bloques de Review, `<= hoy` y guardados independientes | 10.1–10.3 |
+| Campana, push, reminders, seguimientos, agrupación y deep links | 12.1–12.4 |
+| Reportes de cuatro dominios, filtros y reclasificación | 13.1–13.4 |
+| Configuración, administración, UX/PWA, seguridad, QA y publicación | 14.1–19.5 |
 
 ## Resultado de trazabilidad
 
@@ -237,8 +248,8 @@ Stage 1.7 se restaura entre 1.6 y 1.8 con respaldo documental, y se añaden
 - Filas pendientes antiguas en el baseline inmediato: **0**; no hay huérfanas.
 - Filas históricamente pendientes encontradas en Git: **15**; todas se preservan
   como completadas.
-- Nuevos stages pendientes: **60**.
-- Total canónico: **92**.
+- Stages definidos por la reorganización y la posterior fase correctiva: **65**.
+- Total canónico tras incorporar Fase 9: **97**.
 - Necesidad histórica de invitaciones: absorbida por Stage 3.3 completado.
-- Requisitos externos auditados: todos tienen destino en 3.4–18.5.
+- Requisitos externos auditados: todos tienen destino en 3.4–19.5.
 - Alcance eliminado o desplazado fuera de V2: **ninguno**.

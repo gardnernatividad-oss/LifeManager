@@ -17,98 +17,103 @@ El roadmap conservará exactamente estas columnas:
 
 | Fase | Etapa | Módulo | Estado |
 |---|---|---|---|
-| Phase 0 — Diseño funcional | Stage 0.1 | Definición del alcance funcional de LifeManager V2.0.0 | Completado |
-| Phase 0 — Diseño funcional | Stage 0.2 | Navegación, terminología y arquitectura de información V2 | Completado |
-| Phase 0 — Diseño funcional | Stage 0.3 | Inventario de pantallas y flujos funcionales V2 | Completado |
-| Phase 0 — Diseño funcional | Stage 0.4 | Sistema de diseño, componentes y criterios responsive | Completado |
-| Phase 0 — Diseño funcional | Stage 0.5 | Consolidación y aprobación de la línea base funcional V2 | Completado |
-| Phase 1 — V2 Preparation | Stage 1.1 | Technical audit of the current V1.0.0 baseline | Completado |
-| Phase 1 — V2 Preparation | Stage 1.2 | Update and consolidate V2 functional documentation | Completado |
-| Phase 1 — V2 Preparation | Stage 1.3 | Inventory of V1 components that are reusable, modifiable, or replaceable | Completado |
-| Phase 1 — V2 Preparation | Stage 1.4 | Design of the V2 logical and physical data model | Completado |
-| Phase 1 — V2 Preparation | Stage 1.5 | Constraints, relationships, indexes, data integrity and V1→V2 transition plan | Completado |
-| Phase 1 — V2 Preparation | Stage 1.6 | Review and update architecture and technical decisions | Completado |
-| Phase 1 — V2 Preparation | Stage 1.7 | Estrategia de reset de datos V1 y transición del esquema a V2 | Completado |
-| Phase 1 — V2 Preparation | Stage 1.8 | Finalize target Architecture, Database and API documentation | Completado |
-| Phase 1 — V2 Preparation | Stage 1.9 | Implement and validate the base V2 schema with Alembic | Completado |
-| Phase 1 — V2 Preparation | Stage 1.10 | Create coherent V2 development data and fixtures | Completado |
-| Phase 1 — V2 Preparation | Stage 1.11 | Technical gate for the V2 foundation before functional modules | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.1 | Initial V2 threat model and attack-surface inventory | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.2 | Secrets and configuration audit | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.3 | Global roles and account state | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.4 | Registration and approval | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.5 | Email verification | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.6 | Password recovery | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.7 | Password policy and hashing | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.8 | Session architecture | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.9 | Rate limiting and brute-force protection | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.10 | Turnstile integration | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.11 | Server validation and error handling | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.12 | Security tests | Completado |
-| Phase 2 — Security foundation and identity | Stage 2.13 | Identity and security gate | Completado |
-| Phase 3 — Workspaces y colaboración base | Stage 3.1 | Adaptación del modelo Personal y Compartido de Workspace | Completado |
-| Phase 3 — Workspaces y colaboración base | Stage 3.2 | Creación de Workspace Compartido | Completado |
-| Phase 3 — Workspaces y colaboración base | Stage 3.3 | Invitaciones a Workspace Compartido | Completado |
-| 3. Workspaces y colaboración base | 3.4 | Administración, salida y ciclo de membresías de Workspaces compartidos | Completado |
-| 3. Workspaces y colaboración base | 3.5 | Gestión avanzada de Workspace: propiedad, desactivación, eliminación y responsabilidades futuras | Completado |
-| 3. Workspaces y colaboración base | 3.6 | Listado, selector, permisos e integración colaborativa de Workspaces | Completado |
-| 3. Workspaces y colaboración base | 3.7 | Gate funcional, autorización e aislamiento de Workspaces | Completado |
-| 4. Tablas maestras | 4.1 | Categorías y catálogos maestros de Tareas y Actividades | Completado |
-| 4. Tablas maestras | 4.2 | Reclasificación histórica, ciclo de maestros y selectores reutilizables | Completado |
-| 4. Tablas maestras | 4.3 | UX, autorización y gate de Tablas maestras | Completado |
-| 5. Tareas | 5.1 | Planificación, asignación y ciclo de vida de Tareas | Completado |
-| 5. Tareas | 5.2 | Recurrencia finita y generación de ocurrencias de Tareas | Completado |
-| 5. Tareas | 5.3 | Gestión de ocurrencias/series, listado y experiencia responsive | Completado |
-| 5. Tareas | 5.4 | Autorización, pruebas y gate de Tareas | Completado |
-| 6. Pendientes | 6.1 | Planificación, ciclo, avance y cumplimiento de Pendientes | Completado |
-| 6. Pendientes | 6.2 | Historial, comentarios y detalle de Pendientes | Completado |
-| 6. Pendientes | 6.3 | Listado, filtros y UX mobile-first de Pendientes | Completado |
-| 6. Pendientes | 6.4 | Autorización, pruebas y gate de Pendientes | Completado |
-| 7. Proyectos y Etapas | 7.1 | Gestión de Proyectos, liderazgo y ciclo general | Completado |
-| 7. Proyectos y Etapas | 7.2 | Etapas, responsables, pesos, avance y cumplimiento | Completado |
-| 7. Proyectos y Etapas | 7.3 | Historial, comentarios y navegación jerárquica Proyecto → Etapa | Completado |
-| 7. Proyectos y Etapas | 7.4 | UX mobile-first, autorización, pruebas y gate | Completado |
-| 8. Calendario y Actividades | 8.1 | Gestión de Actividades, organizador, participantes y Workspace | Completado |
-| 8. Calendario y Actividades | 8.2 | Recurrencia finita y generación de ocurrencias de Actividades | Completado |
-| 8. Calendario y Actividades | 8.3 | Mi calendario consolidado y experiencia desktop/móvil | Completado |
-| 8. Calendario y Actividades | 8.4 | Privacidad de Calendario y comparación de disponibilidad | Completado |
-| 8. Calendario y Actividades | 8.5 | Gestión de ocurrencias recurrentes, autorización, privacidad y gate de Calendario | Completado |
-| 9. Revisión | 9.1 | Motor global y reglas de selección de Revisión | Completado |
-| 9. Revisión | 9.2 | Flujo de revisión por bloques y experiencia mobile-first | Pendiente |
-| 9. Revisión | 9.3 | Autorización, pruebas y gate de Revisión | Pendiente |
-| 10. Inicio | 10.1 | Inicio global, resumen diario y accesos rápidos | Pendiente |
-| 10. Inicio | 10.2 | Responsive, pruebas y gate de Inicio | Pendiente |
-| 11. Notificaciones y recordatorios | 11.1 | Infraestructura de eventos, campana, push y scheduler | Pendiente |
-| 11. Notificaciones y recordatorios | 11.2 | Recordatorios diarios, Revisión y seguimientos configurables | Pendiente |
-| 11. Notificaciones y recordatorios | 11.3 | Recordatorios de Actividades, agrupación y deep links | Pendiente |
-| 11. Notificaciones y recordatorios | 11.4 | Seguridad, pruebas y gate de notificaciones | Pendiente |
-| 12. Reportes | 12.1 | Infraestructura, filtros y agregaciones de Reportes | Pendiente |
-| 12. Reportes | 12.2 | Reportes de Tareas, Pendientes y Proyectos/Etapas | Pendiente |
-| 12. Reportes | 12.3 | Reportes de Actividades y reclasificación histórica | Pendiente |
-| 12. Reportes | 12.4 | Visualización, responsive, autorización y gate de Reportes | Pendiente |
-| 13. Configuración | 13.1 | Perfil, estructura y configuración general | Pendiente |
-| 13. Configuración | 13.2 | Recordatorios, seguimientos y privacidad de Calendario | Pendiente |
-| 13. Configuración | 13.3 | Gestión de Workspaces, seguridad visible y Acerca de | Pendiente |
-| 13. Configuración | 13.4 | Responsive, permisos, pruebas y gate de Configuración | Pendiente |
-| 14. Administración global | 14.1 | Consola privada de administración global y usuarios | Pendiente |
-| 14. Administración global | 14.2 | Seguridad, auditoría, pruebas y gate administrativo | Pendiente |
-| 15. Integración UX y PWA | 15.1 | Integración visual, navegación y patrones comunes de UX | Pendiente |
-| 15. Integración UX y PWA | 15.2 | Auditoría responsive, mobile-first y accesibilidad | Pendiente |
-| 15. Integración UX y PWA | 15.3 | PWA, caché, actualización segura y gate UX/PWA | Pendiente |
-| 16. Hardening de seguridad | 16.1 | Threat model final, secretos y superficie frontend | Pendiente |
-| 16. Hardening de seguridad | 16.2 | Autenticación, autorización, aislamiento y privacidad final | Pendiente |
-| 16. Hardening de seguridad | 16.3 | Injection, XSS, API, CORS, CSP, headers y navegador | Pendiente |
-| 16. Hardening de seguridad | 16.4 | Dependencias, supply chain, infraestructura, correo y push | Pendiente |
-| 16. Hardening de seguridad | 16.5 | Pruebas ofensivas, remediación y gate formal de seguridad | Pendiente |
-| 17. QA integral V2 | 17.1 | Gate técnico integral backend/frontend/Alembic | Pendiente |
-| 17. QA integral V2 | 17.2 | QA E2E Personal, colaborativo y casos límite | Pendiente |
-| 17. QA integral V2 | 17.3 | QA desktop, móvil, PWA y navegadores objetivo | Pendiente |
-| 17. QA integral V2 | 17.4 | Corrección de defectos, regresión y gate funcional V2.0.0 | Pendiente |
-| 18. Publicación V2.0.0 | 18.1 | Release candidate, documentación y preparación de datos | Pendiente |
-| 18. Publicación V2.0.0 | 18.2 | Despliegue de infraestructura, backend, esquema y frontend/PWA | Pendiente |
-| 18. Publicación V2.0.0 | 18.3 | Configuración productiva de secretos, dominios, HTTPS y servicios | Pendiente |
-| 18. Publicación V2.0.0 | 18.4 | Smoke test, seguridad y QA final en producción | Pendiente |
-| 18. Publicación V2.0.0 | 18.5 | Release oficial LifeManager v2.0.0 e inicio de datos reales | Pendiente |
+| Fase 0 | 0.1 | Cierre integral del alcance funcional de LifeManager V2.0.0 | Completado |
+| Fase 0 | 0.2 | Terminología, navegación, Workspaces y comportamiento general de la interfaz | Completado |
+| Fase 0 | 0.3 | Reglas funcionales de Tareas, Pendientes, Proyectos y Etapas | Completado |
+| Fase 0 | 0.4 | Reglas funcionales de Calendario, Actividades, participantes y privacidad | Completado |
+| Fase 0 | 0.5 | Revisión, Inicio, recordatorios, notificaciones, Reportes y Configuración | Completado |
+| Fase 1 | 1.1 | Auditoría técnica del estado de LifeManager V1.0.0 como base de V2 | Completado |
+| Fase 1 | 1.2 | Actualización y consolidación de documentación funcional V2 | Completado |
+| Fase 1 | 1.3 | Inventario de componentes reutilizables, modificables y reemplazables de V1 | Completado |
+| Fase 1 | 1.4 | Diseño lógico y físico del modelo de datos V2 | Completado |
+| Fase 1 | 1.5 | Constraints, relaciones, índices e integridad de datos del modelo V2 | Completado |
+| Fase 1 | 1.6 | Revisión de arquitectura, capas, servicios y decisiones técnicas V2 | Completado |
+| Fase 1 | 1.7 | Estrategia de reset de datos V1 y transición controlada del esquema a V2 | Completado |
+| Fase 1 | 1.8 | Documentación objetivo de arquitectura, base de datos y API V2 | Completado |
+| Fase 1 | 1.9 | Implementación y validación del esquema base V2 mediante Alembic | Completado |
+| Fase 1 | 1.10 | Datos de prueba y fixtures canónicos coherentes para desarrollo V2 | Completado |
+| Fase 1 | 1.11 | Gate técnico integral de la base V2 antes de módulos funcionales | Completado |
+| Fase 2 | 2.1 | Threat model inicial V2 e inventario de superficies de ataque | Completado |
+| Fase 2 | 2.2 | Auditoría inicial de secretos, `.env`, Git, frontend bundle y configuración cloud | Completado |
+| Fase 2 | 2.3 | Modelo de roles globales y separación estricta de roles de Workspace | Completado |
+| Fase 2 | 2.4 | Registro mediante solicitud y aprobación del administrador global | Completado |
+| Fase 2 | 2.5 | Verificación segura de correo electrónico | Completado |
+| Fase 2 | 2.6 | Recuperación y restablecimiento seguro de contraseña | Completado |
+| Fase 2 | 2.7 | Política de contraseñas, hashing y protección de credenciales | Completado |
+| Fase 2 | 2.8 | Arquitectura definitiva de sesiones, cookies/JWT, expiración y logout | Completado |
+| Fase 2 | 2.9 | Rate limiting de autenticación, brute force y protección contra enumeración | Completado |
+| Fase 2 | 2.10 | Cloudflare Turnstile y protección anti-bot en flujos públicos | Completado |
+| Fase 2 | 2.11 | Validación server-side y manejo seguro de errores de autenticación | Completado |
+| Fase 2 | 2.12 | Tests de autenticación, registro, recuperación, roles y escenarios de abuso | Completado |
+| Fase 2 | 2.13 | Gate de seguridad de identidad y autenticación sobre PostgreSQL | Completado |
+| Fase 3 | 3.1 | Modelo funcional y técnico de Workspaces Personal y Compartido | Completado |
+| Fase 3 | 3.2 | Creación automática y protección del Workspace Personal | Completado |
+| Fase 3 | 3.3 | Propietario, Miembro, membresías y reglas colaborativas fundamentales | Completado |
+| Fase 3 | 3.4 | Administración, salida, retiro, reingreso y ciclo de membresías Shared | Completado |
+| Fase 3 | 3.5 | Transferencia de propiedad, desactivación/eliminación y resolución de responsabilidades futuras | Completado |
+| Fase 3 | 3.6 | Listados, selector contextual, permisos e integración frontend de Workspaces | Completado |
+| Fase 3 | 3.7 | Gate funcional, autorización, IDOR y aislamiento entre Workspaces | Completado |
+| Fase 4 | 4.1 | Categorías y catálogos maestros Workspace-scoped de Tareas y Actividades | Completado |
+| Fase 4 | 4.2 | Reclasificación histórica dinámica, ciclo de maestros y selectores reutilizables | Completado |
+| Fase 4 | 4.3 | UX, autorización, integridad y gate de Tablas maestras | Completado |
+| Fase 5 | 5.1 | Planificación, asignación, estados y ciclo de vida de Tareas | Completado |
+| Fase 5 | 5.2 | Recurrencia finita diaria/semanal/mensual y generación atómica de ocurrencias | Completado |
+| Fase 5 | 5.3 | Gestión de ocurrencias y series, listado, filtros y experiencia responsive | Completado |
+| Fase 5 | 5.4 | Autorización, concurrencia, PostgreSQL, regresión y gate de Tareas | Completado |
+| Fase 6 | 6.1 | Planificación, vigencia, responsable, avance, finalización y cumplimiento de Pendientes | Completado |
+| Fase 6 | 6.2 | Historial, comentarios, correcciones y detalle de Pendientes | Completado |
+| Fase 6 | 6.3 | Listado, filtros, paginación y experiencia mobile-first de Pendientes | Completado |
+| Fase 6 | 6.4 | Autorización, concurrencia, PostgreSQL, regresión y gate de Pendientes | Completado |
+| Fase 7 | 7.1 | Gestión de Proyectos, Categoría, liderazgo, vigencia y ciclo general | Completado |
+| Fase 7 | 7.2 | Etapas, responsables, orden, pesos, avance, finalización y cumplimiento | Completado |
+| Fase 7 | 7.3 | Historial, comentarios y navegación jerárquica Proyecto → Etapas → Etapa | Completado |
+| Fase 7 | 7.4 | UX mobile-first, autorización, concurrencia, PostgreSQL y gate de Proyectos/Etapas | Completado |
+| Fase 8 | 8.1 | Planificación de Actividades, Workspace, organizador y participantes | Completado |
+| Fase 8 | 8.2 | Recurrencia finita, identidad, zonas horarias y generación atómica de Actividades | Completado |
+| Fase 8 | 8.3 | Mi calendario global consolidado y experiencia Día/Semana desktop-móvil | Completado |
+| Fase 8 | 8.4 | Privacidad y comparación diaria de calendarios entre miembros Shared | Completado |
+| Fase 8 | 8.5 | Gestión de ocurrencias/series, cancelación, salida de participantes, autorización y gate | Completado |
+| 9. Corrección de paridad funcional | 9.1 | Auditoría integral de Fases 3–8 contra el diseño funcional final y detección de desviaciones | Completado |
+| 9. Corrección de paridad funcional | 9.2 | Corrección de Tareas y Tablas: resultados corregibles, Otra tarea/Otra actividad y clasificación/reportabilidad | Pendiente |
+| 9. Corrección de paridad funcional | 9.3 | Corrección de Proyectos/Etapas: orden visual, pesos 100.00%, precisión, vigencia y corrección de finalizados | Pendiente |
+| 9. Corrección de paridad funcional | 9.4 | Corrección de Calendario: vistas Día/Semana/Mes, resúmenes diarios, vistas Workspace y comparación colaborativa | Pendiente |
+| 9. Corrección de paridad funcional | 9.5 | Regresión integral, autorización, PostgreSQL, responsive y gate de paridad funcional de Fases 3–8 | Pendiente |
+| 10. Revisión | 10.1 | Motor global y reglas de selección de Tareas, Pendientes y Etapas para Revisión | Completado |
+| 10. Revisión | 10.2 | Revisión por bloques plegables, guardado independiente y correcciones de Tareas/Pendientes/Etapas | Pendiente |
+| 10. Revisión | 10.3 | UX mobile-first, autorización, atomicidad por bloque, PostgreSQL y gate de Revisión | Pendiente |
+| 11. Inicio | 11.1 | Inicio global: resumen inmediato de Hoy, accesos a Tareas/Pendientes/Etapas/Actividades y atención diaria | Pendiente |
+| 11. Inicio | 11.2 | Próximas Actividades/días, navegación, responsive, consultas eficientes y gate de Inicio | Pendiente |
+| 12. Notificaciones y recordatorios | 12.1 | Infraestructura de eventos, centro de notificaciones, push, scheduler y preferencias técnicas | Pendiente |
+| 12. Notificaciones y recordatorios | 12.2 | Recordatorio diario, Revisión diaria y seguimientos configurables de Pendientes/Proyectos | Pendiente |
+| 12. Notificaciones y recordatorios | 12.3 | Alarmas de Actividades, recurrencia de recordatorios, agrupación, privacidad y deep links | Pendiente |
+| 12. Notificaciones y recordatorios | 12.4 | Autorización, aislamiento, seguridad, scheduler, PostgreSQL y gate de notificaciones | Pendiente |
+| 13. Reportes | 13.1 | Motor global de Reportes, alcance Workspace, periodos, filtros y agregaciones reutilizables | Pendiente |
+| 13. Reportes | 13.2 | Reportes de Tareas, Pendientes y Proyectos/Etapas: cumplimiento, avance, categorías y evolución | Pendiente |
+| 13. Reportes | 13.3 | Reportes de Actividades, Otras actividades/tareas y reclasificación histórica dinámica por maestros | Pendiente |
+| 13. Reportes | 13.4 | Tablas históricas, gráficos, filtros, responsive, exportabilidad prevista, autorización y gate de Reportes | Pendiente |
+| 14. Configuración | 14.1 | Perfil de usuario, cuenta, idioma, zona horaria y estructura general de Configuración | Pendiente |
+| 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Pendiente |
+| 14. Configuración | 14.3 | Gestión de Workspaces, membresías/propiedad, seguridad visible de cuenta y Acerca de | Pendiente |
+| 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Pendiente |
+| 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Pendiente |
+| 15. Administración global | 15.2 | Aislamiento del administrador global, auditoría, seguridad, pruebas y gate administrativo | Pendiente |
+| 16. Integración UX y PWA | 16.1 | Integración visual completa, navegación global/contextual y patrones comunes de interacción | Pendiente |
+| 16. Integración UX y PWA | 16.2 | Auditoría desktop/mobile-first, tablas, formularios, estados visuales y accesibilidad | Pendiente |
+| 16. Integración UX y PWA | 16.3 | PWA, instalación, service worker, caché, actualización segura y gate UX/PWA | Pendiente |
+| 17. Hardening de seguridad | 17.1 | Threat model final, secretos, Git/cloud, bundles y superficie expuesta al navegador | Pendiente |
+| 17. Hardening de seguridad | 17.2 | Autenticación, sesiones, autorización, IDOR, aislamiento Workspace/usuario y privacidad final | Pendiente |
+| 17. Hardening de seguridad | 17.3 | Injection, XSS, mass assignment, API mínima, CORS, CSP, headers y almacenamiento del navegador | Pendiente |
+| 17. Hardening de seguridad | 17.4 | Dependencias, supply chain, infraestructura, correo, push, logs y configuración productiva | Pendiente |
+| 17. Hardening de seguridad | 17.5 | Pruebas ofensivas, remediación, regresión de vulnerabilidades y gate formal de seguridad | Pendiente |
+| 18. QA integral V2 | 18.1 | Gate técnico integral de backend, frontend, PostgreSQL, Alembic, OpenAPI y build | Pendiente |
+| 18. QA integral V2 | 18.2 | QA E2E de usuario Personal, Workspaces Shared, colaboración, privacidad y casos límite | Pendiente |
+| 18. QA integral V2 | 18.3 | QA desktop, móvil, PWA, responsive, accesibilidad y navegadores objetivo | Pendiente |
+| 18. QA integral V2 | 18.4 | Corrección de defectos, regresión completa y gate funcional LifeManager V2.0.0 | Pendiente |
+| 19. Publicación V2.0.0 | 19.1 | Release candidate, documentación final, estrategia de datos y preparación del despliegue | Pendiente |
+| 19. Publicación V2.0.0 | 19.2 | Despliegue controlado de infraestructura, backend, esquema PostgreSQL y frontend/PWA | Pendiente |
+| 19. Publicación V2.0.0 | 19.3 | Configuración productiva de secretos, dominios, HTTPS, correo, push y servicios externos | Pendiente |
+| 19. Publicación V2.0.0 | 19.4 | Smoke tests, pruebas de seguridad y QA final sobre producción | Pendiente |
+| 19. Publicación V2.0.0 | 19.5 | Release oficial LifeManager V2.0.0 e inicio autorizado de datos reales | Pendiente |
 
 `Estado` solo puede contener:
 

@@ -205,12 +205,18 @@ Participantes pueden propagarse. Personal elimina; Shared cancela conservando
 la fila. El retiro propio no afecta a terceros y desactiva solo recordatorios
 del actor.
 
-Stage 9.1 implementa el motor global read-only de Revisión. La selección cruza
+Stage 10.1 implementa el motor global read-only de Revisión. La selección cruza
 únicamente Workspaces y memberships `ACTIVE`, usa la fecha local de la cuenta y
 devuelve bloques separados de Tareas, Pendientes y Etapas asignados al usuario
 actual que requieren atención. No existe selector global de Workspace ni
 bypass por `GLOBAL_ADMIN`. El guardado por bloque y su interfaz mobile-first
-pertenecen a Stage 9.2.
+pertenecen a Stage 10.2.
+
+Stage 9.1 audita la paridad funcional real de las Fases 3–8 y abre una fase de
+corrección previa a Revisión. La matriz trazable está en
+`docs/project/V2-Functional-Parity-Audit-Phases-3-8.md`: mantiene cerradas las
+etapas históricas, concentra las correcciones en 9.2–9.4 y reserva 9.5 para el
+gate integral.
 
 ## Principios
 
