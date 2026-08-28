@@ -169,3 +169,8 @@ crear bypass global.
   Organizador, owner y `GLOBAL_ADMIN` no implican inclusión. Las futuras exigen
   participación, membership y Workspace activos; la historia legítima propia
   puede seguir visible sin conceder acceso general ni capacidades de mutación.
+- Stage 9.1 agrega Revisión global exclusivamente desde asignaciones propias en
+  Workspaces con membership y lifecycle `ACTIVE`. El owner y `GLOBAL_ADMIN` no
+  amplían la selección ni permiten observar asignaciones ajenas. La consulta
+  es read-only y mantiene `workspace_id` como contexto, no como autoridad
+  aportada por el cliente.

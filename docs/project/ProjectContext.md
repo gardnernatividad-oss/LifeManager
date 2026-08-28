@@ -205,6 +205,13 @@ Participantes pueden propagarse. Personal elimina; Shared cancela conservando
 la fila. El retiro propio no afecta a terceros y desactiva solo recordatorios
 del actor.
 
+Stage 9.1 implementa el motor global read-only de Revisión. La selección cruza
+únicamente Workspaces y memberships `ACTIVE`, usa la fecha local de la cuenta y
+devuelve bloques separados de Tareas, Pendientes y Etapas asignados al usuario
+actual que requieren atención. No existe selector global de Workspace ni
+bypass por `GLOBAL_ADMIN`. El guardado por bloque y su interfaz mobile-first
+pertenecen a Stage 9.2.
+
 ## Principios
 
 - Distinguir implementación actual de objetivo futuro.

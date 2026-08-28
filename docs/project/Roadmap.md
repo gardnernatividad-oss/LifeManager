@@ -73,7 +73,7 @@ El roadmap conservará exactamente estas columnas:
 | 8. Calendario y Actividades | 8.3 | Mi calendario consolidado y experiencia desktop/móvil | Completado |
 | 8. Calendario y Actividades | 8.4 | Privacidad de Calendario y comparación de disponibilidad | Completado |
 | 8. Calendario y Actividades | 8.5 | Gestión de ocurrencias recurrentes, autorización, privacidad y gate de Calendario | Completado |
-| 9. Revisión | 9.1 | Motor global y reglas de selección de Revisión | Pendiente |
+| 9. Revisión | 9.1 | Motor global y reglas de selección de Revisión | Completado |
 | 9. Revisión | 9.2 | Flujo de revisión por bloques y experiencia mobile-first | Pendiente |
 | 9. Revisión | 9.3 | Autorización, pruebas y gate de Revisión | Pendiente |
 | 10. Inicio | 10.1 | Inicio global, resumen diario y accesos rápidos | Pendiente |
