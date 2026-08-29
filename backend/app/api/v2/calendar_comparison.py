@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Query, status
+from sqlalchemy import select
 
 from app.api.v2.dependencies import SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
@@ -10,8 +11,9 @@ from app.models.enums import CalendarVisibility
 from app.schemas.v2_calendar import (
     CalendarBusyBlock, CalendarComparisonAvailability, CalendarComparisonDetail,
     CalendarComparisonDetails, CalendarComparisonHidden, CalendarComparisonResponse,
-    CalendarVisibilityRead, CalendarVisibilityUpdate,
+    CalendarComparisonMember, CalendarComparisonMultiResponse, CalendarVisibilityRead, CalendarVisibilityUpdate,
 )
+from app.models import User
 from app.services.v2_calendar_comparison import (
     CalendarComparisonNotFoundError, CalendarVisibilityConflictError,
     compare_calendar, get_calendar_visibility, update_calendar_visibility,
@@ -56,6 +58,53 @@ def calendar_comparison(
             ends_at=item.activity.ends_at, temporal_state=item.temporal_state,
         ) for item in result.events],
     )
+
+
+def _comparison_read(result):
+    if result.visibility == CalendarVisibility.HIDE:
+        return CalendarComparisonHidden(visibility=result.visibility)
+    if result.visibility == CalendarVisibility.AVAILABILITY_ONLY:
+        return CalendarComparisonAvailability(
+            visibility=result.visibility,
+            busy_blocks=[CalendarBusyBlock(starts_at=item.starts_at, ends_at=item.ends_at) for item in result.busy_blocks],
+        )
+    return CalendarComparisonDetails(
+        visibility=result.visibility,
+        detailed_events=[CalendarComparisonDetail(
+            activity_name=item.activity.title, starts_at=item.activity.starts_at,
+            ends_at=item.activity.ends_at, temporal_state=item.temporal_state,
+        ) for item in result.events],
+    )
+
+
+@router.get("/calendar-comparison/multi", response_model=CalendarComparisonMultiResponse)
+def calendar_comparison_multi(
+    workspace_id: uuid.UUID, db: SessionDependency, account: UsableAccount,
+    target_user_ids: list[uuid.UUID] = Query(),
+    range_start: datetime = Query(alias="from"), range_end: datetime = Query(alias="to"),
+) -> CalendarComparisonMultiResponse:
+    _validate_range(range_start, range_end)
+    if not target_user_ids or len(target_user_ids) > 20 or len(set(target_user_ids)) != len(target_user_ids):
+        raise V2APIError(status_code=422, code="INVALID_CALENDAR_TARGETS", message="Selecciona entre 1 y 20 miembros distintos.")
+    members = []
+    try:
+        target_users = {user.id: user for user in db.scalars(select(User).where(User.id.in_(target_user_ids))).all()}
+        for target_id in sorted(target_user_ids, key=str):
+            result = compare_calendar(
+                db, workspace_id=workspace_id, viewer_id=account.id, target_id=target_id,
+                range_start=range_start, range_end=range_end, now=datetime.now(timezone.utc),
+            )
+            target = target_users.get(target_id)
+            if target is None:
+                raise CalendarComparisonNotFoundError("Calendar comparison not found")
+            members.append(CalendarComparisonMember(
+                user_id=target_id,
+                display_name=f"{target.first_name} {target.last_name}".strip(),
+                calendar=_comparison_read(result),
+            ))
+    except CalendarComparisonNotFoundError as error:
+        raise V2APIError(status_code=404, code="CALENDAR_COMPARISON_NOT_FOUND", message="No se encontró el calendario compartido.") from error
+    return CalendarComparisonMultiResponse(members=members)
 
 
 @router.get("/calendar-visibility", response_model=CalendarVisibilityRead)

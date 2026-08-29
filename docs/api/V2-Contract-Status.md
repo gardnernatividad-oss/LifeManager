@@ -369,7 +369,12 @@ Task usa DATE. Activity añade hora local y timezone IANA; backend rechaza horas
 
 ## 10. Activity y Calendar
 
-Stage 8.3 implementa `GET /api/v2/calendar/me?from=...&to=...`. El rango
+Stage 8.3 implementa `GET /api/v2/calendar/me?from=...&to=...`. Stage 9.4
+añade `projection=DETAIL|MONTH` y el filtro interno opcional `workspace_id`.
+`DETAIL` devuelve Actividades horarias y resúmenes separados sin hora para
+Tareas, Pendientes y Etapas; `MONTH` devuelve solo `daily_counts` por fecha
+local y no transfiere elementos detallados. Sin `workspace_id`, Mi calendario
+continúa siendo global. El rango
 timezone-aware es obligatorio, usa intersección estricta
 `starts_at < to AND ends_at > from` y se limita a 366 días. La respuesta deriva
 el usuario de sesión, agrega participación Personal/Shared sin N requests por
@@ -382,9 +387,17 @@ Stage 8.4 añade
 target deben ser cuentas y membresías activas del mismo Shared Workspace
 activo. La respuesta discriminada contiene exclusivamente `detailed_events`,
 `busy_blocks` opacos fusionados o solo `visibility=HIDE`. Los detalles no
-incluyen IDs, Workspace de origen, participantes ni capacidades. El PATCH
+incluyen IDs, Workspace de origen, participantes ni capacidades y se limitan
+a Activities del Shared Workspace común; disponibilidad consolidada permanece
+opaca. El PATCH
 modifica únicamente la preferencia de la membresía autenticada con
 `lock_version`; el default físico continúa siendo `HIDE`.
+
+Stage 9.4 añade
+`GET /api/v2/workspaces/{workspace_id}/calendar-comparison/multi` con uno a
+veinte `target_user_ids` distintos. La respuesta conserva un resultado
+discriminado por miembro y aplica `SHOW_DETAILS`, `AVAILABILITY_ONLY` o `HIDE`
+independientemente; no existe bypass de `GLOBAL_ADMIN`.
 
 Fronteras diferentes:
 

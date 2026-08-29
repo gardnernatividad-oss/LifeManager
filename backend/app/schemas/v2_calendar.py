@@ -1,6 +1,6 @@
 import uuid
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -41,8 +41,27 @@ class CalendarActivityRead(_StrictModel):
     can_leave_participation: bool
 
 
+class CalendarUntimedRead(_StrictModel):
+    id: uuid.UUID
+    workspace: CalendarWorkspaceRead
+    name: str
+    planned_date: date
+
+
+class CalendarDayCounts(_StrictModel):
+    date: date
+    activities: int = 0
+    tasks: int = 0
+    pending_items: int = 0
+    project_stages: int = 0
+
+
 class MyCalendarResponse(_StrictModel):
     items: list[CalendarActivityRead]
+    tasks: list[CalendarUntimedRead] = Field(default_factory=list)
+    pending_items: list[CalendarUntimedRead] = Field(default_factory=list)
+    project_stages: list[CalendarUntimedRead] = Field(default_factory=list)
+    daily_counts: list[CalendarDayCounts] = Field(default_factory=list)
 
 
 class CalendarComparisonDetail(_StrictModel):
@@ -76,6 +95,16 @@ CalendarComparisonResponse = Annotated[
     Union[CalendarComparisonDetails, CalendarComparisonAvailability, CalendarComparisonHidden],
     Field(discriminator="visibility"),
 ]
+
+
+class CalendarComparisonMember(_StrictModel):
+    user_id: uuid.UUID
+    display_name: str
+    calendar: CalendarComparisonResponse
+
+
+class CalendarComparisonMultiResponse(_StrictModel):
+    members: list[CalendarComparisonMember]
 
 
 class CalendarVisibilityRead(_StrictModel):

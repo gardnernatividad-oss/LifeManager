@@ -112,10 +112,11 @@ No se detectaron desviaciones funcionales en Fase 6.
 | Cancelación/eliminación y salida de participante | CONFORME | Personal elimina, Shared cancela; retiro propio solo futuro. |
 | Mi calendario global | CONFORME | Agrega participación propia entre Workspaces y no usa selector general. |
 | Vistas Día y Semana con detalle | CONFORME | UI cambia rango y presenta detalle temporal/contextual. |
-| Vista Mes | FALTANTE | `CalendarView` y UI solo admiten DAY/WEEK. Etapa 9.4. |
-| Resumen mensual multi-dominio y acceso al día | FALTANTE | No existe agregación `N actividades / N tareas / N pendientes / N etapas` ni drill-down diario asociado. Puede requerir query API, no estado duplicado. Etapa 9.4. |
+| Vista Mes | CORREGIDO EN 9.4 | UI y API admiten Mes con navegación por fecha local y proyección agregada server-side. |
+| Resumen mensual multi-dominio y acceso al día | CORREGIDO EN 9.4 | Cada fecha publica contadores independientes de Actividades, Tareas, Pendientes y Etapas; seleccionar la celda abre Día sin descargar detalle mensual. |
 | Privacidad SHOW_DETAILS/AVAILABILITY_ONLY/HIDE | CONFORME | Enforcement server-side direccional, bloques opacos y no filtración de origen. |
-| Comparación colaborativa y contextos Workspace | CONFORME | Shared común, target elegible y proyecciones mínimas. |
+| Comparación colaborativa y contextos Workspace | CORREGIDO EN 9.4 | Mi calendario conserva scope global, permite contexto interno de Workspace y compara simultáneamente miembros Shared con privacidad individual. |
+| Color/icono persistido de Workspace en Calendario | GAP PARA 9.5 | El modelo actual no expone color/icono persistido. 9.4 conserva diferenciación visual determinista no persistida; ampliar Fase 3 o schema queda sujeto al gate transversal. |
 | Agrupación/filtro “Otras actividades” y Categoría manual | CORREGIDO EN 9.2 | La proyección identifica establemente la fuente custom y los listados filtran por fuente y por Categoría manual sin convertir nombres históricos en maestros. |
 
 ## Seguridad transversal

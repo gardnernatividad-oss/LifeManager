@@ -145,8 +145,10 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
     assert v2_paths == {
         "/api/v2/auth/login",
             "/api/v2/me",
-            "/api/v2/calendar/me",
+                "/api/v2/calendar/me",
+                "/api/v2/review",
             "/api/v2/workspaces/{workspace_id}/calendar-comparison",
+            "/api/v2/workspaces/{workspace_id}/calendar-comparison/multi",
             "/api/v2/workspaces/{workspace_id}/calendar-visibility",
         "/api/v2/auth/logout",
         "/api/v2/auth/registration-requests",
@@ -191,7 +193,8 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/workspaces/{workspace_id}/tasks",
             "/api/v2/workspaces/{workspace_id}/tasks/{task_id}",
             "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/complete",
-            "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete",
+                "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/not-complete",
+                "/api/v2/workspaces/{workspace_id}/tasks/{task_id}/correct-result",
             "/api/v2/workspaces/{workspace_id}/tasks/recurring",
             "/api/v2/workspaces/{workspace_id}/pending-items",
             "/api/v2/workspaces/{workspace_id}/pending-items/{pending_item_id}",
@@ -204,8 +207,11 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}",
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/deactivate",
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/reactivate",
-            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages",
-            "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}",
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages",
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/configuration",
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/reorder",
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}",
+                "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/correction",
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/history",
             "/api/v2/workspaces/{workspace_id}/projects/{project_id}/stages/{stage_id}/progress",
                 "/api/v2/workspaces/{workspace_id}/activities",
@@ -227,5 +233,5 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
     assert not any(
         marker in path
         for path in v2_paths
-        for marker in ("debug", "config", "tokens", "account-state-events")
+        for marker in ("debug", "tokens", "account-state-events")
     )

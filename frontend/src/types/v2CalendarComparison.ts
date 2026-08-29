@@ -18,6 +18,14 @@ export type CalendarComparison =
   | { visibility: "AVAILABILITY_ONLY"; busy_blocks: CalendarBusyBlock[] }
   | { visibility: "HIDE" };
 
+export interface CalendarComparisonMember {
+  user_id: string;
+  display_name: string;
+  calendar: CalendarComparison;
+}
+
+export interface CalendarComparisonMulti { members: CalendarComparisonMember[] }
+
 export interface CalendarVisibilitySetting {
   visibility: CalendarVisibility;
   lock_version: number;

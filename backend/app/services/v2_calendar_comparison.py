@@ -86,11 +86,15 @@ def compare_calendar(
     visibility = target_membership.calendar_visibility
     if visibility == CalendarVisibility.HIDE:
         return CalendarComparison(visibility=visibility, events=[], busy_blocks=[])
+    if visibility == CalendarVisibility.AVAILABILITY_ONLY:
+        events = list_my_calendar(
+            db, user_id=target_id, range_start=range_start, range_end=range_end, now=now,
+        )
+        return CalendarComparison(visibility=visibility, events=[], busy_blocks=_merge_busy(events))
     events = list_my_calendar(
         db, user_id=target_id, range_start=range_start, range_end=range_end, now=now,
+        workspace_id=workspace_id,
     )
-    if visibility == CalendarVisibility.AVAILABILITY_ONLY:
-        return CalendarComparison(visibility=visibility, events=[], busy_blocks=_merge_busy(events))
     return CalendarComparison(visibility=visibility, events=events, busy_blocks=[])
 
 

@@ -1,6 +1,6 @@
 import { localDateTimeToIso } from "./taskDateTime";
 
-export type CalendarView = "DAY" | "WEEK";
+export type CalendarView = "DAY" | "WEEK" | "MONTH";
 
 export function localCalendarDate(value: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
@@ -18,9 +18,17 @@ export function mondayOfWeek(value: string): string {
   return addCalendarDays(value, -mondayOffset);
 }
 
+export function firstOfMonth(value: string): string { return `${value.slice(0, 7)}-01`; }
+
+export function addCalendarMonths(value: string, months: number): string {
+  const date = new Date(`${firstOfMonth(value)}T12:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
 export function calendarRange(anchor: string, view: CalendarView, timeZone: string) {
-  const first = view === "WEEK" ? mondayOfWeek(anchor) : anchor;
-  const after = addCalendarDays(first, view === "WEEK" ? 7 : 1);
+  const first = view === "WEEK" ? mondayOfWeek(anchor) : view === "MONTH" ? firstOfMonth(anchor) : anchor;
+  const after = view === "MONTH" ? addCalendarMonths(first, 1) : addCalendarDays(first, view === "WEEK" ? 7 : 1);
   return { first, after, from: localDateTimeToIso(`${first}T00:00`, timeZone), to: localDateTimeToIso(`${after}T00:00`, timeZone) };
 }
 

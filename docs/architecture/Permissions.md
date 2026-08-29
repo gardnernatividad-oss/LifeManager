@@ -178,6 +178,10 @@ crear bypass global.
   Organizador, owner y `GLOBAL_ADMIN` no implican inclusión. Las futuras exigen
   participación, membership y Workspace activos; la historia legítima propia
   puede seguir visible sin conceder acceso general ni capacidades de mutación.
+- Stage 9.4 mantiene esa vista global cuando no hay contexto interno y exige
+  membership/Workspace `ACTIVE` al filtrar un Workspace. La comparación
+  multipersona solo admite targets `ACTIVE` del mismo Shared Workspace y aplica
+  su privacidad individual; `GLOBAL_ADMIN` no obtiene bypass.
 - Stage 10.1 agrega Revisión global exclusivamente desde asignaciones propias en
   Workspaces con membership y lifecycle `ACTIVE`. El owner y `GLOBAL_ADMIN` no
   amplían la selección ni permiten observar asignaciones ajenas. La consulta

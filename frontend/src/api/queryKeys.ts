@@ -1,5 +1,5 @@
 export const queryKeys = {
-  myCalendar: (userId: string, rangeStart: string, rangeEnd: string) => ["calendar-me", userId, rangeStart, rangeEnd] as const,
+  myCalendar: (userId: string, rangeStart: string, rangeEnd: string, projection = "DETAIL", workspaceId = "ALL") => ["calendar-me", userId, rangeStart, rangeEnd, projection, workspaceId] as const,
   myCalendarRoot: (userId: string) => ["calendar-me", userId] as const,
   calendarComparison: (viewerId: string, workspaceId: string, targetUserId: string, rangeStart: string, rangeEnd: string) => ["calendar-comparison", viewerId, workspaceId, targetUserId, rangeStart, rangeEnd] as const,
   calendarComparisonRoot: (viewerId: string, workspaceId: string) => ["calendar-comparison", viewerId, workspaceId] as const,

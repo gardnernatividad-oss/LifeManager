@@ -205,8 +205,9 @@ Workspace y oculta futuras retiradas o sin membership vigente.
 Stage 8.4 añade comparación diaria desde un Shared Workspace común. La
 preferencia direccional existente de la membresía (`HIDE` por defecto) decide
 entre una proyección mínima de detalles, bloques ocupados opacos fusionados o
-ningún dato. Incluso la vista de detalles consolida Personal y otros Workspaces
-del target sin revelar origen, IDs ni autoridad sobre esos recursos.
+ningún dato. La vista de detalles queda limitada al Shared Workspace común;
+Solo disponibilidad puede reflejar ocupación consolidada, siempre opaca y sin
+origen, IDs ni autoridad sobre recursos del target.
 Stage 8.5 cierra Calendario con scopes `THIS` y `THIS_AND_FUTURE` sobre
 ocurrencias futuras materializadas. GenerationBatch no se edita; las fechas e
 historia se preservan, mientras hora/duración local, catálogo, Organizador y
@@ -233,6 +234,12 @@ recurrencia finita materializada. La fuente de catálogo continúa derivando
 nombre y Categoría del master actual. Una Tarea terminal puede corregirse solo
 entre Completada y No realizada mediante una operación dedicada; nunca retorna
 a Pendiente ni reabre sus demás campos históricos.
+
+Stage 9.4 restaura la experiencia Día/Semana/Mes. Día y Semana separan
+Actividades horarias de Tareas, Pendientes y Etapas sin hora; Mes solicita una
+proyección de contadores por fecha local y permite abrir Día. Mi calendario
+permanece global, con contexto opcional interno de Workspace, y la comparación
+diaria admite varios miembros Shared aplicando privacidad por persona.
 
 ## Principios
 

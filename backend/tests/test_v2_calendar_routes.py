@@ -9,7 +9,7 @@ from app.api.v2.dependencies import get_current_account, get_db, require_usable_
 from app.main import app
 from app.models import Activity, ActivityMaster, Category, User, Workspace, WorkspaceMember
 from app.models.enums import ActivityStatus, WorkspaceKind
-from app.services.v2_calendar import CalendarActivityProjection
+from app.services.v2_calendar import CalendarActivityProjection, CalendarDayCountProjection, CalendarUntimedProjection
 
 
 def test_calendar_me_is_authenticated_global_and_serializes_safe_projection() -> None:
@@ -36,3 +36,32 @@ def test_calendar_me_is_authenticated_global_and_serializes_safe_projection() ->
 def test_calendar_me_rejects_missing_auth_and_invalid_ranges() -> None:
     app.dependency_overrides.clear()
     assert TestClient(app).get("/api/v2/calendar/me", params={"from": "2027-01-01T00:00:00Z", "to": "2027-01-02T00:00:00Z"}).status_code == 401
+
+
+def test_calendar_detail_includes_untimed_summaries_and_workspace_context() -> None:
+    user = User(id=uuid.uuid4(), email="ana@test.local", first_name="Ana", last_name="Uno", timezone="America/Lima")
+    workspace = Workspace(id=uuid.uuid4(), name="Personal", kind=WorkspaceKind.PERSONAL, owner_user_id=user.id)
+    summary = CalendarUntimedProjection(uuid.uuid4(), workspace, "Tarea sin hora", datetime(2027, 1, 4).date())
+    db = MagicMock(); app.dependency_overrides[get_db] = lambda: db; app.dependency_overrides[get_current_account] = lambda: user; app.dependency_overrides[require_usable_account] = lambda: user
+    try:
+        with patch("app.api.v2.calendar.list_my_calendar", return_value=[]), patch("app.api.v2.calendar.list_calendar_untimed", return_value=([summary], [summary], [summary])) as untimed:
+            response = TestClient(app).get("/api/v2/calendar/me", params={"from": "2027-01-04T05:00:00Z", "to": "2027-01-05T05:00:00Z", "workspace_id": str(workspace.id)})
+        assert response.status_code == 200
+        assert response.json()["tasks"][0]["name"] == "Tarea sin hora"
+        assert response.json()["pending_items"][0]["planned_date"] == "2027-01-04"
+        assert untimed.call_args.kwargs["workspace_id"] == workspace.id
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_calendar_month_returns_only_daily_aggregates() -> None:
+    user = User(id=uuid.uuid4(), email="ana@test.local", first_name="Ana", last_name="Uno", timezone="America/Lima")
+    db = MagicMock(); app.dependency_overrides[get_db] = lambda: db; app.dependency_overrides[get_current_account] = lambda: user; app.dependency_overrides[require_usable_account] = lambda: user
+    try:
+        with patch("app.api.v2.calendar.calendar_daily_counts", return_value=[CalendarDayCountProjection(datetime(2027, 1, 4).date(), 2, 3, 1, 1)]):
+            response = TestClient(app).get("/api/v2/calendar/me", params={"from": "2027-01-01T05:00:00Z", "to": "2027-02-01T05:00:00Z", "projection": "MONTH"})
+        assert response.status_code == 200
+        assert response.json()["items"] == []
+        assert response.json()["daily_counts"] == [{"date": "2027-01-04", "activities": 2, "tasks": 3, "pending_items": 1, "project_stages": 1}]
+    finally:
+        app.dependency_overrides.clear()

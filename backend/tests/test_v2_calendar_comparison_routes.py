@@ -85,5 +85,23 @@ def test_visibility_update_commits_once_and_returns_authoritative_version() -> N
 def test_openapi_exposes_only_workspace_scoped_comparison_routes() -> None:
     paths = app.openapi()["paths"]
     assert "/api/v2/workspaces/{workspace_id}/calendar-comparison" in paths
+    assert "/api/v2/workspaces/{workspace_id}/calendar-comparison/multi" in paths
     assert "/api/v2/workspaces/{workspace_id}/calendar-visibility" in paths
     assert not any(path.startswith("/api/v2/calendar/{") for path in paths)
+
+
+def test_multi_comparison_applies_each_members_privacy_independently() -> None:
+    client, db, _ = _client(); workspace_id, visible, hidden = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    start = datetime(2027, 1, 4, 15, tzinfo=timezone.utc)
+    target_users = {
+        visible: User(id=visible, email="visible@test", first_name="Visible", last_name="Uno"),
+        hidden: User(id=hidden, email="hidden@test", first_name="Oculto", last_name="Dos"),
+    }
+    try:
+        with patch("app.api.v2.calendar_comparison.compare_calendar", side_effect=[CalendarComparison(CalendarVisibility.HIDE, [], []), CalendarComparison(CalendarVisibility.AVAILABILITY_ONLY, [], [BusyBlock(start, start + timedelta(hours=1))])]):
+            db.scalars.return_value.all.return_value = list(target_users.values())
+            response = client.get(f"/api/v2/workspaces/{workspace_id}/calendar-comparison/multi", params=[("target_user_ids", str(hidden)), ("target_user_ids", str(visible)), ("from", "2027-01-04T05:00:00Z"), ("to", "2027-01-05T05:00:00Z")])
+        assert response.status_code == 200
+        assert {item["calendar"]["visibility"] for item in response.json()["members"]} == {"HIDE", "AVAILABILITY_ONLY"}
+    finally:
+        app.dependency_overrides.clear()
