@@ -14,6 +14,7 @@ def test_global_review_builds_three_read_only_assignment_queries() -> None:
     assert result.tasks == result.pending_items == result.project_stages == []
     sql = [str(call.args[0]) for call in db.execute.call_args_list]
     assert "tasks.responsible_user_id" in sql[0] and "tasks.result IS NULL" in sql[0]
+    assert "LEFT OUTER JOIN master_tasks" in sql[0]
     assert "pending_items.responsible_user_id" in sql[1] and "pending_items.is_active IS true" in sql[1]
     assert "project_stages.responsible_user_id" in sql[2] and "projects.is_active IS true" in sql[2]
     assert all("workspace_members.status" in statement and "workspaces.lifecycle" in statement for statement in sql)

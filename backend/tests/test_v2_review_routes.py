@@ -50,6 +50,23 @@ def test_review_requires_authentication_and_has_no_workspace_parameter() -> None
     assert all(parameter["name"] != "workspace_id" for parameter in operation.get("parameters", []))
 
 
+def test_review_serializes_custom_task_real_name_without_master() -> None:
+    user = User(id=uuid.uuid4(), email="ana@test.local", first_name="Ana", last_name="Uno", timezone="America/Lima")
+    workspace = Workspace(id=uuid.uuid4(), owner_user_id=user.id, name="Personal")
+    task = Task(id=uuid.uuid4(), workspace_id=workspace.id, custom_name="Llamar al médico", custom_category_id=uuid.uuid4(), responsible_user_id=user.id, planned_date=date(2026, 8, 28), lock_version=1)
+    app.dependency_overrides[get_db] = lambda: MagicMock()
+    app.dependency_overrides[get_current_account] = lambda: user
+    app.dependency_overrides[require_usable_account] = lambda: user
+    try:
+        selection = GlobalReviewSelection(tasks=[(task, None, workspace)], pending_items=[], project_stages=[])
+        with patch("app.api.v2.review.get_global_review", return_value=selection):
+            response = TestClient(app).get("/api/v2/review")
+        assert response.status_code == 200
+        assert response.json()["tasks"][0]["task_name"] == "Llamar al médico"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_review_task_block_commits_once_and_does_not_call_other_blocks() -> None:
     user = User(id=uuid.uuid4(), email="ana@test.local", first_name="Ana", last_name="Uno", timezone="America/Lima")
     task = Task(id=uuid.uuid4(), workspace_id=uuid.uuid4(), custom_name="Otra tarea", responsible_user_id=user.id, planned_date=date(2026, 8, 28), lock_version=2)

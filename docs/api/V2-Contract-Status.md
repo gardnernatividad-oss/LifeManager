@@ -14,6 +14,11 @@ bloque: `POST /api/v2/review/tasks`, `POST /api/v2/review/pending-items` y
 usa `lock_version`, responde 409 ante concurrencia y no afecta los drafts ni
 el estado de los otros bloques. No existe endpoint monolítico de guardado.
 
+Stage 10.3 valida en PostgreSQL disposable la atomicidad y concurrencia de los
+tres contratos. La selección admite tanto Tareas de catálogo como custom sin
+perder su nombre real, y conserva filtros server-side de responsable, fecha,
+membership, Workspace y Proyecto activo.
+
 ## Stage 5.1
 
 La API V2 expone `POST/GET /api/v2/workspaces/{workspace_id}/tasks`,

@@ -255,3 +255,6 @@ Stage 9.5 cierra la paridad de Fases 3–8: Workspace persiste color e icono con
 opciones seguras, Calendario deja de derivar colores del UUID y la
 terminología pública queda uniformada en Etapa/Etapas. La regresión
 transversal conserva Review 10.1 y Stage 10.2 completa el guardado por bloques.
+Stage 10.3 cierra el módulo Revisión con regresión V2, autorización/IDOR,
+atomicidad PostgreSQL por bloque, concurrencia optimista y UX responsive. La
+selección incluye correctamente Tareas custom mediante su nombre histórico real.

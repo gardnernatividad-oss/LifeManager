@@ -191,6 +191,8 @@ crear bypass global.
   solo el responsable actual, con membership y Workspace `ACTIVE`, puede mutar
   una fila elegible. Las Etapas requieren además Proyecto `ACTIVE`; identificadores
   extranjeros se ocultan y `GLOBAL_ADMIN` sin membership no obtiene bypass.
+- Stage 10.3 confirma mediante PostgreSQL que una fila inválida o stale revierte
+  todo su bloque, incluidos historiales y agregados, sin conceder acceso adicional.
 La apariencia persistida del Workspace (color e icono) puede actualizarla un
 miembro ACTIVE del Workspace ACTIVE mediante contrato estricto y
 `lock_version`; no concede autoridad adicional ni permite bypass a

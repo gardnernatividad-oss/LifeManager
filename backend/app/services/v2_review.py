@@ -25,7 +25,7 @@ class ReviewConflictError(ValueError):
 
 @dataclass(frozen=True)
 class GlobalReviewSelection:
-    tasks: list[tuple[Task, MasterTask, Workspace]]
+    tasks: list[tuple[Task, MasterTask | None, Workspace]]
     pending_items: list[tuple[PendingItem, Workspace]]
     project_stages: list[tuple[ProjectStage, Project, Workspace]]
 
@@ -42,7 +42,7 @@ def get_global_review(
 
     tasks = list(db.execute(
         select(Task, MasterTask, Workspace)
-        .join(MasterTask, and_(MasterTask.id == Task.master_task_id, MasterTask.workspace_id == Task.workspace_id))
+        .outerjoin(MasterTask, and_(MasterTask.id == Task.master_task_id, MasterTask.workspace_id == Task.workspace_id))
         .join(Workspace, Workspace.id == Task.workspace_id)
         .join(WorkspaceMember, active_membership)
         .where(

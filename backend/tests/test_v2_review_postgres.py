@@ -10,7 +10,9 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.services.v2_review import get_global_review
+from app.models import PendingItem, PendingItemHistory, Project, ProjectStage, ProjectStageHistory, Task, User
+from app.schemas.v2_review import ReviewPendingItemChange, ReviewProjectStageChange, ReviewTaskChange
+from app.services.v2_review import ReviewConflictError, get_global_review, save_review_pending_items, save_review_project_stages, save_review_tasks
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
 
@@ -70,4 +72,57 @@ def test_global_review_selection_on_disposable_postgres(monkeypatch: pytest.Monk
             assert [row[0].id for row in result.project_stages] == [stage_id]
             assert not db.new and not db.dirty and not db.deleted
             assert get_global_review(db, user_id=admin_id, local_date=date(2026, 8, 28)) == type(result)(tasks=[], pending_items=[], project_stages=[])
+
+            custom_task_id = uuid.uuid4()
+            db.execute(sa.text("INSERT INTO tasks (id,workspace_id,custom_name,custom_category_id,responsible_user_id,planned_date,created_by_user_id) VALUES (:id,:workspace,'Otra tarea real',:category,:responsible,:planned,:creator)"), {"id": custom_task_id, "workspace": active_workspace, "category": category_ids[active_workspace], "responsible": user_id, "planned": date(2026, 8, 28), "creator": user_id})
+            db.commit()
+            custom_selection = get_global_review(db, user_id=user_id, local_date=date(2026, 8, 28))
+            assert any(task.id == custom_task_id and master is None for task, master, _ in custom_selection.tasks)
+
+            actor = db.get(User, user_id)
+            db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id,status) VALUES (:id,:workspace,:user,'ACTIVE')"), {"id": uuid.uuid4(), "workspace": active_workspace, "user": other_id})
+            valid_task_id, invalid_task_id = uuid.UUID(int=1001), uuid.UUID(int=1002)
+            db.execute(sa.text("INSERT INTO tasks (id,workspace_id,master_task_id,responsible_user_id,planned_date,created_by_user_id) VALUES (:id,:workspace,:master,:responsible,:planned,:creator)"), [
+                {"id": valid_task_id, "workspace": active_workspace, "master": master_ids[active_workspace], "responsible": user_id, "planned": date(2026, 8, 25), "creator": user_id},
+                {"id": invalid_task_id, "workspace": active_workspace, "master": master_ids[active_workspace], "responsible": other_id, "planned": date(2026, 8, 25), "creator": user_id},
+            ])
+            valid_pending_id, invalid_pending_id = uuid.UUID(int=2001), uuid.UUID(int=2002)
+            db.execute(sa.text("INSERT INTO pending_items (id,workspace_id,category_id,responsible_user_id,name,planned_date,progress,created_by_user_id) VALUES (:id,:workspace,:category,:responsible,:name,:planned,10,:creator)"), [
+                {"id": valid_pending_id, "workspace": active_workspace, "category": category_ids[active_workspace], "responsible": user_id, "name": "Pending válido", "planned": date(2026, 8, 28), "creator": user_id},
+                {"id": invalid_pending_id, "workspace": active_workspace, "category": category_ids[active_workspace], "responsible": other_id, "name": "Pending ajeno", "planned": date(2026, 8, 28), "creator": user_id},
+            ])
+            valid_stage_id, invalid_stage_id = uuid.UUID(int=3001), uuid.UUID(int=3002)
+            db.execute(sa.text("INSERT INTO project_stages (id,workspace_id,project_id,responsible_user_id,name,position,weight,planned_date,progress) VALUES (:id,:workspace,:project,:responsible,:name,:position,:weight,:planned,10)"), [
+                {"id": valid_stage_id, "workspace": second_workspace, "project": project_id, "responsible": user_id, "name": "Etapa válida", "position": 2, "weight": 50, "planned": date(2026, 8, 28)},
+                {"id": invalid_stage_id, "workspace": second_workspace, "project": project_id, "responsible": other_id, "name": "Etapa ajena", "position": 3, "weight": 50, "planned": date(2026, 8, 28)},
+            ])
+            db.commit()
+            project_version = db.get(Project, project_id).lock_version
+
+            with pytest.raises(ReviewConflictError):
+                save_review_tasks(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewTaskChange(task_id=valid_task_id, result="COMPLETED", lock_version=1), ReviewTaskChange(task_id=invalid_task_id, result="COMPLETED", lock_version=1)])
+            db.rollback()
+            assert db.get(Task, valid_task_id).result is None
+
+            with pytest.raises(ReviewConflictError):
+                save_review_pending_items(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewPendingItemChange(pending_item_id=valid_pending_id, progress=50, lock_version=1), ReviewPendingItemChange(pending_item_id=invalid_pending_id, progress=50, lock_version=1)])
+            db.rollback()
+            assert db.get(PendingItem, valid_pending_id).progress == 10
+            assert db.scalar(sa.select(sa.func.count()).select_from(PendingItemHistory).where(PendingItemHistory.pending_item_id == valid_pending_id)) == 0
+
+            with pytest.raises(ReviewConflictError):
+                save_review_project_stages(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewProjectStageChange(stage_id=valid_stage_id, progress="50.25", lock_version=1, project_lock_version=project_version), ReviewProjectStageChange(stage_id=invalid_stage_id, progress="50.25", lock_version=1, project_lock_version=project_version)])
+            db.rollback()
+            assert db.get(ProjectStage, valid_stage_id).progress == 10
+            assert db.scalar(sa.select(sa.func.count()).select_from(ProjectStageHistory).where(ProjectStageHistory.project_stage_id == valid_stage_id)) == 0
+            assert db.get(Project, project_id).lock_version == project_version
+
+            for operation in (
+                lambda: save_review_tasks(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewTaskChange(task_id=valid_task_id, result="COMPLETED", lock_version=999)]),
+                lambda: save_review_pending_items(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewPendingItemChange(pending_item_id=valid_pending_id, progress=20, lock_version=999)]),
+                lambda: save_review_project_stages(db, actor=actor, local_date=date(2026, 8, 28), changes=[ReviewProjectStageChange(stage_id=valid_stage_id, progress="20.25", lock_version=999, project_lock_version=project_version)]),
+            ):
+                with pytest.raises(ReviewConflictError):
+                    operation()
+                db.rollback()
         engine.dispose()

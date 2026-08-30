@@ -18,7 +18,8 @@ def read_review(db: SessionDependency, account: UsableAccount) -> GlobalReviewRe
         review_date=review_date,
         tasks=[ReviewTaskItem(
             id=task.id, workspace_id=workspace.id, workspace_name=workspace.name,
-            planned_date=task.planned_date, lock_version=task.lock_version, task_name=master.name,
+            planned_date=task.planned_date, lock_version=task.lock_version,
+            task_name=master.name if master is not None else task.custom_name,
         ) for task, master, workspace in selection.tasks],
         pending_items=[ReviewPendingItem(
             id=item.id, workspace_id=workspace.id, workspace_name=workspace.name,
