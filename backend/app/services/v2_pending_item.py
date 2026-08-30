@@ -186,9 +186,15 @@ def update_pending_item(db: Session, *, access: WorkspaceAccess, pending_item_id
     return item
 
 
-def update_pending_progress(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int | None, expected_version: int, local_date: date, comment: str | None = None) -> PendingItem:
+def update_pending_progress(db: Session, *, access: WorkspaceAccess, actor: User, pending_item_id: uuid.UUID, progress: int | None, expected_version: int, local_date: date, comment: str | None = None, review_eligible_date: date | None = None) -> PendingItem:
     item = _item(db, workspace_id=access.workspace.id, pending_item_id=pending_item_id, lock=True)
     _check_version(item, expected_version)
+    if review_eligible_date is not None and (
+        item.responsible_user_id != actor.id
+        or item.planned_date is None
+        or item.planned_date > review_eligible_date
+    ):
+        raise PendingItemConflictError("Pending Item is not eligible for Review")
     if not item.is_active or item.progress == 100 or (progress is None and comment is None) or (progress == item.progress and comment is None):
         raise PendingItemConflictError("Pending Item progress cannot be changed")
     resulting_progress = item.progress if progress is None else progress

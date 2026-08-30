@@ -1,45 +1,49 @@
 export type ReviewTaskResult = "COMPLETED" | "NOT_COMPLETED";
 
-export interface ReviewTask {
+interface ReviewItem {
   id: string;
+  workspace_id: string;
+  workspace_name: string;
   planned_date: string;
-  name: string;
   lock_version: number;
 }
 
-export interface ReviewEditableRow {
-  id: string;
-  planned_date: string;
-  name: string;
+export interface ReviewTask extends ReviewItem {
+  task_name: string;
+}
+
+export interface ReviewPendingItem extends ReviewItem {
+  pending_item_name: string;
   progress: number;
-  comment: string | null;
-  lock_version: number;
 }
 
-export interface ReviewProjectStep extends ReviewEditableRow {
-  weight: string;
-}
-
-export interface ReviewProjectGroup {
-  id: string;
-  name: string;
-  steps: ReviewProjectStep[];
+export interface ReviewProjectStage extends ReviewItem {
+  project_id: string;
+  project_name: string;
+  stage_name: string;
+  progress: string;
+  project_lock_version: number;
 }
 
 export interface ReviewRead {
   review_date: string;
-  last_review_saved_at: string | null;
   tasks: ReviewTask[];
-  pending_items: ReviewEditableRow[];
-  projects: ReviewProjectGroup[];
+  pending_items: ReviewPendingItem[];
+  project_stages: ReviewProjectStage[];
 }
 
-export interface ReviewSave {
-  tasks: Array<{ id: string; result: ReviewTaskResult; lock_version: number }>;
-  pending_items: Array<{ id: string; progress?: number; comment?: string | null; lock_version: number }>;
-  project_steps: Array<{ id: string; progress?: number; comment?: string | null; lock_version: number }>;
+export interface ReviewTaskBatch {
+  items: Array<{ task_id: string; result: ReviewTaskResult; lock_version: number }>;
 }
 
-export interface ReviewSaveResponse {
-  saved_at: string;
+export interface ReviewPendingBatch {
+  items: Array<{ pending_item_id: string; progress?: number; comment?: string; lock_version: number }>;
+}
+
+export interface ReviewProjectStageBatch {
+  items: Array<{ stage_id: string; progress?: string; comment?: string; lock_version: number; project_lock_version: number }>;
+}
+
+export interface ReviewBlockSaveResponse {
+  saved_ids: string[];
 }

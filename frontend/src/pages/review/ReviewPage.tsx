@@ -1,252 +1,165 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useState } from "react";
 
 import { queryKeys } from "../../api/queryKeys";
-import { getReview, saveReview } from "../../api/reviewApi";
-import { useAuth } from "../../hooks/useAuth";
-import type { ReviewEditableRow, ReviewProjectStep, ReviewSave, ReviewTaskResult } from "../../types/review";
-import { formatCalendarDate, formatLocalTimestamp, formatShortCalendarDate } from "../../utils/localizedDate";
+import { getReview, saveReviewPendingItems, saveReviewProjectStages, saveReviewTasks } from "../../api/reviewApi";
+import type { ReviewPendingItem, ReviewProjectStage, ReviewTaskResult } from "../../types/review";
+import { formatCalendarDate, formatShortCalendarDate } from "../../utils/localizedDate";
 
 interface LocalEdit { progress: string; comment: string }
 type EditMap = Record<string, LocalEdit>;
+type Feedback = { error: boolean; text: string } | null;
 
-function editFor(row: ReviewEditableRow | ReviewProjectStep, edits: EditMap): LocalEdit {
-  return edits[row.id] ?? {
-    progress: String(row.progress),
-    comment: row.comment ?? ""
-  };
-}
+const editFor = (row: ReviewPendingItem | ReviewProjectStage, edits: EditMap): LocalEdit =>
+  edits[row.id] ?? { progress: String(row.progress), comment: "" };
 
-function changedUpdate(row: ReviewEditableRow | ReviewProjectStep, edit: LocalEdit) {
-  const update: { id: string; progress?: number; comment?: string | null; lock_version: number } = {
-    id: row.id,
-    lock_version: row.lock_version
-  };
+function changedPendingEdit(row: ReviewPendingItem, edit: LocalEdit) {
   const progress = Number(edit.progress);
-  if (progress !== row.progress) update.progress = progress;
-  if (edit.comment !== (row.comment ?? "")) update.comment = edit.comment.trim() || null;
-  return Object.keys(update).length > 2 ? update : null;
+  return {
+    ...(progress === row.progress ? {} : { progress }),
+    ...(edit.comment.trim() ? { comment: edit.comment.trim() } : {}),
+  };
 }
 
-function ReviewLoading() {
-  return (
-    <section className="review-page" aria-label="Revisión">
-      <div className="review-skeleton" role="status" aria-label="Cargando Revisión">
-        <span>Cargando Revisión…</span>
-      </div>
-    </section>
-  );
+function changedStageEdit(row: ReviewProjectStage, edit: LocalEdit) {
+  return {
+    ...(Number(edit.progress) === Number(row.progress) ? {} : { progress: edit.progress }),
+    ...(edit.comment.trim() ? { comment: edit.comment.trim() } : {}),
+  };
 }
 
-function EditableRow({
-  edit,
-  kind,
-  onChange,
-  row
-}: {
+function validProgress(edits: LocalEdit[], decimal = false): boolean {
+  return edits.every((edit) => {
+    const value = Number(edit.progress);
+    return Number.isFinite(value) && value >= 0 && value <= 100 && (decimal ? /^\d{1,3}(\.\d{1,2})?$/.test(edit.progress) : Number.isInteger(value));
+  });
+}
+
+function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+  return feedback ? (
+    <p className={feedback.error ? "review-notice review-notice--error" : "review-notice review-notice--success"} role={feedback.error ? "alert" : "status"}>
+      {feedback.text}
+    </p>
+  ) : null;
+}
+
+function EditableRow({ row, edit, label, onChange }: {
+  row: ReviewPendingItem | ReviewProjectStage;
   edit: LocalEdit;
-  kind: "Pendiente" | "Paso";
+  label: string;
   onChange: (edit: LocalEdit) => void;
-  row: ReviewEditableRow | ReviewProjectStep;
 }) {
+  const name = "stage_name" in row ? row.stage_name : row.pending_item_name;
   return (
-    <div className={`review-data-row review-data-row--${kind === "Paso" ? "step" : "pending"}`} role="row">
-      <span role="cell" data-label="Fecha planificada">{formatShortCalendarDate(row.planned_date)}</span>
-      <strong role="cell" data-label={kind}>{row.name}</strong>
-      {"weight" in row ? <span role="cell" data-label="Peso">{row.weight}%</span> : null}
-      <label role="cell">
-        <span className="sr-only">Avance de {row.name}</span>
-        <input
-          aria-label={`Avance de ${row.name}`}
-          inputMode="numeric"
-          min="0"
-          max="100"
-          step="1"
-          type="number"
-          value={edit.progress}
-          onChange={(event) => onChange({ ...edit, progress: event.target.value })}
-        />
+    <article className={`review-data-row review-data-row--v2 review-data-row--${"stage_name" in row ? "v2-stage" : "v2-pending"}`}>
+      <span data-label="Fecha">{formatShortCalendarDate(row.planned_date)}</span>
+      <span data-label="Workspace">{row.workspace_name}</span>
+      {"stage_name" in row ? <span data-label="Proyecto">{row.project_name}</span> : null}
+      <strong data-label={label}>{name}</strong>
+      <label>
+        <span>Avance de {name}</span>
+        <input aria-label={`Avance de ${name}`} inputMode="decimal" min="0" max="100" step="0.01" type="number" value={edit.progress} onChange={(event) => onChange({ ...edit, progress: event.target.value })} />
       </label>
-      <label role="cell">
-        <span className="sr-only">Comentario de {row.name}</span>
-        <input
-          aria-label={`Comentario de ${row.name}`}
-          type="text"
-          value={edit.comment}
-          onChange={(event) => onChange({ ...edit, comment: event.target.value })}
-        />
+      <label>
+        <span>Comentario de {name}</span>
+        <input aria-label={`Comentario de ${name}`} maxLength={2000} value={edit.comment} onChange={(event) => onChange({ ...edit, comment: event.target.value })} />
       </label>
-    </div>
+    </article>
   );
 }
 
 export function ReviewPage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const reviewQuery = useQuery({ queryKey: queryKeys.review, queryFn: getReview });
+  const client = useQueryClient();
+  const review = useQuery({ queryKey: queryKeys.review, queryFn: getReview });
   const [taskResults, setTaskResults] = useState<Record<string, ReviewTaskResult>>({});
   const [pendingEdits, setPendingEdits] = useState<EditMap>({});
-  const [stepEdits, setStepEdits] = useState<EditMap>({});
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [stageEdits, setStageEdits] = useState<EditMap>({});
+  const [taskFeedback, setTaskFeedback] = useState<Feedback>(null);
+  const [pendingFeedback, setPendingFeedback] = useState<Feedback>(null);
+  const [stageFeedback, setStageFeedback] = useState<Feedback>(null);
 
-  const saveMutation = useMutation({
-    mutationFn: (payload: ReviewSave) => saveReview(payload),
+  async function refreshReviewAnd(keys: readonly (readonly unknown[])[]) {
+    await Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
+    await review.refetch();
+  }
+
+  const taskSave = useMutation({
+    mutationFn: saveReviewTasks,
     onSuccess: async () => {
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.home });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskReportsRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pendingItemReportsRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.projectReportsRoot })
-      ]);
-      await queryClient.refetchQueries({ queryKey: queryKeys.review });
+      const workspaceIds = new Set((review.data?.tasks ?? []).filter((row) => taskResults[row.id]).map((row) => row.workspace_id));
       setTaskResults({});
-      setPendingEdits({});
-      setStepEdits({});
-      setNotice("Revisión guardada.");
+      setTaskFeedback({ error: false, text: "Tareas guardadas." });
+      await refreshReviewAnd([queryKeys.home, queryKeys.taskReportsRoot, ...[...workspaceIds].map(queryKeys.v2TasksRoot)]);
     },
-    onError: (caught) => {
-      setNotice(null);
-      setError(
-        axios.isAxiosError(caught) && caught.response?.status === 409
-          ? "Parte de la información cambió. Conservamos tus cambios; actualiza la página y vuelve a intentarlo."
-          : "No pudimos guardar la Revisión. Tus cambios siguen disponibles para reintentar."
-      );
-    }
+    onError: async (error) => {
+      const stale = axios.isAxiosError(error) && error.response?.status === 409;
+      if (stale) await review.refetch();
+      setTaskFeedback({ error: true, text: stale ? "Las Tareas cambiaron. Actualizamos los datos y conservamos tus selecciones para que puedas revisarlas." : "No pudimos guardar las Tareas. Tus selecciones siguen disponibles." });
+    },
+  });
+  const pendingSave = useMutation({
+    mutationFn: saveReviewPendingItems,
+    onSuccess: async () => {
+      const workspaceIds = new Set((review.data?.pending_items ?? []).filter((row) => pendingEdits[row.id]).map((row) => row.workspace_id));
+      setPendingEdits({});
+      setPendingFeedback({ error: false, text: "Pendientes guardados." });
+      await refreshReviewAnd([queryKeys.home, queryKeys.pendingItemReportsRoot, ...[...workspaceIds].map(queryKeys.v2PendingItemsRoot)]);
+    },
+    onError: async (error) => {
+      const stale = axios.isAxiosError(error) && error.response?.status === 409;
+      if (stale) await review.refetch();
+      setPendingFeedback({ error: true, text: stale ? "Los Pendientes cambiaron. Actualizamos los datos y conservamos tus cambios para que puedas revisarlos." : "No pudimos guardar los Pendientes. Tus cambios siguen disponibles." });
+    },
+  });
+  const stageSave = useMutation({
+    mutationFn: saveReviewProjectStages,
+    onSuccess: async () => {
+      const workspaceIds = new Set((review.data?.project_stages ?? []).filter((row) => stageEdits[row.id]).map((row) => row.workspace_id));
+      setStageEdits({});
+      setStageFeedback({ error: false, text: "Proyectos guardados." });
+      await refreshReviewAnd([queryKeys.home, queryKeys.projectReportsRoot, ...[...workspaceIds].map(queryKeys.v2ProjectsRoot)]);
+    },
+    onError: async (error) => {
+      const stale = axios.isAxiosError(error) && error.response?.status === 409;
+      if (stale) await review.refetch();
+      setStageFeedback({ error: true, text: stale ? "Las Etapas cambiaron. Actualizamos los datos y conservamos tus cambios para que puedas revisarlos." : "No pudimos guardar los Proyectos. Tus cambios siguen disponibles." });
+    },
   });
 
-  if (reviewQuery.isPending) return <ReviewLoading />;
-  if (reviewQuery.isError) {
-    return (
-      <section className="review-page">
-        <h1>Revisión</h1>
-        <div className="review-error" role="alert">
-          <p>No pudimos cargar la Revisión.</p>
-          <button className="secondary-button" type="button" onClick={() => void reviewQuery.refetch()}>Reintentar</button>
-        </div>
-      </section>
-    );
-  }
+  if (review.isPending) return <section className="review-page" aria-label="Revisión"><p role="status">Cargando Revisión…</p></section>;
+  if (review.isError) return <section className="review-page"><h1>Revisión</h1><div role="alert"><p>No pudimos cargar la Revisión.</p><button type="button" onClick={() => void review.refetch()}>Reintentar</button></div></section>;
 
-  const review = reviewQuery.data;
-  const steps = review.projects.flatMap((project) => project.steps);
-  const isEmpty = review.tasks.length === 0 && review.pending_items.length === 0 && steps.length === 0;
+  const data = review.data;
+  const pendingChanges = data.pending_items.flatMap((row) => {
+    const edit = editFor(row, pendingEdits);
+    const change = changedPendingEdit(row, edit);
+    return Object.keys(change).length ? [{ pending_item_id: row.id, ...change, lock_version: row.lock_version }] : [];
+  });
+  const stageChanges = data.project_stages.flatMap((row) => {
+    const edit = editFor(row, stageEdits);
+    const change = changedStageEdit(row, edit);
+    return Object.keys(change).length ? [{ stage_id: row.id, ...change, lock_version: row.lock_version, project_lock_version: row.project_lock_version }] : [];
+  });
+  const pendingValid = validProgress(data.pending_items.map((row) => editFor(row, pendingEdits)));
+  const stagesValid = validProgress(data.project_stages.map((row) => editFor(row, stageEdits)), true);
 
-  function setEdit(setter: Dispatch<SetStateAction<EditMap>>, id: string, edit: LocalEdit) {
-    setter((current) => ({ ...current, [id]: edit }));
-    setNotice(null);
-  }
+  return <section className="review-page">
+    <header className="review-header"><div><p className="eyebrow">{formatCalendarDate(data.review_date)}</p><h1>Revisión</h1></div></header>
 
-  function submit() {
-    const allEdits = [
-      ...review.pending_items.map((row) => editFor(row, pendingEdits)),
-      ...steps.map((row) => editFor(row, stepEdits))
-    ];
-    if (allEdits.some((edit) => !edit || !Number.isInteger(Number(edit.progress)) || Number(edit.progress) < 0 || Number(edit.progress) > 100)) {
-      setError("El avance debe ser un número entero entre 0 y 100.");
-      return;
-    }
-    const payload: ReviewSave = {
-      tasks: review.tasks.flatMap((task) => taskResults[task.id]
-        ? [{ id: task.id, result: taskResults[task.id], lock_version: task.lock_version }]
-        : []),
-      pending_items: review.pending_items.flatMap((row) => {
-        const update = changedUpdate(row, editFor(row, pendingEdits));
-        return update ? [update] : [];
-      }),
-      project_steps: steps.flatMap((row) => {
-        const update = changedUpdate(row, editFor(row, stepEdits));
-        return update ? [update] : [];
-      })
-    };
-    setError(null);
-    setNotice(null);
-    saveMutation.mutate(payload);
-  }
+    <details className="review-section" open><summary><span id="review-tasks-title">Tareas</span><strong aria-label={`${data.tasks.length} tareas`}>{data.tasks.length}</strong></summary><div aria-labelledby="review-tasks-title">
+      {data.tasks.length === 0 ? <p className="review-empty">No tienes tareas pendientes para revisar.</p> : <div className="review-task-list">{data.tasks.map((task) => <article className="review-task-row review-task-row--v2" key={task.id}><time dateTime={task.planned_date}>{formatShortCalendarDate(task.planned_date)}</time><span>{task.workspace_name}</span><strong>{task.task_name}</strong><div role="group" aria-label={`Resultado de ${task.task_name}`}>{(["NOT_COMPLETED", "COMPLETED"] as const).map((result) => { const selected = taskResults[task.id] === result; const label = result === "COMPLETED" ? "Completado" : "No realizado"; return <button type="button" className={selected ? "review-result review-result--selected" : "review-result"} aria-pressed={selected} key={result} onClick={() => { setTaskResults((current) => ({ ...current, [task.id]: result })); setTaskFeedback(null); }}>{label}</button>; })}</div></article>)}</div>}
+      <FeedbackMessage feedback={taskFeedback} /><div className="review-save"><button className="primary-button" type="button" disabled={!Object.keys(taskResults).length || taskSave.isPending} onClick={() => taskSave.mutate({ items: data.tasks.flatMap((task) => taskResults[task.id] ? [{ task_id: task.id, result: taskResults[task.id], lock_version: task.lock_version }] : []) })}>{taskSave.isPending ? "Guardando…" : "Guardar Tareas"}</button></div>
+    </div></details>
 
-  return (
-    <section className="review-page">
-      <header className="review-header">
-        <div>
-          <p className="eyebrow">{formatCalendarDate(review.review_date)}</p>
-          <h1>Revisión</h1>
-        </div>
-        <dl>
-          <dt>Última revisión</dt>
-          <dd>{formatLocalTimestamp(review.last_review_saved_at, user?.timezone ?? "UTC")}</dd>
-        </dl>
-      </header>
+    <details className="review-section" open><summary><span id="review-pending-title">Pendientes</span><strong aria-label={`${data.pending_items.length} pendientes`}>{data.pending_items.length}</strong></summary><div aria-labelledby="review-pending-title">
+      {data.pending_items.length === 0 ? <p className="review-empty">No tienes pendientes para revisar.</p> : <div className="review-v2-list">{data.pending_items.map((row) => <EditableRow key={row.id} row={row} label="Pendiente" edit={editFor(row, pendingEdits)} onChange={(edit) => { setPendingEdits((current) => ({ ...current, [row.id]: edit })); setPendingFeedback(null); }} />)}</div>}
+      {!pendingValid ? <p role="alert" className="review-notice review-notice--error">El avance debe ser un entero entre 0 y 100.</p> : null}<FeedbackMessage feedback={pendingFeedback} /><div className="review-save"><button className="primary-button" type="button" disabled={!pendingChanges.length || !pendingValid || pendingSave.isPending} onClick={() => pendingSave.mutate({ items: pendingChanges })}>{pendingSave.isPending ? "Guardando…" : "Guardar Pendientes"}</button></div>
+    </div></details>
 
-      {isEmpty ? <p className="review-empty">No hay elementos que requieran revisión hoy.</p> : null}
-
-      {review.tasks.length > 0 ? (
-        <section className="review-section" aria-labelledby="review-tasks-title">
-          <h2 id="review-tasks-title">Tareas</h2>
-          <div className="review-task-list">
-            {review.tasks.map((task) => (
-              <div className="review-task-row" key={task.id}>
-                <time dateTime={task.planned_date}>{formatShortCalendarDate(task.planned_date)}</time>
-                <strong>{task.name}</strong>
-                {(["NOT_COMPLETED", "COMPLETED"] as const).map((result) => {
-                  const label = result === "COMPLETED" ? "Completado" : "No realizado";
-                  const selected = taskResults[task.id] === result;
-                  return (
-                    <button
-                      type="button"
-                      className={selected ? "review-result review-result--selected" : "review-result"}
-                      aria-label={`${label}: ${task.name}`}
-                      aria-pressed={selected}
-                      key={result}
-                      onClick={() => { setTaskResults((current) => ({ ...current, [task.id]: result })); setNotice(null); }}
-                    >{label}</button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {review.pending_items.length > 0 ? (
-        <section className="review-section" aria-labelledby="review-pending-title">
-          <h2 id="review-pending-title">Pendientes</h2>
-          <div className="review-table" role="table" aria-label="Pendientes para revisión">
-            <div className="review-table-head review-data-row review-data-row--pending" role="row">
-              <span role="columnheader">Fecha planificada</span><span role="columnheader">Pendiente</span><span role="columnheader">Avance</span><span role="columnheader">Comentario</span>
-            </div>
-            {review.pending_items.map((row) => <EditableRow edit={editFor(row, pendingEdits)} kind="Pendiente" key={row.id} row={row} onChange={(edit) => setEdit(setPendingEdits, row.id, edit)} />)}
-          </div>
-        </section>
-      ) : null}
-
-      {review.projects.length > 0 ? (
-        <section className="review-section" aria-labelledby="review-projects-title">
-          <h2 id="review-projects-title">Proyectos</h2>
-          <div className="review-projects">
-            {review.projects.map((project) => (
-              <section aria-labelledby={`review-project-${project.id}`} className="review-project" key={project.id}>
-                <h3 id={`review-project-${project.id}`}>{project.name}</h3>
-                <div className="review-table" role="table" aria-label={`Pasos de ${project.name}`}>
-                  <div className="review-table-head review-data-row review-data-row--step" role="row">
-                    <span role="columnheader">Fecha planificada</span><span role="columnheader">Paso</span><span role="columnheader">Peso</span><span role="columnheader">Avance</span><span role="columnheader">Comentario</span>
-                  </div>
-                  {project.steps.map((row) => <EditableRow edit={editFor(row, stepEdits)} kind="Paso" key={row.id} row={row} onChange={(edit) => setEdit(setStepEdits, row.id, edit)} />)}
-                </div>
-              </section>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {error ? <p className="review-notice review-notice--error" role="alert">{error}</p> : null}
-      {notice ? <p className="review-notice review-notice--success" role="status">{notice}</p> : null}
-      <div className="review-save">
-        <button className="primary-button" type="button" disabled={saveMutation.isPending} onClick={submit}>
-          {saveMutation.isPending ? "Guardando…" : "Guardar"}
-        </button>
-      </div>
-    </section>
-  );
+    <details className="review-section" open><summary><span id="review-projects-title">Proyectos / Etapas</span><strong aria-label={`${data.project_stages.length} etapas`}>{data.project_stages.length}</strong></summary><div aria-labelledby="review-projects-title">
+      {data.project_stages.length === 0 ? <p className="review-empty">No tienes etapas para revisar.</p> : <div className="review-v2-list">{data.project_stages.map((row) => <EditableRow key={row.id} row={row} label="Etapa" edit={editFor(row, stageEdits)} onChange={(edit) => { setStageEdits((current) => ({ ...current, [row.id]: edit })); setStageFeedback(null); }} />)}</div>}
+      {!stagesValid ? <p role="alert" className="review-notice review-notice--error">El avance debe tener hasta dos decimales y estar entre 0 y 100.</p> : null}<FeedbackMessage feedback={stageFeedback} /><div className="review-save"><button className="primary-button" type="button" disabled={!stageChanges.length || !stagesValid || stageSave.isPending} onClick={() => stageSave.mutate({ items: stageChanges })}>{stageSave.isPending ? "Guardando…" : "Guardar Proyectos"}</button></div>
+    </div></details>
+  </section>;
 }

@@ -215,12 +215,14 @@ Participantes pueden propagarse. Personal elimina; Shared cancela conservando
 la fila. El retiro propio no afecta a terceros y desactiva solo recordatorios
 del actor.
 
-Stage 10.1 implementa el motor global read-only de Revisión. La selección cruza
+Stage 10.1 implementa el motor global de selección de Revisión. La selección cruza
 únicamente Workspaces y memberships `ACTIVE`, usa la fecha local de la cuenta y
 devuelve bloques separados de Tareas, Pendientes y Etapas asignados al usuario
 actual que requieren atención. No existe selector global de Workspace ni
-bypass por `GLOBAL_ADMIN`. El guardado por bloque y su interfaz mobile-first
-pertenecen a Stage 10.2.
+bypass por `GLOBAL_ADMIN`. Stage 10.2 añade tres bloques plegables con guardado,
+feedback y transacción independientes para Tareas, Pendientes y Etapas. Cada
+bloque conserva sus propios drafts y aplica los servicios, historial, Decimal,
+autorización y concurrencia optimista de sus dominios; no existe Guardar todo.
 
 Stage 9.1 audita la paridad funcional real de las Fases 3–8 y abre una fase de
 corrección previa a Revisión. La matriz trazable está en
@@ -252,4 +254,4 @@ diaria admite varios miembros Shared aplicando privacidad por persona.
 Stage 9.5 cierra la paridad de Fases 3–8: Workspace persiste color e icono con
 opciones seguras, Calendario deja de derivar colores del UUID y la
 terminología pública queda uniformada en Etapa/Etapas. La regresión
-transversal conserva Review 10.1 y deja 10.2 pendiente.
+transversal conserva Review 10.1 y Stage 10.2 completa el guardado por bloques.

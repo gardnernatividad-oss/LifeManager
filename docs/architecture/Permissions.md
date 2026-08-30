@@ -187,6 +187,10 @@ crear bypass global.
   amplían la selección ni permiten observar asignaciones ajenas. La consulta
   es read-only y mantiene `workspace_id` como contexto, no como autoridad
   aportada por el cliente.
+- Stage 10.2 conserva esa misma autoridad en los tres guardados independientes:
+  solo el responsable actual, con membership y Workspace `ACTIVE`, puede mutar
+  una fila elegible. Las Etapas requieren además Proyecto `ACTIVE`; identificadores
+  extranjeros se ocultan y `GLOBAL_ADMIN` sin membership no obtiene bypass.
 La apariencia persistida del Workspace (color e icono) puede actualizarla un
 miembro ACTIVE del Workspace ACTIVE mediante contrato estricto y
 `lock_version`; no concede autoridad adicional ni permite bypass a

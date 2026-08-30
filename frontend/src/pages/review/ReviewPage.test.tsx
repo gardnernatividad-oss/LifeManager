@@ -2,154 +2,65 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { queryKeys } from "../../api/queryKeys";
 import * as reviewApi from "../../api/reviewApi";
-import { AuthContext, type AuthState } from "../../store/auth-context";
-import { testUser } from "../../test/testUser";
 import type { ReviewRead } from "../../types/review";
 import { ReviewPage } from "./ReviewPage";
 
-vi.mock("../../api/reviewApi", () => ({ getReview: vi.fn(), saveReview: vi.fn() }));
-
+vi.mock("../../api/reviewApi", () => ({ getReview: vi.fn(), saveReviewTasks: vi.fn(), saveReviewPendingItems: vi.fn(), saveReviewProjectStages: vi.fn() }));
 const review: ReviewRead = {
   review_date: "2026-08-13",
-  last_review_saved_at: "2026-08-13T02:30:00Z",
-  tasks: [
-    { id: "task-1", planned_date: "2026-08-11", name: "Tender mi cama", lock_version: 2 },
-    { id: "task-2", planned_date: "2026-08-13", name: "Beber agua", lock_version: 3 }
-  ],
-  pending_items: [
-    { id: "pending-1", planned_date: "2026-08-10", name: "Renovar documento", progress: 20, comment: "En trámite", lock_version: 4 }
-  ],
-  projects: [
-    { id: "project-1", name: "Mudanza", steps: [{ id: "step-1", planned_date: "2026-08-09", name: "Empacar", weight: "60.00", progress: 30, comment: null, lock_version: 5 }] },
-    { id: "project-2", name: "Viaje", steps: [{ id: "step-2", planned_date: "2026-08-12", name: "Reservar", weight: "100.00", progress: 10, comment: "Cotizando", lock_version: 6 }] }
-  ]
+  tasks: [{ id: "task-1", workspace_id: "ws-1", workspace_name: "Personal", planned_date: "2026-08-11", task_name: "Tender mi cama", lock_version: 2 }],
+  pending_items: [{ id: "pending-1", workspace_id: "ws-1", workspace_name: "Personal", planned_date: "2026-08-10", pending_item_name: "Renovar documento", progress: 20, lock_version: 4 }],
+  project_stages: [{ id: "stage-1", workspace_id: "ws-2", workspace_name: "Familia", planned_date: "2026-08-09", project_id: "project-1", project_name: "Mudanza", stage_name: "Empacar", progress: "30.00", lock_version: 5, project_lock_version: 7 }],
 };
-
-const auth: AuthState = {
-  user: testUser, workspace: null,
-  isAuthenticated: true, isInitializing: false,
-  login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn(), setAuthenticatedUser: vi.fn()
-};
-
 function renderReview() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><AuthContext.Provider value={auth}><ReviewPage /></AuthContext.Provider></QueryClientProvider>);
-  return client;
+  render(<QueryClientProvider client={client}><ReviewPage /></QueryClientProvider>);
 }
 
 describe("ReviewPage", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(reviewApi.getReview).mockResolvedValue(review);
-    vi.mocked(reviewApi.saveReview).mockResolvedValue({ saved_at: "2026-08-13T20:00:00Z" });
+    vi.clearAllMocks(); vi.mocked(reviewApi.getReview).mockResolvedValue(review);
+    vi.mocked(reviewApi.saveReviewTasks).mockResolvedValue({ saved_ids: ["task-1"] });
+    vi.mocked(reviewApi.saveReviewPendingItems).mockResolvedValue({ saved_ids: ["pending-1"] });
+    vi.mocked(reviewApi.saveReviewProjectStages).mockResolvedValue({ saved_ids: ["stage-1"] });
   });
-
-  it("renders the date, timestamp and compact target sections", async () => {
-    renderReview();
-    expect(await screen.findByRole("heading", { name: "Revisión", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText("13 de agosto de 2026")).toBeInTheDocument();
-    expect(screen.getByText(/12 ago\. 2026.*9:30 p\. m\./i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Tareas" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Pendientes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Proyectos" })).toBeInTheDocument();
+  it("renders three global collapsible blocks and counts without Workspace selector", async () => {
+    renderReview(); expect(await screen.findByRole("heading", { name: "Revisión" })).toBeInTheDocument();
+    expect(screen.getByText("Tareas").closest("details")).toHaveAttribute("open");
+    expect(screen.getByLabelText("1 tareas")).toBeInTheDocument(); expect(screen.getByLabelText("1 pendientes")).toBeInTheDocument(); expect(screen.getByLabelText("1 etapas")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /workspace/i })).not.toBeInTheDocument();
   });
-
-  it("keeps Task options in one row, accessible and local until Save", async () => {
-    const user = userEvent.setup();
-    renderReview();
-    const taskName = await screen.findByText("Tender mi cama");
-    const row = taskName.closest<HTMLElement>(".review-task-row")!;
-    expect(within(row).getByRole("button", { name: "No realizado: Tender mi cama" })).toBeInTheDocument();
-    const completed = within(row).getByRole("button", { name: "Completado: Tender mi cama" });
-    await user.click(completed);
-    expect(completed).toHaveAttribute("aria-pressed", "true");
-    expect(reviewApi.saveReview).not.toHaveBeenCalled();
-    expect(row).not.toHaveTextContent(/Categoría/i);
-  });
-
-  it("shows only approved Pending and Step fields grouped by Project", async () => {
-    renderReview();
-    await screen.findByText("Renovar documento");
-    const pendingTable = screen.getByRole("table", { name: "Pendientes para revisión" });
-    for (const label of ["Fecha planificada", "Pendiente", "Avance", "Comentario"]) expect(within(pendingTable).getByRole("columnheader", { name: label })).toBeInTheDocument();
-    expect(screen.getByLabelText("Avance de Renovar documento")).toHaveValue(20);
-    expect(screen.getByLabelText("Comentario de Renovar documento")).toHaveValue("En trámite");
-    const mudanza = screen.getByRole("heading", { name: "Mudanza" }).closest("section")!;
-    expect(within(mudanza).getByRole("table", { name: "Pasos de Mudanza" })).toHaveTextContent("Empacar");
-    expect(screen.getByRole("heading", { name: "Viaje" })).toBeInTheDocument();
-    expect(screen.queryByText(/Vigencia|Cumplimiento|Categoría|Comentario general/i)).not.toBeInTheDocument();
-  });
-
-  it("submits one exact batch, omits unselected/unchanged rows and refreshes Review and Home", async () => {
-    const user = userEvent.setup();
-    const client = renderReview();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    await user.click(await screen.findByRole("button", { name: "Completado: Tender mi cama" }));
-    const pendingProgress = screen.getByLabelText("Avance de Renovar documento");
-    await user.clear(pendingProgress); await user.type(pendingProgress, "45");
-    await user.type(screen.getByLabelText("Comentario de Empacar"), "Terminado");
-    expect(screen.getAllByRole("button", { name: "Guardar" })).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(reviewApi.saveReview).toHaveBeenCalledWith({
-      tasks: [{ id: "task-1", result: "COMPLETED", lock_version: 2 }],
-      pending_items: [{ id: "pending-1", progress: 45, lock_version: 4 }],
-      project_steps: [{ id: "step-1", comment: "Terminado", lock_version: 5 }]
-    }));
-    await screen.findByText("Revisión guardada.");
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.home });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.taskReportsRoot });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.pendingItemReportsRoot });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projectReportsRoot });
-    expect(reviewApi.getReview).toHaveBeenCalledTimes(2);
-  });
-
-  it("allows an empty Review save", async () => {
-    vi.mocked(reviewApi.getReview).mockResolvedValue({ ...review, tasks: [], pending_items: [], projects: [], last_review_saved_at: null });
+  it("preserves Pending and Stage drafts when Tasks save independently", async () => {
     const user = userEvent.setup(); renderReview();
-    expect(await screen.findByText("No hay elementos que requieran revisión hoy.")).toBeInTheDocument();
-    expect(screen.getByText("Sin registro")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    expect(reviewApi.saveReview).toHaveBeenCalledWith({ tasks: [], pending_items: [], project_steps: [] });
+    const pending = await screen.findByLabelText("Avance de Renovar documento"); const stage = screen.getByLabelText("Avance de Empacar");
+    await user.clear(pending); await user.type(pending, "45"); await user.clear(stage); await user.type(stage, "55.25");
+    await user.click(within(screen.getByRole("group", { name: "Resultado de Tender mi cama" })).getByRole("button", { name: "Completado" }));
+    await user.click(screen.getByRole("button", { name: "Guardar Tareas" }));
+    await waitFor(() => expect(vi.mocked(reviewApi.saveReviewTasks).mock.calls[0]?.[0]).toEqual({ items: [{ task_id: "task-1", result: "COMPLETED", lock_version: 2 }] }));
+    expect(reviewApi.saveReviewPendingItems).not.toHaveBeenCalled(); expect(reviewApi.saveReviewProjectStages).not.toHaveBeenCalled();
+    expect(pending).toHaveValue(45); expect(stage).toHaveValue(55.25);
   });
-
-  it("preserves local edits after an atomic 409 and permits retry", async () => {
-    vi.mocked(reviewApi.saveReview).mockRejectedValueOnce({ isAxiosError: true, response: { status: 409 } }).mockResolvedValueOnce({ saved_at: "2026-08-13T20:00:00Z" });
-    const user = userEvent.setup(); renderReview();
-    const progress = await screen.findByLabelText("Avance de Renovar documento");
-    await user.clear(progress); await user.type(progress, "55");
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Parte de la información cambió");
-    expect(progress).toHaveValue(55);
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    await screen.findByText("Revisión guardada.");
-    expect(reviewApi.saveReview).toHaveBeenCalledTimes(2);
+  it("keeps a draft across collapse and generic/conflict errors", async () => {
+    vi.mocked(reviewApi.saveReviewPendingItems).mockRejectedValueOnce(new Error("network"));
+    vi.mocked(reviewApi.saveReviewProjectStages).mockRejectedValueOnce({ isAxiosError: true, response: { status: 409 } });
+    const user = userEvent.setup(); renderReview(); const pending = await screen.findByLabelText("Avance de Renovar documento");
+    await user.clear(pending); await user.type(pending, "61"); await user.click(screen.getByText("Pendientes")); await user.click(screen.getByText("Pendientes"));
+    expect(pending).toHaveValue(61); await user.click(screen.getByRole("button", { name: "Guardar Pendientes" }));
+    expect(await screen.findByText(/Tus cambios siguen disponibles/)).toBeInTheDocument(); expect(pending).toHaveValue(61);
+    const stage = screen.getByLabelText("Avance de Empacar"); await user.clear(stage); await user.type(stage, "62.50"); await user.click(screen.getByRole("button", { name: "Guardar Proyectos" }));
+    expect(await screen.findByText(/conservamos tus cambios/)).toBeInTheDocument(); expect(stage).toHaveValue(62.5);
   });
-
-  it("validates progress locally and performs no write", async () => {
-    const user = userEvent.setup(); renderReview();
-    const progress = await screen.findByLabelText("Avance de Renovar documento");
-    await user.clear(progress); await user.type(progress, "101");
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("entre 0 y 100");
-    expect(reviewApi.saveReview).not.toHaveBeenCalled();
+  it("sends exact Pending and Decimal Stage contracts", async () => {
+    const user = userEvent.setup(); renderReview(); await screen.findByText("Renovar documento");
+    const pending = screen.getByLabelText("Avance de Renovar documento"); await user.clear(pending); await user.type(pending, "40"); await user.type(screen.getByLabelText("Comentario de Renovar documento"), "Avancé");
+    await user.click(screen.getByRole("button", { name: "Guardar Pendientes" }));
+    await waitFor(() => expect(vi.mocked(reviewApi.saveReviewPendingItems).mock.calls[0]?.[0]).toEqual({ items: [{ pending_item_id: "pending-1", progress: 40, comment: "Avancé", lock_version: 4 }] }));
+    const stage = screen.getByLabelText("Avance de Empacar"); await user.clear(stage); await user.type(stage, "42.25"); await user.click(screen.getByRole("button", { name: "Guardar Proyectos" }));
+    await waitFor(() => expect(vi.mocked(reviewApi.saveReviewProjectStages).mock.calls[0]?.[0]).toEqual({ items: [{ stage_id: "stage-1", progress: "42.25", lock_version: 5, project_lock_version: 7 }] }));
   });
-
-  it("renders a stable loading state", () => {
-    vi.mocked(reviewApi.getReview).mockReturnValueOnce(new Promise(() => undefined));
-    renderReview();
-    expect(screen.getByRole("status", { name: "Cargando Revisión" })).toBeInTheDocument();
-    expect(screen.queryByText("Tender mi cama")).not.toBeInTheDocument();
-  });
-
-  it("renders a retryable GET error without fake rows", async () => {
-    vi.mocked(reviewApi.getReview).mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce(review);
-    const user = userEvent.setup(); renderReview();
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar la Revisión.");
-    expect(screen.queryByText("Tender mi cama")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByText("Tender mi cama")).toBeInTheDocument();
+  it("renders independent empty states", async () => {
+    vi.mocked(reviewApi.getReview).mockResolvedValueOnce({ review_date: "2026-08-13", tasks: [], pending_items: [], project_stages: [] }); renderReview();
+    expect(await screen.findByText("No tienes tareas pendientes para revisar.")).toBeInTheDocument(); expect(screen.getByText("No tienes pendientes para revisar.")).toBeInTheDocument(); expect(screen.getByText("No tienes etapas para revisar.")).toBeInTheDocument();
   });
 });

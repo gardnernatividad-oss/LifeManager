@@ -156,10 +156,15 @@ def update_project_stage(db: Session, *, access: WorkspaceAccess, project_id: uu
     return stage
 
 
-def update_project_stage_progress(db: Session, *, access: WorkspaceAccess, actor: User, project_id: uuid.UUID, stage_id: uuid.UUID, progress: Decimal | None, comment: str | None, expected_version: int, project_version: int, local_date: date) -> ProjectStage:
+def update_project_stage_progress(db: Session, *, access: WorkspaceAccess, actor: User, project_id: uuid.UUID, stage_id: uuid.UUID, progress: Decimal | None, comment: str | None, expected_version: int, project_version: int, local_date: date, review_eligible_date: date | None = None) -> ProjectStage:
     project = _project(db, workspace_id=access.workspace.id, project_id=project_id, lock=True)
     _check_project(project, project_version)
     stage = _stage(db, workspace_id=access.workspace.id, project_id=project_id, stage_id=stage_id, lock=True)
+    if review_eligible_date is not None and (
+        stage.responsible_user_id != actor.id
+        or stage.planned_date > review_eligible_date
+    ):
+        raise ProjectStageConflictError("Stage is not eligible for Review")
     if stage.progress == HUNDRED or stage.lock_version != expected_version:
         raise ProjectStageConflictError("Stage progress cannot be changed")
     resulting_progress = _decimal(stage.progress if progress is None else progress)

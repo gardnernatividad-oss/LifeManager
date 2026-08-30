@@ -1,38 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { apiClient } from "./client";
-import { getReview, saveReview } from "./reviewApi";
-import type { ReviewRead, ReviewSave } from "../types/review";
+import { getReview, saveReviewPendingItems, saveReviewProjectStages, saveReviewTasks } from "./reviewApi";
+import type { ReviewRead } from "../types/review";
 
-vi.mock("./client", () => ({ apiClient: { get: vi.fn(), patch: vi.fn() } }));
-
-const review: ReviewRead = {
-  review_date: "2026-08-13",
-  last_review_saved_at: null,
-  tasks: [],
-  pending_items: [],
-  projects: []
-};
+vi.mock("./client", () => ({ apiClient: { get: vi.fn(), post: vi.fn() } }));
+const review: ReviewRead = { review_date: "2026-08-13", tasks: [], pending_items: [], project_stages: [] };
 
 describe("reviewApi", () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it("gets Review without a Workspace parameter", async () => {
+  it("gets global Review without a Workspace parameter", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: review });
     await expect(getReview()).resolves.toEqual(review);
-    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v1/review");
+    expect(apiClient.get).toHaveBeenCalledWith("http://localhost:3000/api/v2/review");
   });
-
-  it("patches only the strict Review sections", async () => {
-    const payload: ReviewSave = {
-      tasks: [{ id: "task-id", result: "COMPLETED", lock_version: 2 }],
-      pending_items: [{ id: "pending-id", progress: 50, lock_version: 3 }],
-      project_steps: [{ id: "step-id", comment: "Listo", lock_version: 4 }]
-    };
-    vi.mocked(apiClient.patch).mockResolvedValue({ data: { saved_at: "2026-08-13T20:00:00Z" } });
-    await saveReview(payload);
-    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:3000/api/v1/review", payload);
-    expect(JSON.stringify(payload)).not.toContain("workspace_id");
-    expect(JSON.stringify(payload)).not.toContain("review_date");
+  it("uses three independent block endpoints and strict payloads", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { saved_ids: [] } });
+    const tasks = { items: [{ task_id: "task-id", result: "COMPLETED" as const, lock_version: 2 }] };
+    const pending = { items: [{ pending_item_id: "pending-id", progress: 50, lock_version: 3 }] };
+    const stages = { items: [{ stage_id: "stage-id", progress: "45.25", lock_version: 4, project_lock_version: 5 }] };
+    await saveReviewTasks(tasks); await saveReviewPendingItems(pending); await saveReviewProjectStages(stages);
+    expect(apiClient.post).toHaveBeenNthCalledWith(1, "http://localhost:3000/api/v2/review/tasks", tasks);
+    expect(apiClient.post).toHaveBeenNthCalledWith(2, "http://localhost:3000/api/v2/review/pending-items", pending);
+    expect(apiClient.post).toHaveBeenNthCalledWith(3, "http://localhost:3000/api/v2/review/project-stages", stages);
+    expect(JSON.stringify([tasks, pending, stages])).not.toContain("workspace_id");
   });
 });
