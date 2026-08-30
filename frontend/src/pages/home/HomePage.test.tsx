@@ -67,7 +67,7 @@ describe("HomePage", () => {
       ["Tareas para hoy", "2"],
       ["Tareas vencidas", "3"],
       ["Pendientes vencidos", "4"],
-      ["Pasos vencidos", "5"]
+      ["Etapas vencidas", "5"]
     ]) {
       const card = screen.getByText(label).closest("article");
       expect(card).toHaveTextContent(count);

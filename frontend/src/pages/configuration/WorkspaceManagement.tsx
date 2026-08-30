@@ -17,6 +17,7 @@ import {
   reactivateWorkspace,
   removeWorkspaceMember,
   transferWorkspaceOwnership,
+  updateWorkspaceAppearance,
   type MemberExitResolution,
 } from "../../api/workspaceApi";
 import { getCalendarVisibility, setCalendarVisibility } from "../../api/v2CalendarComparisonApi";
@@ -153,6 +154,22 @@ export function WorkspaceManagement() {
         <section className="workspace-management__detail" aria-label={`Administrar ${selected.name}`}>
           <h3>{selected.name}</h3>
           <p>{selected.kind === "PERSONAL" ? "Personal" : "Compartido"} · {selected.visible_role}</p>
+          {selected.lifecycle === "ACTIVE" && selected.visible_role === "Propietario" ? (
+            <form className="workspace-management__appearance" onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              action.mutate(() => updateWorkspaceAppearance(
+                selected.id,
+                data.get("color") as NonNullable<WorkspaceSummary["color"]>,
+                data.get("icon") as NonNullable<WorkspaceSummary["icon"]>,
+                selected.lock_version ?? 1,
+              ));
+            }}>
+              <label>Color<select name="color" defaultValue={selected.color}><option value="GREEN">Verde</option><option value="BLUE">Azul</option><option value="PURPLE">Morado</option><option value="ORANGE">Naranja</option><option value="RED">Rojo</option><option value="TEAL">Turquesa</option></select></label>
+              <label>Icono<select name="icon" defaultValue={selected.icon}><option value="HOME">Casa</option><option value="USERS">Personas</option><option value="HEART">Corazón</option><option value="STAR">Estrella</option><option value="CALENDAR">Calendario</option><option value="BRIEFCASE">Trabajo</option></select></label>
+              <button type="submit" disabled={action.isPending}>Guardar apariencia</button>
+            </form>
+          ) : null}
           {selected.kind === "PERSONAL" ? <p>El espacio Personal no admite transferencia, salida, desactivación ni eliminación.</p> : null}
           {selected.lifecycle === "INACTIVE" && selected.visible_role === "Propietario" ? (
             <button className="primary-button" onClick={() => action.mutate(() => reactivateWorkspace(selected.id))}>Reactivar Workspace</button>
@@ -195,5 +212,6 @@ export function WorkspaceManagement() {
 }
 
 function WorkspaceGroup({ title, items, selectedId, onSelect }: { title: string; items: WorkspaceSummary[]; selectedId: string; onSelect: (id: string) => void }) {
-  return <section><h3>{title}</h3>{items.length === 0 ? <p className="settings-empty">Sin espacios.</p> : <ul className="workspace-management__list">{items.map((item) => <li key={item.id}><button className={selectedId === item.id ? "workspace-management__workspace workspace-management__workspace--selected" : "workspace-management__workspace"} onClick={() => onSelect(item.id)}><strong>{item.name}</strong><span>{item.kind === "PERSONAL" ? "Personal" : "Compartido"} · {item.visible_role}</span></button></li>)}</ul>}</section>;
+  const icons: Record<NonNullable<WorkspaceSummary["icon"]>, string> = { HOME: "⌂", USERS: "♟", HEART: "♥", STAR: "★", CALENDAR: "▦", BRIEFCASE: "▣" };
+  return <section><h3>{title}</h3>{items.length === 0 ? <p className="settings-empty">Sin espacios.</p> : <ul className="workspace-management__list">{items.map((item) => <li key={item.id}><button className={selectedId === item.id ? "workspace-management__workspace workspace-management__workspace--selected" : "workspace-management__workspace"} onClick={() => onSelect(item.id)}><strong><span aria-hidden="true">{icons[item.icon ?? (item.kind === "PERSONAL" ? "HOME" : "USERS")]}</span> {item.name}</strong><span>{item.kind === "PERSONAL" ? "Personal" : "Compartido"} · {item.visible_role}</span></button></li>)}</ul>}</section>;
 }

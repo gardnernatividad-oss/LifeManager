@@ -1,12 +1,18 @@
+import uuid
+
 from fastapi import APIRouter, status
 
 from app.api.v2.dependencies import SessionDependency, UsableAccount
-from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceRead, WorkspaceSummaryRead
+from app.api.v2.errors import V2APIError
+from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceAppearanceUpdate, WorkspaceRead, WorkspaceSummaryRead
 from app.services.v2_workspace import (
     WorkspaceAccess,
+    WorkspaceAccessNotFoundError,
+    WorkspaceInvariantError,
     create_shared_workspace,
     list_active_workspaces,
     list_manageable_workspaces,
+    update_workspace_appearance,
 )
 from app.services.v2_workspace_lifecycle import workspace_can_be_hard_deleted
 
@@ -35,6 +41,9 @@ def _summary(
             and workspace_can_be_hard_deleted(db, workspace=workspace)
         ),
         timezone=timezone,
+        color=workspace.color or ("GREEN" if workspace.kind.value == "PERSONAL" else "BLUE"),
+        icon=workspace.icon or ("HOME" if workspace.kind.value == "PERSONAL" else "USERS"),
+        lock_version=workspace.lock_version or 1,
     )
 
 
@@ -85,4 +94,39 @@ def create_workspace(
         id=workspace.id,
         name=workspace.name,
         kind=workspace.kind,
+        color=workspace.color or "BLUE",
+        icon=workspace.icon or "USERS",
+        lock_version=workspace.lock_version or 1,
     )
+
+
+@router.patch("/{workspace_id}/appearance", response_model=WorkspaceSummaryRead)
+def update_appearance(
+    workspace_id: uuid.UUID,
+    appearance_in: WorkspaceAppearanceUpdate,
+    db: SessionDependency,
+    current_account: UsableAccount,
+) -> WorkspaceSummaryRead:
+    try:
+        workspace = update_workspace_appearance(
+            db,
+            account=current_account,
+            workspace_id=workspace_id,
+            appearance_in=appearance_in,
+        )
+        db.commit()
+        db.refresh(workspace)
+    except WorkspaceAccessNotFoundError as error:
+        db.rollback()
+        raise V2APIError(status_code=404, code="WORKSPACE_NOT_FOUND", message="No se encontró el espacio de trabajo.") from error
+    except WorkspaceInvariantError as error:
+        db.rollback()
+        raise V2APIError(status_code=409, code="WORKSPACE_CONFLICT", message="El espacio cambió. Actualiza e intenta nuevamente.") from error
+    except Exception:
+        db.rollback()
+        raise
+    access = next(
+        item for item in list_active_workspaces(db, account=current_account)
+        if item.workspace.id == workspace.id
+    )
+    return _summary(db, access, timezone=current_account.timezone)

@@ -102,7 +102,7 @@ def test_activity_lifecycle_and_workspace_integrity_on_disposable_postgres(monke
             target_membership = db.scalar(sa.select(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id, WorkspaceMember.user_id == member_id))
             target_membership.calendar_visibility = CalendarVisibility.SHOW_DETAILS; db.commit()
             comparison = compare_calendar(db, workspace_id=workspace_id, viewer_id=owner_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
-            assert {item.activity.id for item in comparison.events} >= {generated[0].id, generated[1].id, foreign_activity.id, personal_activity.id}
+            assert {item.activity.id for item in comparison.events} == {generated[0].id, generated[1].id}
             target_membership = db.get(WorkspaceMember, target_membership.id); target_membership.calendar_visibility = CalendarVisibility.AVAILABILITY_ONLY; db.commit()
             comparison = compare_calendar(db, workspace_id=workspace_id, viewer_id=owner_id, target_id=member_id, range_start=datetime(2027, 1, 4, 14, tzinfo=timezone.utc), range_end=datetime(2027, 1, 6, tzinfo=timezone.utc), now=datetime(2026, 12, 31, tzinfo=timezone.utc))
             assert comparison.events == [] and comparison.busy_blocks

@@ -187,3 +187,7 @@ crear bypass global.
   amplían la selección ni permiten observar asignaciones ajenas. La consulta
   es read-only y mantiene `workspace_id` como contexto, no como autoridad
   aportada por el cliente.
+La apariencia persistida del Workspace (color e icono) puede actualizarla un
+miembro ACTIVE del Workspace ACTIVE mediante contrato estricto y
+`lock_version`; no concede autoridad adicional ni permite bypass a
+`GLOBAL_ADMIN` sin membership.

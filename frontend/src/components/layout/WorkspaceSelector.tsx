@@ -5,6 +5,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useWorkspaces } from "../../hooks/useWorkspaces";
 
 const WORKSPACE_PREFERENCE_KEY = "lifemanager.selected-workspace-id";
+const WORKSPACE_ICONS = { HOME: "⌂", USERS: "♟", HEART: "♥", STAR: "★", CALENDAR: "▦", BRIEFCASE: "▣" } as const;
 
 export function WorkspaceSelector() {
   const { workspace, setWorkspace } = useAuth();
@@ -47,7 +48,7 @@ export function WorkspaceSelector() {
       >
         {workspaces.data.map((candidate) => (
           <option key={candidate.id} value={candidate.id}>
-            {candidate.name}{candidate.kind === "PERSONAL" ? " · Personal" : ""}
+            {WORKSPACE_ICONS[candidate.icon ?? (candidate.kind === "PERSONAL" ? "HOME" : "USERS")]} {candidate.name}{candidate.kind === "PERSONAL" ? " · Personal" : ""}
           </option>
         ))}
       </select>

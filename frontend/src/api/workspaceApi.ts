@@ -50,6 +50,19 @@ export async function createSharedWorkspace(name: string): Promise<WorkspaceSumm
   return (await apiClient.post<WorkspaceSummary>(v2("/workspaces"), { name })).data;
 }
 
+export async function updateWorkspaceAppearance(
+  id: string,
+  color: NonNullable<WorkspaceSummary["color"]>,
+  icon: NonNullable<WorkspaceSummary["icon"]>,
+  lockVersion: number,
+): Promise<WorkspaceSummary> {
+  return (await apiClient.patch<WorkspaceSummary>(v2(`/workspaces/${id}/appearance`), {
+    color,
+    icon,
+    lock_version: lockVersion,
+  })).data;
+}
+
 export async function getWorkspaceLifecycle(id: string): Promise<WorkspaceSummary> {
   return (await apiClient.get<WorkspaceSummary>(v2(`/workspaces/${id}/lifecycle`))).data;
 }

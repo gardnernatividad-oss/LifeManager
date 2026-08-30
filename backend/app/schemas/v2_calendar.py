@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ActivityStatus, CalendarVisibility, WorkspaceKind
+from app.models.enums import ActivityStatus, CalendarVisibility, WorkspaceColor, WorkspaceIcon, WorkspaceKind
 
 
 class _StrictModel(BaseModel):
@@ -16,6 +16,8 @@ class CalendarWorkspaceRead(_StrictModel):
     id: uuid.UUID
     name: str
     kind: WorkspaceKind
+    color: WorkspaceColor = WorkspaceColor.GREEN
+    icon: WorkspaceIcon = WorkspaceIcon.HOME
 
 
 class CalendarPersonRead(_StrictModel):

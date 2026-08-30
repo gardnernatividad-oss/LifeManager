@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.enums import WorkspaceKind, WorkspaceLifecycle
-from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceRead, WorkspaceSummaryRead
+from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceAppearanceUpdate, WorkspaceRead, WorkspaceSummaryRead
 
 
 def test_shared_workspace_create_cleans_unicode_name() -> None:
@@ -17,6 +17,12 @@ def test_shared_workspace_create_cleans_unicode_name() -> None:
 def test_shared_workspace_create_rejects_invalid_name(name: str) -> None:
     with pytest.raises(ValidationError):
         SharedWorkspaceCreate(name=name)
+
+
+def test_workspace_appearance_accepts_only_safe_catalog_keys() -> None:
+    assert WorkspaceAppearanceUpdate(color="TEAL", icon="CALENDAR", lock_version=1).icon == "CALENDAR"
+    with pytest.raises(ValidationError):
+        WorkspaceAppearanceUpdate(color="url(javascript:alert(1))", icon="<svg>", lock_version=1)
 
 
 @pytest.mark.parametrize(
@@ -38,7 +44,7 @@ def test_workspace_read_is_allowlisted() -> None:
         name="Familia",
         kind=WorkspaceKind.SHARED,
     )
-    assert set(result.model_dump()) == {"id", "name", "kind"}
+    assert set(result.model_dump()) == {"id", "name", "kind", "color", "icon", "lock_version"}
 
 
 def test_workspace_summary_is_an_explicit_navigation_projection() -> None:
@@ -49,7 +55,7 @@ def test_workspace_summary_is_an_explicit_navigation_projection() -> None:
     )
     assert set(result.model_dump()) == {
         "id", "name", "kind", "lifecycle", "visible_role",
-        "can_manage", "can_delete", "timezone",
+        "can_manage", "can_delete", "timezone", "color", "icon", "lock_version",
     }
     with pytest.raises(ValidationError):
         WorkspaceSummaryRead.model_validate({**result.model_dump(), "global_role": "GLOBAL_ADMIN"})

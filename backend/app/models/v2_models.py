@@ -20,7 +20,7 @@ from app.models.enums import (
     DeliveryStatus, GenerationEntityType, GenerationPattern, GlobalRole,
     HistoryEventType, InvitationStatus, MembershipStatus, NotificationType,
     ParticipantCalendarStatus, ReminderType, ScheduleKind, TaskResult,
-    WorkspaceKind, WorkspaceLifecycle,
+    WorkspaceColor, WorkspaceIcon, WorkspaceKind, WorkspaceLifecycle,
 )
 
 
@@ -109,6 +109,8 @@ class Workspace(BaseEntity):
         CheckConstraint("length(btrim(name)) > 0", name="ck_workspaces_name_not_blank"),
         _enum_check("kind", WorkspaceKind, "ck_workspaces_kind_valid"),
         _enum_check("lifecycle", WorkspaceLifecycle, "ck_workspaces_lifecycle_valid"),
+        _enum_check("color", WorkspaceColor, "ck_workspaces_color_valid"),
+        _enum_check("icon", WorkspaceIcon, "ck_workspaces_icon_valid"),
         CheckConstraint("(lifecycle = 'ACTIVE' AND deactivated_at IS NULL) OR (lifecycle = 'INACTIVE' AND deactivated_at IS NOT NULL)", name="ck_workspaces_lifecycle_consistent"),
         CheckConstraint("kind = 'SHARED' OR lifecycle = 'ACTIVE'", name="ck_workspaces_personal_active"),
         CheckConstraint("lock_version > 0", name="ck_workspaces_lock_version_positive"),
@@ -120,6 +122,8 @@ class Workspace(BaseEntity):
     kind: Mapped[WorkspaceKind] = mapped_column(String(20), default=WorkspaceKind.PERSONAL, server_default=text("'PERSONAL'"), nullable=False)
     owner_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     lifecycle: Mapped[WorkspaceLifecycle] = mapped_column(String(16), default=WorkspaceLifecycle.ACTIVE, server_default=text("'ACTIVE'"), nullable=False)
+    color: Mapped[WorkspaceColor] = mapped_column(String(16), default=WorkspaceColor.GREEN, server_default=text("'GREEN'"), nullable=False)
+    icon: Mapped[WorkspaceIcon] = mapped_column(String(16), default=WorkspaceIcon.HOME, server_default=text("'HOME'"), nullable=False)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
     members: Mapped[list[WorkspaceMember]] = relationship(back_populates="workspace", passive_deletes=True)

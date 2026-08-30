@@ -85,12 +85,39 @@ def test_active_user_creates_shared_workspace_and_route_owns_transaction() -> No
         "id": str(workspace.id),
         "name": "Familia Pérez",
         "kind": "SHARED",
+        "color": "BLUE",
+        "icon": "USERS",
+        "lock_version": 1,
     }
     assert service.call_args.kwargs["creator"] is account
     assert service.call_args.kwargs["workspace_in"].name == "Familia Pérez"
     db.commit.assert_called_once_with()
     db.refresh.assert_called_once_with(workspace)
     db.rollback.assert_not_called()
+
+
+def test_active_member_updates_safe_workspace_appearance_with_one_commit() -> None:
+    db = MagicMock()
+    account = _account()
+    workspace = _workspace(account)
+    workspace.lifecycle = WorkspaceLifecycle.ACTIVE
+    workspace.color = "PURPLE"
+    workspace.icon = "STAR"
+    workspace.lock_version = 4
+    access = WorkspaceAccess(workspace=workspace, membership=SimpleNamespace(user_id=account.id))
+    with patch("app.api.v2.workspaces.update_workspace_appearance", return_value=workspace) as service, patch(
+        "app.api.v2.workspaces.list_active_workspaces", return_value=[access]
+    ), _client(db, account=account) as client:
+        response = client.patch(
+            f"/api/v2/workspaces/{workspace.id}/appearance",
+            json={"color": "PURPLE", "icon": "STAR", "lock_version": 3},
+        )
+    assert response.status_code == 200
+    assert response.json()["color"] == "PURPLE"
+    assert response.json()["icon"] == "STAR"
+    assert service.call_args.kwargs["workspace_id"] == workspace.id
+    db.commit.assert_called_once_with()
+    db.refresh.assert_called_once_with(workspace)
 
 
 @pytest.mark.parametrize(
@@ -249,10 +276,10 @@ def test_openapi_workspace_creation_is_allowlisted() -> None:
 
     assert set(schemas[request_schema]["properties"]) == {"name"}
     assert schemas[request_schema]["additionalProperties"] is False
-    assert set(schemas[response_schema]["properties"]) == {"id", "name", "kind"}
+    assert set(schemas[response_schema]["properties"]) == {"id", "name", "kind", "color", "icon", "lock_version"}
     serialized = str(operation)
     for forbidden in (
-        "owner_user_id", "global_role", "lock_version", "members",
+        "owner_user_id", "global_role", "members",
     ):
         assert forbidden not in serialized
 
@@ -316,6 +343,7 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
             ("GET", "/api/v2/workspaces/{workspace_id}/calendar-visibility"),
             ("PATCH", "/api/v2/workspaces/{workspace_id}/calendar-visibility"),
         ("POST", "/api/v2/workspaces"),
+        ("PATCH", "/api/v2/workspaces/{workspace_id}/appearance"),
         ("GET", "/api/v2/workspaces/{workspace_id}/members"),
         ("DELETE", "/api/v2/workspaces/{workspace_id}/members/{user_id}"),
         ("POST", "/api/v2/workspaces/{workspace_id}/leave"),

@@ -9,7 +9,7 @@ documentación. Los cambios de Revisión posteriores a Stage 10.1 que estén en 
 working tree son trabajo en curso y quedan fuera de la evaluación de Fases
 3–8.
 
-Resultado: **54 CONFORME, 3 DESVIACIÓN, 9 FALTANTE y 0 NO APLICA**.
+Resultado final tras 9.2–9.5: **paridad funcional cerrada para Fases 3–8**. Los hallazgos correctivos de esta matriz cuentan con implementación y regresión ejecutable; no quedan desviaciones funcionales abiertas asignadas a Fase 9.
 
 ## Fuentes y evidencia principal
 
@@ -96,7 +96,7 @@ No se detectaron desviaciones funcionales en Fase 6.
 | Etapa 100% congelada en operación ordinaria | CONFORME | Mutación normal y capacidades la vuelven read-only. |
 | Corrección explícita de Etapa finalizada | CONFORME | Planning ofrece corrección explícita `100.00 → <100.00`, limpia finalización, reabre las proyecciones y registra `CORRECTION`. |
 | Historial, comentario-only y navegación jerárquica | CONFORME | History append-only y páginas Proyecto→Etapa. |
-| Terminología visible “Etapa” | DESVIACIÓN | Páginas V2 principales usan Etapa, pero Inicio y Reportes activos todavía muestran “Paso/Pasos”. Se corrige con el dominio correspondiente y se verifica transversalmente en 9.5. |
+| Terminología visible “Etapa” | CORREGIDO EN 9.5 | Inicio y Reportes activos usan Etapa/Etapas; no queda “Paso/Pasos” visible en el runtime V2. |
 
 ## Fase 8 — Calendario y Actividades
 
@@ -116,7 +116,7 @@ No se detectaron desviaciones funcionales en Fase 6.
 | Resumen mensual multi-dominio y acceso al día | CORREGIDO EN 9.4 | Cada fecha publica contadores independientes de Actividades, Tareas, Pendientes y Etapas; seleccionar la celda abre Día sin descargar detalle mensual. |
 | Privacidad SHOW_DETAILS/AVAILABILITY_ONLY/HIDE | CONFORME | Enforcement server-side direccional, bloques opacos y no filtración de origen. |
 | Comparación colaborativa y contextos Workspace | CORREGIDO EN 9.4 | Mi calendario conserva scope global, permite contexto interno de Workspace y compara simultáneamente miembros Shared con privacidad individual. |
-| Color/icono persistido de Workspace en Calendario | GAP PARA 9.5 | El modelo actual no expone color/icono persistido. 9.4 conserva diferenciación visual determinista no persistida; ampliar Fase 3 o schema queda sujeto al gate transversal. |
+| Color/icono persistido de Workspace en Calendario | CORREGIDO EN 9.5 | Workspace persiste claves de color e icono de catálogos finitos y validados. Personal/Shared reciben defaults seguros, Configuración permite actualizarlos con optimistic concurrency y Calendario consume el color persistido. |
 | Agrupación/filtro “Otras actividades” y Categoría manual | CORREGIDO EN 9.2 | La proyección identifica establemente la fuente custom y los listados filtran por fuente y por Categoría manual sin convertir nombres históricos en maestros. |
 
 ## Seguridad transversal
@@ -149,8 +149,7 @@ Hallazgos adicionales o precisiones nuevas:
 3. La documentación autoritativa actual contradice las decisiones finales al
    declarar inmutables las Tareas resueltas y Etapas finalizadas y al permitir
    una configuración persistida con pesos incompletos.
-4. Inicio y Reportes V2 activos aún exponen “Pasos”, aunque Planificación y
-   detalle ya usan “Etapas”.
+4. La desviación terminológica de Inicio y Reportes quedó corregida en 9.5.
 5. `position` no se presenta como input visible, pero sigue siendo
    mass-assignable por API y no hay operación de reordenamiento semántica.
 
@@ -193,4 +192,4 @@ Las Fases 3, 4 y 6 conservan una base sólida. Las brechas materiales se
 concentran en extensibilidad libre de Tareas/Actividades, correcciones
 terminales de Tareas/Etapas, configuración/precisión de Etapas y Calendario
 mensual. Ninguna etapa histórica 3–8 cambia de estado. Stage 9.1 queda
-Completado como auditoría; Fase 9 permanece abierta hasta 9.5.
+Completado como auditoría. Stage 9.5 cerró la regresión transversal y la Fase 9.

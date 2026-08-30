@@ -73,7 +73,7 @@ export function ProjectReportsPage() {
               <div><dt>Finalizados</dt><dd>{report.data.summary.finalizado_count}</dd></div>
             </dl>
 
-            <h3>Cumplimiento de Pasos</h3>
+            <h3>Cumplimiento de Etapas</h3>
             <dl className="pending-item-report-summary compliance">
               <div><dt>En plazo</dt><dd>{report.data.step_compliance.en_plazo_count}</dd></div>
               <div><dt>Atrasados</dt><dd>{report.data.step_compliance.atrasado_count}</dd></div>
@@ -82,7 +82,7 @@ export function ProjectReportsPage() {
               <div><dt>Con retraso</dt><dd>{report.data.step_compliance.con_retraso_count}</dd></div>
             </dl>
 
-            <h3>Detalle de Pasos</h3>
+            <h3>Detalle de Etapas</h3>
             <dl className="pending-item-report-summary detail">
               <div><dt>Promedio de días de atraso</dt><dd>{metric(report.data.detail.average_atrasado_days)}</dd></div>
               <div><dt>Promedio de días de adelanto</dt><dd>{metric(report.data.detail.average_con_adelanto_days)}</dd></div>
@@ -95,7 +95,7 @@ export function ProjectReportsPage() {
               <div className="pending-item-report-table project-report-table">
                 <table>
                   <caption className="sr-only">Resultados por proyecto</caption>
-                  <thead><tr><th>Proyecto</th><th>Categoría</th><th>Vigencia</th><th>Fecha planificada</th><th>Avance</th><th>Estado</th><th>Cantidad de Pasos</th></tr></thead>
+                  <thead><tr><th>Proyecto</th><th>Categoría</th><th>Vigencia</th><th>Fecha planificada</th><th>Avance</th><th>Estado</th><th>Cantidad de Etapas</th></tr></thead>
                   <tbody>{report.data.by_project.map((row) => <tr key={row.project_id}>
                     <th scope="row">{row.project_name}</th><td>{row.category_name}</td><td>{row.is_active ? "Activo" : "Inactivo"}</td><td>{row.planned_date ? formatShortCalendarDate(row.planned_date) : "—"}</td><td>{progress(row.progress)}</td><td>{row.state === null ? "—" : stateLabels[row.state]}</td><td>{row.step_count}</td>
                   </tr>)}</tbody>

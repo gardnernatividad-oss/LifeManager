@@ -6,6 +6,7 @@ import { queryKeys } from "../../api/queryKeys";
 import { correctV2TaskResult, createV2RecurringTasks, createV2Task, deleteV2Task, listV2Tasks, resolveV2Task, updateV2Task } from "../../api/v2TaskApi";
 import { listWorkspaceMembers } from "../../api/workspaceApi";
 import { CategorySelector, TaskCatalogSelector } from "../../components/common/V2CatalogSelector";
+import { ColumnPreferences, useColumnPreferences } from "../../components/common/ColumnPreferences";
 import { useAuth } from "../../hooks/useAuth";
 import type { V2RecurringTaskCreateResponse, V2Task, V2TaskFilters, V2TaskMutationScope, V2TaskRecurrencePattern, V2TaskResult, V2TaskState } from "../../types/v2Task";
 import { formatShortCalendarDate } from "../../utils/localizedDate";
@@ -30,13 +31,21 @@ const maxRecurringOccurrences = 1000;
 export function PlanningTasksPage() {
   const { workspace, user } = useAuth();
   if (!workspace || !user) return <section><h1>Planificación · Tareas</h1><p>Selecciona un espacio de trabajo.</p></section>;
-  return <WorkspaceTasks key={workspace.id} workspace={workspace} />;
+  return <WorkspaceTasks key={workspace.id} workspace={workspace} userId={user.id} />;
 }
 
-function WorkspaceTasks({ workspace }: { workspace: WorkspaceSummary }) {
+function WorkspaceTasks({ workspace, userId }: { workspace: WorkspaceSummary; userId: string }) {
   const queryClient = useQueryClient();
   const workspaceId = workspace.id;
   const shared = workspace.kind === "SHARED";
+  const taskColumns = [
+    { key: "date", label: "Fecha" },
+    { key: "task", label: "Tarea" },
+    { key: "responsible", label: "Responsable", defaultVisible: shared },
+    { key: "state", label: "Estado" },
+  ];
+  const columnPreferences = useColumnPreferences(userId, "planning-tasks", taskColumns);
+  const hiddenColumns = taskColumns.filter((column) => !columnPreferences.visible.includes(column.key)).map((column) => column.key).join(" ");
   const [masterTaskId, setMasterTaskId] = useState("");
   const [customName, setCustomName] = useState("");
   const [customCategoryId, setCustomCategoryId] = useState("");
@@ -84,7 +93,7 @@ function WorkspaceTasks({ workspace }: { workspace: WorkspaceSummary }) {
       {shared ? members.isPending ? <p role="status">Cargando responsables…</p> : members.isError ? <div role="alert">No pudimos cargar los responsables. <button type="button" onClick={() => void members.refetch()}>Reintentar</button></div> : <label>Responsable<select aria-label="Responsable" value={responsibleUserId} onChange={(event) => setResponsibleUserId(event.target.value)} required><option value="">Selecciona una persona</option>{activeMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}
       <button className="primary-button" disabled={create.isPending} type="submit">{create.isPending ? "Creando…" : "Crear"}</button>
     </form></section>
-    <section className="planning-register" aria-labelledby="v2-task-list"><h2 id="v2-task-list">Tareas planificadas</h2><div className="planning-filters">
+    <section className="planning-register" aria-labelledby="v2-task-list" data-hidden-columns={hiddenColumns}><h2 id="v2-task-list">Tareas planificadas</h2><ColumnPreferences columns={taskColumns} visible={columnPreferences.visible} onChange={columnPreferences.setVisible} /><div className="planning-filters">
       <label>Desde<input type="date" value={filters.planned_from ?? ""} onChange={(event) => setFilters({ ...filters, page: 1, planned_from: event.target.value || undefined })} /></label>
       <label>Hasta<input type="date" value={filters.planned_until ?? ""} onChange={(event) => setFilters({ ...filters, page: 1, planned_until: event.target.value || undefined })} /></label>
       {shared ? <label>Responsable<select value={filters.responsible_user_id ?? ""} onChange={(event) => setFilters({ ...filters, page: 1, responsible_user_id: event.target.value || undefined })}><option value="">Todos</option>{activeMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}

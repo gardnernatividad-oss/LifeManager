@@ -47,7 +47,7 @@ export function HomePage() {
     ["Tareas para hoy", data.tasks.due_today],
     ["Tareas vencidas", data.tasks.overdue],
     ["Pendientes vencidos", data.pending_items.overdue],
-    ["Pasos vencidos", data.project_steps.overdue]
+    ["Etapas vencidas", data.project_steps.overdue]
   ] as const;
   const noOverdue = data.tasks.overdue === 0
     && data.pending_items.overdue === 0

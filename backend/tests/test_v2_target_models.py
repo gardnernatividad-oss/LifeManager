@@ -39,6 +39,10 @@ def test_workspace_and_membership_invariants_are_structural() -> None:
     assert "ck_workspaces_lifecycle_valid" in names(Workspace.__table__, CheckConstraint)
     assert "ck_workspaces_lifecycle_consistent" in names(Workspace.__table__, CheckConstraint)
     assert "ck_workspaces_personal_active" in names(Workspace.__table__, CheckConstraint)
+    assert "ck_workspaces_color_valid" in names(Workspace.__table__, CheckConstraint)
+    assert "ck_workspaces_icon_valid" in names(Workspace.__table__, CheckConstraint)
+    assert Workspace.__table__.c.color.server_default is not None
+    assert Workspace.__table__.c.icon.server_default is not None
     assert Workspace.__table__.c.lifecycle.server_default is not None
 
 

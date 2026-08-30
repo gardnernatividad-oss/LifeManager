@@ -146,7 +146,7 @@ def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
         with target_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-                ).scalar_one() == "c0d1e2f3a4b5"
+                ).scalar_one() == "d1e2f3a4b5c6"
             tables = set(sa.inspect(connection).get_table_names())
             assert {
                 "users",
@@ -168,5 +168,5 @@ def test_fresh_disposable_postgresql_database_upgrades_from_base_to_v2_head(
         with roundtrip_engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "c0d1e2f3a4b5"
+                ).scalar_one() == "d1e2f3a4b5c6"
         roundtrip_engine.dispose()

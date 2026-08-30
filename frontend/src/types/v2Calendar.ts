@@ -6,7 +6,13 @@ export interface CalendarPerson {
 
 export interface CalendarActivity {
   activity_id: string;
-  workspace: { id: string; name: string; kind: "PERSONAL" | "SHARED" };
+  workspace: {
+    id: string;
+    name: string;
+    kind: "PERSONAL" | "SHARED";
+    color: "GREEN" | "BLUE" | "PURPLE" | "ORANGE" | "RED" | "TEAL";
+    icon: "HOME" | "USERS" | "HEART" | "STAR" | "CALENDAR" | "BRIEFCASE";
+  };
   activity_name: string;
   category_name: string;
   starts_at: string;

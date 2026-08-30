@@ -249,3 +249,7 @@ diaria admite varios miembros Shared aplicando privacidad por persona.
 - Usar terminología española aprobada en la interfaz.
 - Diseñar primero para móvil vertical sin degradar desktop.
 - Tratar seguridad como requisito transversal, no como etapa opcional final.
+Stage 9.5 cierra la paridad de Fases 3–8: Workspace persiste color e icono con
+opciones seguras, Calendario deja de derivar colores del UUID y la
+terminología pública queda uniformada en Etapa/Etapas. La regresión
+transversal conserva Review 10.1 y deja 10.2 pendiente.

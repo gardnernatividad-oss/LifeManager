@@ -22,7 +22,7 @@ def _person(user) -> CalendarPersonRead:
 def _read(value: CalendarActivityProjection) -> CalendarActivityRead:
     return CalendarActivityRead(
         activity_id=value.activity.id,
-        workspace=CalendarWorkspaceRead(id=value.workspace.id, name=value.workspace.name, kind=value.workspace.kind),
+        workspace=CalendarWorkspaceRead(id=value.workspace.id, name=value.workspace.name, kind=value.workspace.kind, color=value.workspace.color or "GREEN", icon=value.workspace.icon or "HOME"),
         activity_name=value.activity.title,
         category_name=value.category.name,
         starts_at=value.activity.starts_at, ends_at=value.activity.ends_at,
@@ -37,7 +37,7 @@ def _read(value: CalendarActivityProjection) -> CalendarActivityRead:
 def _untimed(value: CalendarUntimedProjection) -> CalendarUntimedRead:
     return CalendarUntimedRead(
         id=value.id,
-        workspace=CalendarWorkspaceRead(id=value.workspace.id, name=value.workspace.name, kind=value.workspace.kind),
+        workspace=CalendarWorkspaceRead(id=value.workspace.id, name=value.workspace.name, kind=value.workspace.kind, color=value.workspace.color or "GREEN", icon=value.workspace.icon or "HOME"),
         name=value.name, planned_date=value.planned_date,
     )
 

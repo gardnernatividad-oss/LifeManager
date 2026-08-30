@@ -31,6 +31,7 @@ from app.services.v2_workspace import (
     ensure_workspace_kind_unchanged,
     require_workspace_owner,
     resolve_active_workspace_access,
+    update_workspace_appearance,
 )
 
 
@@ -56,7 +57,7 @@ def test_workspace_listings_return_only_query_rows_without_global_admin_bypass()
         assert "workspace_members.user_id" in sql
         assert "workspace_members.status" in sql
     assert "workspaces.lifecycle" in str(db.execute.call_args_list[0].args[0])
-from app.schemas.v2_workspace import SharedWorkspaceCreate
+from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceAppearanceUpdate
 
 
 def _account(*, global_admin: bool = False) -> User:
@@ -106,6 +107,29 @@ def test_active_access_uses_persisted_account_and_membership() -> None:
     assert {account.id, workspace.id, MembershipStatus.ACTIVE} <= parameters
     db.add.assert_not_called()
     db.flush.assert_not_called()
+    db.commit.assert_not_called()
+    db.rollback.assert_not_called()
+
+
+def test_active_member_updates_workspace_appearance_under_lock_without_commit() -> None:
+    db = MagicMock(spec=Session)
+    account = _account()
+    workspace = _workspace(account, kind=WorkspaceKind.SHARED)
+    workspace.lifecycle = WorkspaceLifecycle.ACTIVE
+    workspace.lock_version = 2
+    membership = _membership(workspace, account)
+    db.execute.return_value.one_or_none.return_value = (workspace, membership)
+    result = update_workspace_appearance(
+        db,
+        account=account,
+        workspace_id=workspace.id,
+        appearance_in=WorkspaceAppearanceUpdate(color="PURPLE", icon="STAR", lock_version=2),
+    )
+    assert result.color == "PURPLE"
+    assert result.icon == "STAR"
+    assert result.lock_version == 3
+    assert db.execute.call_args.args[0]._for_update_arg is not None
+    db.flush.assert_called_once_with()
     db.commit.assert_not_called()
     db.rollback.assert_not_called()
 

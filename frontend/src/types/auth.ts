@@ -21,6 +21,9 @@ export interface WorkspaceSummary {
   can_delete?: boolean;
   description?: string | null;
   timezone: string;
+  color?: "GREEN" | "BLUE" | "PURPLE" | "ORANGE" | "RED" | "TEAL";
+  icon?: "HOME" | "USERS" | "HEART" | "STAR" | "CALENDAR" | "BRIEFCASE";
+  lock_version?: number;
   created_at?: string;
   updated_at?: string;
 }

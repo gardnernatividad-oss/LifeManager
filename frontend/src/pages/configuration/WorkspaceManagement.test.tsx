@@ -17,12 +17,12 @@ vi.mock("../../api/workspaceApi", () => ({
   createSharedWorkspace: vi.fn(), createWorkspaceInvitation: vi.fn(),
   actOnWorkspaceInvitation: vi.fn(), deactivateWorkspace: vi.fn(), reactivateWorkspace: vi.fn(),
   deleteWorkspace: vi.fn(), leaveWorkspace: vi.fn(), removeWorkspaceMember: vi.fn(),
-  transferWorkspaceOwnership: vi.fn(),
+  transferWorkspaceOwnership: vi.fn(), updateWorkspaceAppearance: vi.fn(),
 }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../api/v2CalendarComparisonApi", () => ({ getCalendarVisibility: vi.fn(), setCalendarVisibility: vi.fn() }));
 
-const personal = { id: "11111111-1111-4111-8111-111111111111", name: "Personal", kind: "PERSONAL" as const, lifecycle: "ACTIVE" as const, visible_role: "Propietario" as const, can_manage: false, can_delete: false, timezone: "America/Lima" };
+const personal = { id: "11111111-1111-4111-8111-111111111111", name: "Personal", kind: "PERSONAL" as const, lifecycle: "ACTIVE" as const, visible_role: "Propietario" as const, can_manage: false, can_delete: false, timezone: "America/Lima", color: "GREEN" as const, icon: "HOME" as const, lock_version: 1 };
 const shared = { ...personal, id: "22222222-2222-4222-8222-222222222222", name: "Familia", kind: "SHARED" as const, can_manage: true };
 const inactive = { ...shared, id: "33333333-3333-4333-8333-333333333333", name: "Archivo", lifecycle: "INACTIVE" as const };
 const member = { user_id: "44444444-4444-4444-8444-444444444444", display_name: "Luis Pérez", email: "luis@example.com", role: "Miembro" as const, status: "ACTIVE" as const, joined_at: "2026-08-24T12:00:00Z", ended_at: null };
@@ -45,6 +45,7 @@ describe("WorkspaceManagement", () => {
     vi.mocked(api.deactivateWorkspace).mockResolvedValue({ ...shared, lifecycle: "INACTIVE" });
     vi.mocked(privacyApi.getCalendarVisibility).mockResolvedValue({ visibility: "HIDE", lock_version: 2 });
     vi.mocked(privacyApi.setCalendarVisibility).mockResolvedValue({ visibility: "SHOW_DETAILS", lock_version: 3 });
+    vi.mocked(api.updateWorkspaceAppearance).mockResolvedValue({ ...shared, color: "PURPLE", icon: "STAR", lock_version: 2 });
   });
 
   it("separates active/inactive Workspaces and exposes owner reactivation only", async () => {
@@ -80,6 +81,15 @@ describe("WorkspaceManagement", () => {
     expect(control).toHaveValue("HIDE");
     await user.selectOptions(control, "SHOW_DETAILS");
     await waitFor(() => expect(privacyApi.setCalendarVisibility).toHaveBeenCalledWith(shared.id, "SHOW_DETAILS", 2));
+  });
+
+  it("updates persisted Workspace appearance using safe catalog values", async () => {
+    const user = userEvent.setup(); mount();
+    await user.click(await screen.findByRole("button", { name: /Familia/ }));
+    await user.selectOptions(screen.getByLabelText("Color"), "PURPLE");
+    await user.selectOptions(screen.getByLabelText("Icono"), "STAR");
+    await user.click(screen.getByRole("button", { name: "Guardar apariencia" }));
+    await waitFor(() => expect(api.updateWorkspaceAppearance).toHaveBeenCalledWith(shared.id, "PURPLE", "STAR", 1));
   });
 
   it("creates a Shared Workspace without allowing lifecycle or ownership fields", async () => {

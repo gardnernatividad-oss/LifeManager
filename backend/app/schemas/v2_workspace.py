@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.names import normalize_name
-from app.models.enums import WorkspaceKind, WorkspaceLifecycle
+from app.models.enums import WorkspaceColor, WorkspaceIcon, WorkspaceKind, WorkspaceLifecycle
 
 
 def _clean_workspace_name(value: str) -> str:
@@ -30,12 +30,23 @@ class SharedWorkspaceCreate(BaseModel):
     )
 
 
+class WorkspaceAppearanceUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    color: WorkspaceColor
+    icon: WorkspaceIcon
+    lock_version: int = Field(ge=1)
+
+
 class WorkspaceRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID
     name: str
     kind: Literal[WorkspaceKind.SHARED]
+    color: WorkspaceColor = WorkspaceColor.BLUE
+    icon: WorkspaceIcon = WorkspaceIcon.USERS
+    lock_version: int = 1
 
 
 WorkspaceVisibleRole = Literal["Propietario", "Miembro"]
@@ -52,3 +63,6 @@ class WorkspaceSummaryRead(BaseModel):
     can_manage: bool
     can_delete: bool
     timezone: str
+    color: WorkspaceColor = WorkspaceColor.GREEN
+    icon: WorkspaceIcon = WorkspaceIcon.HOME
+    lock_version: int = 1

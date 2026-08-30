@@ -573,3 +573,7 @@ No están pendientes las convenciones anteriores. Se definirán durante implemen
 - dominio/proxy productivo final;
 - catálogo cerrado final de NotificationType antes de su migration CHECK;
 - revisión Alembic V2 generada y secretos de provider.
+Stage 9.5 añade `PATCH /api/v2/workspaces/{workspace_id}/appearance` con
+`color`, `icon` y `lock_version`. Las respuestas de Workspace y sus
+proyecciones de Calendario exponen claves semánticas de catálogos cerrados;
+no aceptan HTML, SVG ni CSS arbitrario suministrado por el cliente.

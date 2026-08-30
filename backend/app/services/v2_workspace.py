@@ -12,7 +12,7 @@ from app.models.enums import (
     WorkspaceKind,
     WorkspaceLifecycle,
 )
-from app.schemas.v2_workspace import SharedWorkspaceCreate
+from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceAppearanceUpdate
 
 
 class WorkspaceAccessNotFoundError(ValueError):
@@ -55,6 +55,8 @@ def create_shared_workspace(
         name=workspace_in.name,
         kind=WorkspaceKind.SHARED,
         owner_user_id=creator.id,
+        color="BLUE",
+        icon="USERS",
     )
     db.add(workspace)
     db.flush()
@@ -65,6 +67,36 @@ def create_shared_workspace(
             status=MembershipStatus.ACTIVE,
         )
     )
+    db.flush()
+    return workspace
+
+
+def update_workspace_appearance(
+    db: Session,
+    *,
+    account: User,
+    workspace_id: uuid.UUID,
+    appearance_in: WorkspaceAppearanceUpdate,
+) -> Workspace:
+    row = db.execute(
+        select(Workspace, WorkspaceMember)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(
+            Workspace.id == workspace_id,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+            WorkspaceMember.user_id == account.id,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+        )
+        .with_for_update(of=Workspace)
+    ).one_or_none()
+    if row is None:
+        raise WorkspaceAccessNotFoundError("Workspace not found")
+    workspace, _membership = row
+    if workspace.lock_version != appearance_in.lock_version:
+        raise WorkspaceInvariantError("Stale workspace version")
+    workspace.color = appearance_in.color
+    workspace.icon = appearance_in.icon
+    workspace.lock_version += 1
     db.flush()
     return workspace
 

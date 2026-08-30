@@ -27,6 +27,24 @@ class WorkspaceLifecycle(StringEnum):
     INACTIVE = "INACTIVE"
 
 
+class WorkspaceColor(StringEnum):
+    GREEN = "GREEN"
+    BLUE = "BLUE"
+    PURPLE = "PURPLE"
+    ORANGE = "ORANGE"
+    RED = "RED"
+    TEAL = "TEAL"
+
+
+class WorkspaceIcon(StringEnum):
+    HOME = "HOME"
+    USERS = "USERS"
+    HEART = "HEART"
+    STAR = "STAR"
+    CALENDAR = "CALENDAR"
+    BRIEFCASE = "BRIEFCASE"
+
+
 class MembershipStatus(StringEnum):
     ACTIVE = "ACTIVE"
     LEFT = "LEFT"

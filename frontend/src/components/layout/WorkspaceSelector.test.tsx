@@ -37,7 +37,7 @@ describe("WorkspaceSelector", () => {
     client.setQueryData(["home"], { global: true });
     client.setQueryData(["review"], { global: true });
     const selector = await screen.findByRole("combobox", { name: "Espacio de trabajo activo" });
-    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Personal · Personal", "Familia"]);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["⌂ Personal · Personal", "♟ Familia"]);
     await user.selectOptions(selector, shared.id);
     expect(setWorkspace).toHaveBeenCalledWith(shared);
     expect(window.localStorage.getItem("lifemanager.selected-workspace-id")).toBe(shared.id);

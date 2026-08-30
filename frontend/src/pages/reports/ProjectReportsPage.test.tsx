@@ -52,8 +52,8 @@ describe("ProjectReportsPage", () => {
   it("renders backend Project summary and clearly Step-level analytics", async () => {
     mount();
     expect(await screen.findByText("3.25")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Cumplimiento de Pasos" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Detalle de Pasos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cumplimiento de Etapas" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Detalle de Etapas" })).toBeInTheDocument();
     for (const label of [
       "Total", "Activos", "Inactivos", "No iniciados", "En proceso", "Finalizados",
       "En plazo", "Atrasados", "Con adelanto", "A tiempo", "Con retraso",

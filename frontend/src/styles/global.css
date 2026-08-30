@@ -1931,8 +1931,16 @@ div.settings-toggles { border: 0; padding: 0; }
 .comparison-member { display: grid; gap: 0.45rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--color-border); }
 .calendar-activity { display: grid; gap: 0.15rem; width: 100%; padding: 0.5rem; border: 1px solid currentColor; border-left-width: 0.35rem; border-radius: 0.45rem; text-align: left; color: var(--color-text); background: var(--color-surface-muted); }
 .calendar-activity span, .calendar-activity small { font-size: 0.75rem; }
-.calendar-activity--tone-0 { border-left-color: #2563eb; } .calendar-activity--tone-1 { border-left-color: #7c3aed; } .calendar-activity--tone-2 { border-left-color: #0f766e; }
-.calendar-activity--tone-3 { border-left-color: #b45309; } .calendar-activity--tone-4 { border-left-color: #be123c; } .calendar-activity--tone-5 { border-left-color: #4d7c0f; }
+.calendar-activity--color-blue { border-left-color: #2563eb; } .calendar-activity--color-purple { border-left-color: #7c3aed; } .calendar-activity--color-teal { border-left-color: #0f766e; }
+.calendar-activity--color-orange { border-left-color: #b45309; } .calendar-activity--color-red { border-left-color: #be123c; } .calendar-activity--color-green { border-left-color: #4d7c0f; }
+.workspace-management__appearance { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.column-preferences { position: relative; justify-self: end; }
+.column-preferences summary { cursor: default; font-weight: 700; }
+.column-preferences fieldset { position: absolute; z-index: 5; right: 0; width: 13rem; padding: .75rem; display: grid; gap: .45rem; border: 1px solid var(--color-border); border-radius: .5rem; background: var(--color-surface); box-shadow: 0 .5rem 1.5rem rgb(23 33 30 / 15%); }
+.column-preferences fieldset > div { display: flex; gap: .45rem; align-items: center; }
+.planning-register[data-hidden-columns~="date"] .v2-task-row > :nth-child(1), .planning-register[data-hidden-columns~="task"] .v2-task-row > :nth-child(2) { display: none; }
+.planning-register[data-hidden-columns~="responsible"] .v2-task-row:not(.v2-task-row--personal) > :nth-child(3) { display: none; }
+.planning-register[data-hidden-columns~="state"] .v2-task-row:not(.v2-task-row--personal) > :nth-child(4), .planning-register[data-hidden-columns~="state"] .v2-task-row--personal > :nth-child(3) { display: none; }
 .calendar-detail { max-width: min(32rem, calc(100vw - 2rem)); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .calendar-detail > div { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .v2-activity-form, .v2-activity-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; align-items: end; }
