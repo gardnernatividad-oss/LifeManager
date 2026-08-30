@@ -16,7 +16,7 @@ vi.mock("../../hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1", 
 vi.mock("../../hooks/useWorkspaces", () => ({ useWorkspaces: () => ({ data: [{ id: "workspace-a", name: "Familia", kind: "SHARED", lifecycle: "ACTIVE" }] }) }));
 let item: ReturnType<typeof calendarItem>;
 function calendarItem() { const today = localCalendarDate(new Date(), "America/Lima"); return { activity_id: "activity-1", workspace: { id: "workspace-a", name: "Familia", kind: "SHARED" as const, color: "BLUE" as const, icon: "USERS" as const }, activity_name: "Reunión", category_name: "Familia", starts_at: localDateTimeToIso(`${today}T10:00`, "America/Lima"), ends_at: localDateTimeToIso(`${today}T11:00`, "America/Lima"), organizer: { user_id: "user-2", display_name: "Luis", email: "luis@test.local" }, participants: [{ user_id: "user-1", display_name: "Ana", email: "ana@test.local" }], status: "SCHEDULED" as const, temporal_state: "FUTURE" as const, lock_version: 1, can_edit: true, can_delete: true, can_leave_participation: true }; }
-function mount(mobile = false) { window.matchMedia = vi.fn().mockReturnValue({ matches: mobile, addEventListener: vi.fn(), removeEventListener: vi.fn() }); const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<MemoryRouter><QueryClientProvider client={client}><MyCalendarPage /></QueryClientProvider></MemoryRouter>); }
+function mount(mobile = false, entry = "/calendario") { window.matchMedia = vi.fn().mockReturnValue({ matches: mobile, addEventListener: vi.fn(), removeEventListener: vi.fn() }); const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<MemoryRouter initialEntries={[entry]}><QueryClientProvider client={client}><MyCalendarPage /></QueryClientProvider></MemoryRouter>); }
 
 describe("MyCalendarPage", () => {
   beforeEach(() => { vi.clearAllMocks(); item = calendarItem(); vi.mocked(calendarApi.getMyCalendar).mockResolvedValue({ items: [item] }); vi.mocked(activityApi.deleteV2Activity).mockResolvedValue(); vi.mocked(activityApi.leaveV2Activity).mockResolvedValue(item as never); });
@@ -34,6 +34,14 @@ describe("MyCalendarPage", () => {
   });
   it("defaults to mobile day and supports navigation/view controls", async () => {
     const user = userEvent.setup(); mount(true); expect(screen.getByRole("button", { name: "Día" })).toHaveAttribute("aria-pressed", "true"); await user.click(screen.getByRole("button", { name: "Periodo siguiente" })); await waitFor(() => expect(vi.mocked(calendarApi.getMyCalendar).mock.calls.length).toBeGreaterThanOrEqual(2)); await user.click(screen.getByRole("button", { name: "Semana" })); expect(screen.getByRole("button", { name: "Semana" })).toHaveAttribute("aria-pressed", "true");
+  });
+  it("consumes Home date and Activity navigation context", async () => {
+    const requestedDate = localCalendarDate(new Date(item.starts_at), "America/Lima");
+    mount(false, `/calendario?date=${requestedDate}&activity=activity-1`);
+    expect(screen.getByRole("button", { name: "Día" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Reunión");
+    const requestedRange = calendarRange(requestedDate, "DAY", "America/Lima");
+    expect(calendarApi.getMyCalendar).toHaveBeenCalledWith(requestedRange.from, requestedRange.to, "DETAIL", undefined);
   });
   it("renders loading, error retry and empty states safely", async () => {
     vi.mocked(calendarApi.getMyCalendar).mockRejectedValueOnce(new Error("private")); const user = userEvent.setup(); mount(); expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar"); vi.mocked(calendarApi.getMyCalendar).mockResolvedValueOnce({ items: [] }); await user.click(screen.getByRole("button", { name: "Reintentar" })); expect(await screen.findByText("No hay elementos en este periodo.")).toBeInTheDocument();

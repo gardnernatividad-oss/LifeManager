@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { queryKeys } from "../../api/queryKeys";
 import { deleteV2Activity, leaveV2Activity } from "../../api/v2ActivityApi";
 import { getMyCalendar } from "../../api/v2CalendarApi";
@@ -20,12 +20,16 @@ function UntimedGroup({ title, items, day }: { title: string; items: CalendarUnt
 
 export function MyCalendarPage() {
   const { user } = useAuth(); const workspaces = useWorkspaces(); const client = useQueryClient();
-  const [view, setView] = useState<CalendarView>(() => window.matchMedia("(max-width: 48rem)").matches ? "DAY" : "WEEK");
-  const [anchor, setAnchor] = useState(() => user ? localCalendarDate(new Date(), user.timezone) : "");
+  const [searchParams] = useSearchParams();
+  const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("date") ?? "") ? searchParams.get("date")! : null;
+  const requestedActivityId = searchParams.get("activity");
+  const [view, setView] = useState<CalendarView>(() => requestedDate || window.matchMedia("(max-width: 48rem)").matches ? "DAY" : "WEEK");
+  const [anchor, setAnchor] = useState(() => requestedDate ?? (user ? localCalendarDate(new Date(), user.timezone) : ""));
   const [workspaceId, setWorkspaceId] = useState(""); const [selected, setSelected] = useState<CalendarActivity | null>(null); const [feedback, setFeedback] = useState<string | null>(null);
   const range = useMemo(() => user && anchor ? calendarRange(anchor, view, user.timezone) : null, [anchor, user, view]);
   const projection = view === "MONTH" ? "MONTH" : "DETAIL";
   const calendar = useQuery({ queryKey: queryKeys.myCalendar(user?.id ?? "anonymous", range?.from ?? "", range?.to ?? "", projection, workspaceId || "ALL"), queryFn: () => getMyCalendar(range!.from, range!.to, projection, workspaceId || undefined), enabled: Boolean(user && range) });
+  useEffect(() => { if (requestedActivityId && calendar.data) setSelected(calendar.data.items.find((item) => item.activity_id === requestedActivityId) ?? null); }, [calendar.data, requestedActivityId]);
   const refresh = async (item: CalendarActivity) => Promise.all([client.invalidateQueries({ queryKey: queryKeys.myCalendarRoot(user!.id) }), client.invalidateQueries({ queryKey: queryKeys.v2ActivitiesRoot(item.workspace.id) })]);
   const mutation = useMutation({ mutationFn: (operation: () => Promise<unknown>) => operation(), onSuccess: async () => { const item = selected!; setSelected(null); setFeedback("Calendario actualizado."); await refresh(item); }, onError: async () => { const item = selected; setFeedback("No pudimos actualizar la Actividad."); if (item) await refresh(item); } });
   if (!user || !range) return <section><h1>Mi calendario</h1><p>Cargando calendario…</p></section>;

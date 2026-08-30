@@ -17,6 +17,9 @@ Stage 11.1 implementa Inicio como proyección global y accionable: cuatro counts
 de hoy, cinco próximas Actividades, elementos vencidos que requieren atención y
 un resumen de los siete días siguientes. La fecha autoritativa se deriva de la
 zona IANA del usuario y no existe selector general de Workspace en esta vista.
+Stage 11.2 cerró el gate integral de Inicio: navegación real hacia Calendario,
+aislamiento Workspace, ausencia de bypass para `GLOBAL_ADMIN`, semántica
+multi-day/timezone y agregaciones verificadas sobre PostgreSQL desechable.
 
 LifeManager V1.0.0 es la implementación publicada y la línea base técnica. El tag anotado `v1.0.0` resuelve al commit `fafa8844f83763c837aa423d0773cd6d5782752c`.
 

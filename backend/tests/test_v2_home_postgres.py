@@ -27,20 +27,39 @@ def test_home_aggregates_v2_domains_on_disposable_postgres(monkeypatch: pytest.M
         command.upgrade(alembic_config_for_test_database(target_url, backend_root=BACKEND_ROOT, explicit_test_intent=True), "head")
         engine = sa.create_engine(target_url)
         with Session(engine) as db:
-            user_id, workspace_id, category_id, master_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+            user_id, admin_id, workspace_id, category_id, master_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
             db.execute(sa.text("INSERT INTO users (id,email,hashed_password,first_name,last_name,account_status,email_verified_at) VALUES (:id,'home@test.local','hash','Home','User','ACTIVE',now())"), {"id": user_id})
+            db.execute(sa.text("INSERT INTO users (id,email,hashed_password,first_name,last_name,account_status,email_verified_at,global_role) VALUES (:id,'admin-home@test.local','hash','Admin','User','ACTIVE',now(),'GLOBAL_ADMIN')"), {"id": admin_id})
             db.execute(sa.text("INSERT INTO workspaces (id,name,kind,owner_user_id,lifecycle) VALUES (:id,'Personal','PERSONAL',:owner,'ACTIVE')"), {"id": workspace_id, "owner": user_id})
             db.execute(sa.text("INSERT INTO workspace_members (id,workspace_id,user_id,status) VALUES (:id,:workspace,:user,'ACTIVE')"), {"id": uuid.uuid4(), "workspace": workspace_id, "user": user_id})
             db.execute(sa.text("INSERT INTO categories (id,workspace_id,name,normalized_name) VALUES (:id,:workspace,'Casa','casa')"), {"id": category_id, "workspace": workspace_id})
             db.execute(sa.text("INSERT INTO master_tasks (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Comprar','comprar')"), {"id": master_id, "workspace": workspace_id, "category": category_id})
+            activity_master_id = uuid.uuid4()
+            db.execute(sa.text("INSERT INTO activity_masters (id,workspace_id,category_id,name,normalized_name) VALUES (:id,:workspace,:category,'Reunión','reunión')"), {"id": activity_master_id, "workspace": workspace_id, "category": category_id})
             db.execute(sa.text("INSERT INTO tasks (id,workspace_id,master_task_id,responsible_user_id,planned_date,created_by_user_id) VALUES (:id,:workspace,:master,:user,:planned,:user)"), {"id": uuid.uuid4(), "workspace": workspace_id, "master": master_id, "user": user_id, "planned": date(2026, 8, 30)})
             db.execute(sa.text("INSERT INTO pending_items (id,workspace_id,category_id,responsible_user_id,name,planned_date,progress,created_by_user_id) VALUES (:id,:workspace,:category,:user,'Pago',:planned,20,:user)"), {"id": uuid.uuid4(), "workspace": workspace_id, "category": category_id, "user": user_id, "planned": date(2026, 8, 29)})
             project_id = uuid.uuid4()
             db.execute(sa.text("INSERT INTO projects (id,workspace_id,category_id,leader_user_id,name,created_by_user_id) VALUES (:id,:workspace,:category,:user,'Mudanza',:user)"), {"id": project_id, "workspace": workspace_id, "category": category_id, "user": user_id})
             db.execute(sa.text("INSERT INTO project_stages (id,workspace_id,project_id,responsible_user_id,name,position,weight,planned_date,progress) VALUES (:id,:workspace,:project,:user,'Empacar',1,100,:planned,50)"), {"id": uuid.uuid4(), "workspace": workspace_id, "project": project_id, "user": user_id, "planned": date(2026, 8, 31)})
+            multi_day_id, future_id = uuid.uuid4(), uuid.uuid4()
+            db.execute(sa.text("INSERT INTO activities (id,workspace_id,organizer_user_id,activity_master_id,title,starts_at,ends_at) VALUES (:id,:workspace,:user,:master,:title,:starts,:ends)"), [
+                {"id": multi_day_id, "workspace": workspace_id, "user": user_id, "master": activity_master_id, "title": "Reunión extensa", "starts": datetime(2026, 8, 30, 4, 30, tzinfo=timezone.utc), "ends": datetime(2026, 9, 1, 6, tzinfo=timezone.utc)},
+                {"id": future_id, "workspace": workspace_id, "user": user_id, "master": activity_master_id, "title": "Reunión futura", "starts": datetime(2026, 8, 31, 20, tzinfo=timezone.utc), "ends": datetime(2026, 8, 31, 21, tzinfo=timezone.utc)},
+            ])
+            db.execute(sa.text("INSERT INTO activity_participants (id,activity_id,workspace_id,user_id) VALUES (:id,:activity,:workspace,:user)"), [
+                {"id": uuid.uuid4(), "activity": multi_day_id, "workspace": workspace_id, "user": user_id},
+                {"id": uuid.uuid4(), "activity": future_id, "workspace": workspace_id, "user": user_id},
+            ])
             db.commit()
             result = get_home_summary(db, user_id=user_id, timezone_name="America/Lima", now=datetime(2026, 8, 30, 17, tzinfo=timezone.utc))
-            assert result.today == (1, 0, 0, 0)
+            assert result.today == (1, 0, 0, 1)
             assert [(item.type, item.name) for item in result.attention] == [("PENDING_ITEM", "Pago")]
             assert result.upcoming_days[0][0:4] == (date(2026, 8, 31), 0, 0, 1)
+            assert result.upcoming_days[0][4] == 2
+            assert result.upcoming_days[1][4] == 1
+            assert [item.activity.id for item in result.upcoming_activities] == [future_id]
+            admin_result = get_home_summary(db, user_id=admin_id, timezone_name="America/Lima", now=datetime(2026, 8, 30, 17, tzinfo=timezone.utc))
+            assert admin_result.today == (0, 0, 0, 0)
+            assert admin_result.upcoming_activities == [] and admin_result.attention == []
+            assert all(day[1:] == (0, 0, 0, 0) for day in admin_result.upcoming_days)
         engine.dispose()
