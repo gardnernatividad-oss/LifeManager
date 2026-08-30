@@ -150,6 +150,7 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
             "/api/v2/review/tasks",
             "/api/v2/review/pending-items",
             "/api/v2/review/project-stages",
+            "/api/v2/home",
             "/api/v2/workspaces/{workspace_id}/calendar-comparison",
             "/api/v2/workspaces/{workspace_id}/calendar-comparison/multi",
             "/api/v2/workspaces/{workspace_id}/calendar-visibility",

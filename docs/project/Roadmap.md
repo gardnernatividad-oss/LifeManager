@@ -81,7 +81,7 @@ El roadmap conservará exactamente estas columnas:
 | 10. Revisión | 10.1 | Motor global y reglas de selección de Tareas, Pendientes y Etapas para Revisión | Completado |
 | 10. Revisión | 10.2 | Revisión por bloques plegables, guardado independiente y correcciones de Tareas/Pendientes/Etapas | Completado |
 | 10. Revisión | 10.3 | UX mobile-first, autorización, atomicidad por bloque, PostgreSQL y gate de Revisión | Completado |
-| 11. Inicio | 11.1 | Inicio global: resumen inmediato de Hoy, accesos a Tareas/Pendientes/Etapas/Actividades y atención diaria | Pendiente |
+| 11. Inicio | 11.1 | Inicio global: resumen inmediato de Hoy, accesos a Tareas/Pendientes/Etapas/Actividades y atención diaria | Completado |
 | 11. Inicio | 11.2 | Próximas Actividades/días, navegación, responsive, consultas eficientes y gate de Inicio | Pendiente |
 | 12. Notificaciones y recordatorios | 12.1 | Infraestructura de eventos, centro de notificaciones, push, scheduler y preferencias técnicas | Pendiente |
 | 12. Notificaciones y recordatorios | 12.2 | Recordatorio diario, Revisión diaria y seguimientos configurables de Pendientes/Proyectos | Pendiente |

@@ -20,6 +20,9 @@ El runtime V1 deriva un único Personal Workspace cuya membresía es `OWNER`. Lo
 - La interfaz usa Propietario y Miembro; no expone enums internos.
 - Los recursos se aíslan por Workspace y la autorización se aplica en servidor.
 - Inicio, Revisión y Mi calendario agregan únicamente datos que el usuario puede consultar.
+- Inicio exige Workspace y membership ACTIVE para todas sus proyecciones. Solo
+  incluye recursos asignados al usuario y Actividades donde conserva
+  participación visible; `GLOBAL_ADMIN` sin membership no obtiene acceso.
 - Los Responsables, Líderes, Organizadores y Participantes no deben convertirse implícitamente en roles globales.
 - Solo el Organizador modifica o cancela una Actividad compartida para todos.
 - La privacidad de Calendario limita la información visible durante comparación.

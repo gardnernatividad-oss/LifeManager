@@ -13,6 +13,11 @@ está en `docs/security/V2-Workspace-Gate.md`.
 
 ## Estado del producto
 
+Stage 11.1 implementa Inicio como proyección global y accionable: cuatro counts
+de hoy, cinco próximas Actividades, elementos vencidos que requieren atención y
+un resumen de los siete días siguientes. La fecha autoritativa se deriva de la
+zona IANA del usuario y no existe selector general de Workspace en esta vista.
+
 LifeManager V1.0.0 es la implementación publicada y la línea base técnica. El tag anotado `v1.0.0` resuelve al commit `fafa8844f83763c837aa423d0773cd6d5782752c`.
 
 LifeManager V2.0.0 está en preparación. Su comportamiento aprobado está documentado en `docs/requirements/Functional-V2.md` y ADR-007. La base física, recurrencia, fixtures y gate técnico de Phase 1 están implementados; las APIs y pantallas funcionales V2 todavía no lo están.

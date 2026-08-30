@@ -47,10 +47,23 @@ class CalendarDayCountProjection:
 
 def list_my_calendar(
     db: Session, *, user_id: uuid.UUID, range_start: datetime, range_end: datetime, now: datetime,
-    workspace_id: uuid.UUID | None = None,
+    workspace_id: uuid.UUID | None = None, require_active_access: bool = False,
+    future_only: bool = False, limit: int | None = None,
 ) -> list[CalendarActivityProjection]:
     own_participation = aliased(ActivityParticipant)
     current_membership = aliased(WorkspaceMember)
+    visibility = (
+        and_(
+            own_participation.calendar_status == ParticipantCalendarStatus.VISIBLE,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+            current_membership.status == MembershipStatus.ACTIVE,
+        )
+        if require_active_access
+        else or_(
+            and_(Activity.starts_at > now, own_participation.calendar_status == ParticipantCalendarStatus.VISIBLE, Workspace.lifecycle == WorkspaceLifecycle.ACTIVE, current_membership.status == MembershipStatus.ACTIVE),
+            and_(Activity.starts_at <= now, or_(own_participation.calendar_status == ParticipantCalendarStatus.VISIBLE, own_participation.removed_at >= Activity.starts_at)),
+        )
+    )
     statement = (
         select(Activity, Workspace, ActivityMaster, Category, User, current_membership)
         .join(own_participation, and_(own_participation.activity_id == Activity.id, own_participation.workspace_id == Activity.workspace_id))
@@ -67,26 +80,16 @@ def list_my_calendar(
             Activity.status == ActivityStatus.SCHEDULED,
             Activity.starts_at < range_end,
             Activity.ends_at > range_start,
-            or_(
-                and_(
-                    Activity.starts_at > now,
-                    own_participation.calendar_status == ParticipantCalendarStatus.VISIBLE,
-                    Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
-                    current_membership.status == MembershipStatus.ACTIVE,
-                ),
-                and_(
-                    Activity.starts_at <= now,
-                    or_(
-                        own_participation.calendar_status == ParticipantCalendarStatus.VISIBLE,
-                        own_participation.removed_at >= Activity.starts_at,
-                    ),
-                ),
-            ),
+            visibility,
         )
         .order_by(Activity.starts_at, Activity.ends_at, Activity.id)
     )
     if workspace_id is not None:
         statement = statement.where(Activity.workspace_id == workspace_id)
+    if future_only:
+        statement = statement.where(Activity.starts_at > now)
+    if limit is not None:
+        statement = statement.limit(limit)
     rows = db.execute(statement).all()
     if not rows:
         return []

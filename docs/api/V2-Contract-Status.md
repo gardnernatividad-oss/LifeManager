@@ -571,7 +571,16 @@ mismos `GenerationBatch` y scopes que la recurrencia de catálogo. Tareas añade
 
 Paths, enums y modelos usan identificadores técnicos (`ProjectStage`, `MasterTask`, `ActivityMaster`, `WorkspaceMember`). Mensajes/labels visibles usan Etapa, Tarea, Actividad, Propietario y Miembro. Roles V1 `ADMIN`/`VIEWER` no forman parte del contrato Workspace V2; `GLOBAL_ADMIN` es rol separado de plataforma.
 
-## 17. Decisiones aún operativas
+## 17. Inicio global
+
+`GET /api/v2/home` devuelve una proyección autenticada y global con `today`,
+`upcoming_activities`, `attention` y `upcoming_days`. Consolida exclusivamente
+Workspaces y memberships ACTIVE del usuario, sin parámetro ni bypass de
+Workspace. Usa la zona IANA de la cuenta, limita próximas Actividades a 5 y
+resume los 7 días posteriores a hoy. El contrato omite participantes, locks y
+otros datos internos; solo conserva identificadores necesarios para navegar.
+
+## 18. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
