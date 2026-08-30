@@ -515,3 +515,17 @@ ADRs vinculadas:
 - ADR-012: Notification, cron, reminders, push y email boundaries.
 
 No decidido por esta arquitectura porque no afecta el inicio de implementación: proveedor concreto de email, librería Web Push, valores de expiración/retención, dominio productivo final y plataforma CI concreta. Se resuelven mediante configuración o stages operativos, sin pedir decisiones de producto salvo impacto visible/costo.
+
+## 33. Base de notificaciones implementada — Stage 12.1
+
+Las preferencias se persisten por usuario y tipo con control optimista. El
+scheduler es un servicio invocable, no un daemon ni parte del ciclo request, y
+genera `NotificationJob` idempotentes mediante una clave lógica única. La
+preferencia, el job y la futura entrega son responsabilidades separadas. Cada
+entrega deberá revalidar elegibilidad inmediatamente antes de enviarse.
+
+Las suscripciones Web Push admiten varios dispositivos por usuario. Endpoint y
+claves se cifran en reposo, la identidad del endpoint se compara mediante un
+digest y ningún secreto Push se serializa. El service worker solo admite texto
+seguro y navegación interna. Stage 12.1 no configura VAPID, proveedor, worker
+externo ni envío real; esas decisiones permanecen en 12.2–12.4.

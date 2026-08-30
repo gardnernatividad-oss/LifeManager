@@ -266,3 +266,11 @@ transversal conserva Review 10.1 y Stage 10.2 completa el guardado por bloques.
 Stage 10.3 cierra el módulo Revisión con regresión V2, autorización/IDOR,
 atomicidad PostgreSQL por bloque, concurrencia optimista y UX responsive. La
 selección incluye correctamente Tareas custom mediante su nombre histórico real.
+
+Stage 12.1 establece la base técnica de notificaciones sin ejecutar entregas
+externas. Las preferencias pertenecen al usuario y conservan su intención en su
+zona IANA; los jobs lógicos son idempotentes y están separados de sus futuras
+entregas. Las suscripciones Push pertenecen al usuario autenticado, admiten
+múltiples dispositivos y almacenan cifrados los datos sensibles. El navegador
+solo solicita permiso mediante una acción explícita. La generación efectiva de
+recordatorios, proveedores y entrega Push quedan en 12.2–12.4.

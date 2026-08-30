@@ -200,3 +200,10 @@ La apariencia persistida del Workspace (color e icono) puede actualizarla un
 miembro ACTIVE del Workspace ACTIVE mediante contrato estricto y
 `lock_version`; no concede autoridad adicional ni permite bypass a
 `GLOBAL_ADMIN` sin membership.
+
+Stage 12.1 mantiene preferencias y suscripciones Push en scope exclusivo del
+usuario autenticado. No acepta `user_id` del cliente ni concede acceso por
+membership, ownership o `GLOBAL_ADMIN`. Antes de una futura entrega, el servicio
+revalida cuenta y preferencia; para recordatorios de Actividades también exige
+participación visible, Activity futura/programada y Workspace/membership
+`ACTIVE`. Una suscripción solo puede invalidarla su propio usuario.

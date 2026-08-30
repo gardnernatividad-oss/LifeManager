@@ -580,7 +580,27 @@ Workspace. Usa la zona IANA de la cuenta, limita próximas Actividades a 5 y
 resume los 7 días posteriores a hoy. El contrato omite participantes, locks y
 otros datos internos; solo conserva identificadores necesarios para navegar.
 
-## 18. Decisiones aún operativas
+## 18. Preferencias y suscripciones de notificaciones — Stage 12.1
+
+`GET/PUT /api/v2/notification-preferences` consulta o reemplaza el conjunto
+completo de preferencias del usuario autenticado. La escritura exige
+`lock_version` por preferencia y no acepta `user_id`. Los horarios representan
+hora local en la zona IANA de la cuenta; los defaults son Resumen diario 07:00,
+Revisión diaria 21:00, Pendientes semanal domingo 22:00, Proyectos semanal
+domingo 22:30 y recordatorios de Actividades habilitados globalmente.
+
+`POST /api/v2/push-subscriptions` registra o reactiva un dispositivo propio y
+`DELETE /api/v2/push-subscriptions/{subscription_id}` lo invalida. El contrato
+de lectura nunca expone endpoint ni claves Push. No existe endpoint público de
+scheduler o envío: Stage 12.1 solo ofrece el servicio interno idempotente y la
+persistencia de jobs lógicos; la entrega queda diferida.
+
+La ventana del scheduler es semiabierta `[start,end)`. Los horarios locales
+inexistentes por DST avanzan al primer instante válido y los ambiguos producen
+una sola ejecución. La deduplicación determinista y una restricción única en
+PostgreSQL impiden duplicados entre ejecuciones concurrentes.
+
+## 19. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

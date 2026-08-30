@@ -16,7 +16,7 @@ EXPECTED_TABLES = {
     "pending_item_history", "projects", "project_leader_history", "project_stages",
     "project_stage_history", "activities", "activity_participants",
     "activity_reminders", "user_review_metadata", "reminder_preferences",
-    "notifications", "push_subscriptions", "notification_deliveries",
+    "notifications", "notification_jobs", "push_subscriptions", "notification_deliveries",
     "rate_limit_buckets",
 }
 
@@ -81,7 +81,7 @@ def test_catalog_and_generation_shapes_are_constrained() -> None:
     assert "weekdays IS NOT NULL" in str(generation_shape.sqltext)
     assert "month_days IS NOT NULL" in str(generation_shape.sqltext)
     assert "weekdays IS NOT NULL" in str(reminder_shape.sqltext)
-    assert "month_days IS NOT NULL" in str(reminder_shape.sqltext)
+    assert "ACTIVITY_REMINDERS" in str(reminder_shape.sqltext)
 
 
 def test_progress_weight_participant_and_reminder_constraints_exist() -> None:

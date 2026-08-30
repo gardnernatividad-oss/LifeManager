@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "../../api/authApi";
 import * as workspaceApi from "../../api/workspaceApi";
+import * as notificationApi from "../../api/v2NotificationApi";
 import { queryKeys } from "../../api/queryKeys";
 import { useAuth } from "../../hooks/useAuth";
 import type { AuthState } from "../../store/auth-context";
@@ -20,6 +21,9 @@ vi.mock("../../api/workspaceApi", () => ({
   removeWorkspaceMember: vi.fn(), transferWorkspaceOwnership: vi.fn(),
 }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
+vi.mock("../../api/v2NotificationApi", () => ({ getNotificationPreferences: vi.fn(), updateNotificationPreferences: vi.fn() }));
+
+const notificationPreferences = { daily_summary: { enabled: true, local_time: "07:00:00", weekday: null, lock_version: 1 }, daily_review: { enabled: true, local_time: "21:00:00", weekday: null, lock_version: 1 }, pending_weekly: { enabled: true, local_time: "22:00:00", weekday: 6, lock_version: 1 }, project_weekly: { enabled: true, local_time: "22:30:00", weekday: 6, lock_version: 1 }, activity_reminders: { enabled: true, lock_version: 1 } };
 
 const setAuthenticatedUser = vi.fn();
 function auth(): AuthState {
@@ -39,6 +43,8 @@ describe("ConfigurationPage", () => {
     vi.mocked(authApi.listTimezones).mockResolvedValue(["America/Lima", "Europe/London"]);
     vi.mocked(workspaceApi.listManagedWorkspaces).mockResolvedValue([]);
     vi.mocked(workspaceApi.listMyWorkspaceInvitations).mockResolvedValue([]);
+    vi.mocked(notificationApi.getNotificationPreferences).mockResolvedValue(notificationPreferences);
+    vi.mocked(notificationApi.updateNotificationPreferences).mockResolvedValue(notificationPreferences);
   });
 
   it("shows only editable names/timezone and read-only email", async () => {
@@ -48,7 +54,6 @@ describe("ConfigurationPage", () => {
     expect(screen.getByLabelText("Apellido")).toHaveValue(testUser.last_name);
     expect(await screen.findByLabelText("Zona horaria")).toHaveValue(testUser.timezone);
     expect(screen.getAllByRole("button", { name: "Guardar" })).toHaveLength(1);
-    expect(screen.queryByLabelText(/semana|contraseña|idioma|recordatorio|notificación/i)).not.toBeInTheDocument();
   });
 
   it("loads timezone options and retries safely", async () => {

@@ -143,6 +143,9 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
     document = app.openapi()
     v2_paths = {path for path in document["paths"] if path.startswith("/api/v2")}
     assert v2_paths == {
+        "/api/v2/notification-preferences",
+        "/api/v2/push-subscriptions",
+        "/api/v2/push-subscriptions/{subscription_id}",
         "/api/v2/auth/login",
             "/api/v2/me",
                 "/api/v2/calendar/me",

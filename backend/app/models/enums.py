@@ -106,6 +106,7 @@ class ReminderType(StringEnum):
     DAILY_REVIEW = "DAILY_REVIEW"
     PENDING_FOLLOW_UP = "PENDING_FOLLOW_UP"
     PROJECT_FOLLOW_UP = "PROJECT_FOLLOW_UP"
+    ACTIVITY_REMINDERS = "ACTIVITY_REMINDERS"
 
 
 class ScheduleKind(StringEnum):
@@ -142,5 +143,12 @@ class NotificationType(StringEnum):
 class DeliveryStatus(StringEnum):
     PENDING = "PENDING"
     DELIVERED = "DELIVERED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class NotificationJobStatus(StringEnum):
+    PENDING = "PENDING"
+    SENT = "SENT"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"

@@ -18,7 +18,7 @@ from app.models.base import Base, BaseEntity
 from app.models.enums import (
     AccountActionTokenType, AccountStatus, ActivityStatus, CalendarVisibility,
     DeliveryStatus, GenerationEntityType, GenerationPattern, GlobalRole,
-    HistoryEventType, InvitationStatus, MembershipStatus, NotificationType,
+    HistoryEventType, InvitationStatus, MembershipStatus, NotificationJobStatus, NotificationType,
     ParticipantCalendarStatus, ReminderType, ScheduleKind, TaskResult,
     WorkspaceColor, WorkspaceIcon, WorkspaceKind, WorkspaceLifecycle,
 )
@@ -535,16 +535,16 @@ class ReminderPreference(BaseEntity):
         UniqueConstraint("user_id", "reminder_type", name="uq_reminder_preferences_user_type"),
         _enum_check("reminder_type", ReminderType, "ck_reminder_preferences_type_valid"),
         _enum_check("schedule_kind", ScheduleKind, "ck_reminder_preferences_schedule_valid"),
-        CheckConstraint("((reminder_type IN ('DAILY_SUMMARY','DAILY_REVIEW') AND schedule_kind = 'DAILY') OR reminder_type IN ('PENDING_FOLLOW_UP','PROJECT_FOLLOW_UP'))", name="ck_reminder_preferences_type_schedule"),
-        CheckConstraint("(schedule_kind = 'DAILY' AND weekdays IS NULL AND month_days IS NULL) OR (schedule_kind = 'WEEKLY' AND weekdays IS NOT NULL AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (schedule_kind = 'MONTHLY' AND month_days IS NOT NULL AND lifemanager_smallint_array_unique_in_range(month_days, 1, 31) AND weekdays IS NULL)", name="ck_reminder_preferences_recurrence_shape"),
+        CheckConstraint("(reminder_type IN ('DAILY_SUMMARY','DAILY_REVIEW') AND schedule_kind = 'DAILY') OR (reminder_type IN ('PENDING_FOLLOW_UP','PROJECT_FOLLOW_UP') AND schedule_kind = 'WEEKLY') OR (reminder_type = 'ACTIVITY_REMINDERS' AND schedule_kind IS NULL)", name="ck_reminder_preferences_type_schedule"),
+        CheckConstraint("(schedule_kind = 'DAILY' AND local_time IS NOT NULL AND weekdays IS NULL AND month_days IS NULL) OR (schedule_kind = 'WEEKLY' AND local_time IS NOT NULL AND weekdays IS NOT NULL AND lifemanager_smallint_array_unique_in_range(weekdays, 0, 6) AND month_days IS NULL) OR (reminder_type = 'ACTIVITY_REMINDERS' AND local_time IS NULL AND weekdays IS NULL AND month_days IS NULL)", name="ck_reminder_preferences_recurrence_shape"),
         CheckConstraint("lock_version > 0", name="ck_reminder_preferences_lock_version_positive"),
         Index("ix_reminder_preferences_enabled_type_time", "is_enabled", "reminder_type", "local_time"),
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     reminder_type: Mapped[ReminderType] = mapped_column(String(32), nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), nullable=False)
-    schedule_kind: Mapped[ScheduleKind] = mapped_column(String(16), nullable=False)
-    local_time: Mapped[time] = mapped_column(Time, nullable=False)
+    schedule_kind: Mapped[ScheduleKind | None] = mapped_column(String(16), nullable=True)
+    local_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     weekdays: Mapped[list[int] | None] = mapped_column(ARRAY(SmallInteger), nullable=True)
     month_days: Mapped[list[int] | None] = mapped_column(ARRAY(SmallInteger), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"), nullable=False)
@@ -575,6 +575,28 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deliveries: Mapped[list[NotificationDelivery]] = relationship(back_populates="notification", passive_deletes=True)
+
+
+class NotificationJob(BaseEntity):
+    __tablename__ = "notification_jobs"
+    __table_args__ = (
+        UniqueConstraint("dedup_key", name="uq_notification_jobs_dedup_key"),
+        _enum_check("notification_type", NotificationType, "ck_notification_jobs_type_valid"),
+        _enum_check("status", NotificationJobStatus, "ck_notification_jobs_status_valid"),
+        CheckConstraint("length(btrim(dedup_key)) > 0", name="ck_notification_jobs_dedup_not_blank"),
+        CheckConstraint("(status = 'SENT' AND sent_at IS NOT NULL) OR (status <> 'SENT' AND sent_at IS NULL)", name="ck_notification_jobs_sent_consistent"),
+        Index("ix_notification_jobs_pending_schedule", "status", "scheduled_for", "id"),
+        Index("ix_notification_jobs_user_schedule", "user_id", "scheduled_for", "id"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    notification_type: Mapped[NotificationType] = mapped_column(String(48), nullable=False)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[NotificationJobStatus] = mapped_column(String(16), default=NotificationJobStatus.PENDING, server_default=text("'PENDING'"), nullable=False)
+    dedup_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class PushSubscription(BaseEntity):

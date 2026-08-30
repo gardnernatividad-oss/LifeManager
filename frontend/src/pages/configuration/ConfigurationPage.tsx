@@ -6,6 +6,7 @@ import { queryKeys } from "../../api/queryKeys";
 import { useAuth } from "../../hooks/useAuth";
 import type { ProfileUpdatePayload } from "../../types/auth";
 import { WorkspaceManagement } from "./WorkspaceManagement";
+import { NotificationSettings } from "./NotificationSettings";
 
 export function ConfigurationPage() {
   const { user, setAuthenticatedUser } = useAuth();
@@ -71,6 +72,7 @@ export function ConfigurationPage() {
         <button className="primary-button" type="submit" disabled={save.isPending || !timezones.isSuccess}>{save.isPending ? "Guardando…" : "Guardar"}</button>
       </form>
     </section>
+    <NotificationSettings />
     <WorkspaceManagement />
   </section>;
 }
