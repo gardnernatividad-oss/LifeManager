@@ -76,4 +76,23 @@ describe("useWorkspaces isolation", () => {
     expect(client.getQueryData(["home"])).toEqual({ global: true });
     expect(client.getQueryData(["review"])).toEqual({ global: true });
   });
+
+  it("restores an accessible Shared Workspace selection after reload", async () => {
+    const shared = { ...personal, id: "22222222-2222-4222-8222-222222222222", name: "Familia", kind: "SHARED" as const };
+    window.localStorage.setItem("lifemanager.selected-workspace-id", shared.id);
+    vi.mocked(workspaceApi.listWorkspaces).mockResolvedValue([personal, shared]);
+    const { setWorkspace } = mount(null);
+
+    await waitFor(() => expect(setWorkspace).toHaveBeenCalledWith(shared));
+    expect(window.localStorage.getItem("lifemanager.selected-workspace-id")).toBe(shared.id);
+  });
+
+  it("keeps the Workspace empty when the membership-scoped endpoint returns none", async () => {
+    vi.mocked(workspaceApi.listWorkspaces).mockResolvedValue([]);
+    const { setWorkspace } = mount(null);
+
+    await waitFor(() => expect(workspaceApi.listWorkspaces).toHaveBeenCalledOnce());
+    expect(setWorkspace).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem("lifemanager.selected-workspace-id")).toBeNull();
+  });
 });

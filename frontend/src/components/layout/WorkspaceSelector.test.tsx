@@ -45,4 +45,17 @@ describe("WorkspaceSelector", () => {
     expect(client.getQueryData(["home"])).toEqual({ global: true });
     expect(client.getQueryData(["review"])).toEqual({ global: true });
   });
+
+  it("shows retry only for a real listing failure and refetches", async () => {
+    vi.mocked(workspaceApi.listWorkspaces)
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce([personal]);
+    const user = userEvent.setup();
+    mount();
+
+    const retry = await screen.findByRole("button", { name: "Reintentar espacios" });
+    await user.click(retry);
+    expect(await screen.findByRole("combobox", { name: "Espacio de trabajo activo" })).toBeInTheDocument();
+    expect(workspaceApi.listWorkspaces).toHaveBeenCalledTimes(2);
+  });
 });

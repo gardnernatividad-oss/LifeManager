@@ -296,3 +296,10 @@ participantes visibles requieren cuenta, Workspace y membership `ACTIVE`. La
 entrega revalida reminder, participación, lifecycle, hora de inicio y
 preferencia global; ediciones, cancelaciones, THIS, THIS_AND_FUTURE y retiros se
 reflejan mediante las filas canónicas del dominio sin motor recurrente paralelo.
+
+Stage 12.5 reconcilia el runtime frontend con los contratos V2. El shell
+autenticado inicia el listado membership-scoped de Workspaces al entrar, restaura
+solo una selección accesible y usa el proxy local `/api/v2`. Las entradas activas
+de Seguimiento y Reportes V1 se retiraron del router y navegación sin eliminar
+sus módulos históricos; Revisión concentra el seguimiento V2 y Reportes queda
+pendiente de Fase 13. La reorganización visual definitiva permanece en Fase 16.

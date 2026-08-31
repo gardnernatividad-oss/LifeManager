@@ -634,6 +634,11 @@ futura, organizer o participación visible, Workspace/membership/cuenta activos,
 preferencia global y coincidencia exacta del instante. Un cambio vuelve obsoleto
 el job anterior; nunca se envía retroactivamente.
 
+Stage 12.5 confirma `GET /api/v2/workspaces` como único contrato del selector
+operativo. Devuelve exclusivamente Workspaces `ACTIVE` con membership `ACTIVE`;
+el frontend lo carga desde el shell autenticado, conserva una selección válida
+y muestra retry solo ante un fallo real. No existe fallback V1 para esta carga.
+
 La ventana del scheduler es semiabierta `[start,end)`. Los horarios locales
 inexistentes por DST avanzan al primer instante válido y los ambiguos producen
 una sola ejecución. La deduplicación determinista y una restricción única en

@@ -8,7 +8,7 @@ import { activityLocalDate } from "../../utils/calendarRange";
 import { formatCalendarDate, formatLocalTimestamp, formatShortCalendarDate } from "../../utils/localizedDate";
 
 function WorkspaceMark({ workspace }: { workspace: HomeWorkspace }) { return <span className={`home-workspace home-workspace--${workspace.color.toLowerCase()}`}><span aria-hidden="true">{workspace.icon}</span>{workspace.name}</span>; }
-function attentionPath(item: HomeAttentionItem) { if (item.type === "PENDING_ITEM") return `/planificacion/pendientes/${item.id}`; if (item.type === "PROJECT_STAGE" && item.project_id) return `/seguimiento/proyectos/${item.project_id}/etapas/${item.id}`; return "/seguimiento/tareas"; }
+function attentionPath(item: HomeAttentionItem) { return item.type === "PENDING_ITEM" ? `/planificacion/pendientes/${item.id}` : "/revision"; }
 
 export function HomePage() {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ export function HomePage() {
   if (query.isPending) return <section className="home-page" aria-label="Inicio"><p role="status">Cargando Inicio…</p></section>;
   if (query.isError) return <section className="home-page"><h1>Inicio</h1><div className="home-error" role="alert"><p>No pudimos cargar Inicio.</p><button type="button" onClick={() => void query.refetch()}>Reintentar</button></div></section>;
   const { data } = query;
-  const cards = [["Tareas", data.today.tasks, "/seguimiento/tareas"], ["Pendientes", data.today.pending_items, "/seguimiento/pendientes"], ["Etapas", data.today.project_stages, "/seguimiento/proyectos"], ["Actividades", data.today.activities, `/calendario?date=${data.local_date}`]] as const;
+  const cards = [["Tareas", data.today.tasks, "/revision"], ["Pendientes", data.today.pending_items, "/revision"], ["Etapas", data.today.project_stages, "/revision"], ["Actividades", data.today.activities, `/calendario?date=${data.local_date}`]] as const;
   const timeZone = user?.timezone ?? "UTC";
   return <section className="home-page">
     <header className="home-header"><div><p className="eyebrow">Resumen global</p><h1>Inicio</h1><p>{formatCalendarDate(data.local_date, "Hoy")}</p></div></header>

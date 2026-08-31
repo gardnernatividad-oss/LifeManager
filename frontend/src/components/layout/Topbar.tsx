@@ -16,9 +16,7 @@ export function Topbar({ isMenuOpen, menuButtonRef, onMenuToggle }: TopbarProps)
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ");
   const workspaceScoped = [
     "/planificacion/",
-    "/seguimiento/",
     "/tablas/",
-    "/reportes/",
     "/configuracion",
   ].some((prefix) => location.pathname.startsWith(prefix));
 

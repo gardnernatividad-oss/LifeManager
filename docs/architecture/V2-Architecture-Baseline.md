@@ -551,3 +551,9 @@ del reminder, permitiendo que una reprogramación válida cree una identidad nue
 sin revivir la anterior. Los entry points internos finales son
 `generate_scheduled_jobs(window_start, window_end)`, `claim_due_job_ids(now)` y
 `deliver_job(job_id, now, transport)`. No existe endpoint público de worker.
+
+Stage 12.5 establece el bootstrap frontend de Workspace en el shell autenticado:
+`GET /api/v2/workspaces` se ejecuta tras login/restauración, selecciona Personal
+por defecto o una preferencia todavía accesible y purga caché workspace-scoped
+al cambiar. El servidor sigue siendo autoridad sobre membership y lifecycle;
+no existe fallback a `/api/v1/workspaces` ni bypass por `GLOBAL_ADMIN`.

@@ -3,8 +3,10 @@ import { Outlet } from "react-router-dom";
 
 import { Sidebar } from "../components/layout/Sidebar";
 import { Topbar } from "../components/layout/Topbar";
+import { useWorkspaces } from "../hooks/useWorkspaces";
 
 export function AuthenticatedLayout() {
+  useWorkspaces();
   const [isMobile, setIsMobile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);

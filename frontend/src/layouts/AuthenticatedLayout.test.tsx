@@ -5,11 +5,13 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuth } from "../hooks/useAuth";
+import { useWorkspaces } from "../hooks/useWorkspaces";
 import type { AuthState } from "../store/auth-context";
 import { testUser } from "../test/testUser";
 import { AuthenticatedLayout } from "./AuthenticatedLayout";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
+vi.mock("../hooks/useWorkspaces", () => ({ useWorkspaces: vi.fn(() => ({ data: [] })) }));
 
 function setMobileViewport(matches: boolean) {
   window.matchMedia = vi.fn().mockImplementation(() => ({
@@ -63,6 +65,7 @@ describe("AuthenticatedLayout V1", () => {
 
   it("renders the target shell without Workspace selection", () => {
     renderLayout();
+    expect(useWorkspaces).toHaveBeenCalled();
     expect(screen.getByRole("navigation", { name: "Secciones de LifeManager" })).toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Contenido de Inicio" })).toBeInTheDocument();
@@ -81,17 +84,15 @@ describe("AuthenticatedLayout V1", () => {
     expect(within(navigation).getByRole("link", { name: "Inicio" })).toBeInTheDocument();
     expect(within(navigation).getByRole("link", { name: "Revisión" })).toBeInTheDocument();
     expect(within(navigation).getByText("Planificación")).toBeInTheDocument();
-    expect(within(navigation).getByText("Seguimiento")).toBeInTheDocument();
-    expect(within(navigation).getByText("Reportes")).toBeInTheDocument();
+    expect(within(navigation).queryByText("Seguimiento")).not.toBeInTheDocument();
+    expect(within(navigation).queryByText("Reportes")).not.toBeInTheDocument();
     expect(within(navigation).getByText("Tablas")).toBeInTheDocument();
     expect(within(navigation).getByRole("link", { name: "Configuración" })).toBeInTheDocument();
 
     const groups = navigation.querySelectorAll("details");
-    expect(groups).toHaveLength(4);
+    expect(groups).toHaveLength(2);
     expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos", "Actividades"]);
-    expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
-    expect(within(groups[2]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos"]);
-    expect(within(groups[3]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Actividades", "Categorías"]);
+    expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Actividades", "Categorías"]);
   });
 
   it("highlights the active nested navigation item and excludes legacy labels", () => {

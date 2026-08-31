@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
-import { v1Navigation, type NavigationSection } from "../../router/navigation";
+import { appNavigation, type NavigationSection } from "../../router/navigation";
 
 interface SidebarProps {
   closeButtonRef: RefObject<HTMLButtonElement | null>;
@@ -54,7 +54,7 @@ export function Sidebar({ closeButtonRef, isMobile, isOpen, onClose }: SidebarPr
         <button ref={closeButtonRef} className="sidebar__close" type="button" aria-label="Cerrar menú de navegación" onClick={() => onClose()}>×</button>
       </div>
       <nav className="sidebar__nav" aria-label="Secciones de LifeManager">
-        {v1Navigation.map((section) => section.children ? (
+        {appNavigation.map((section) => section.children ? (
           <details className="sidebar__group" key={section.label} open={section.children.some((child) => location.pathname === child.path)}>
             <summary className="sidebar__group-label">
               <span className="sidebar__icon" aria-hidden="true">{section.icon}</span>

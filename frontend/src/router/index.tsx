@@ -19,14 +19,8 @@ import { CalendarComparisonPage } from "../pages/calendar/CalendarComparisonPage
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { ActivityMastersTablePage } from "../pages/tables/ActivityMastersTablePage";
-import { TrackingTasksPage } from "../pages/tracking/TrackingTasksPage";
-import { TrackingPendingItemsPage } from "../pages/tracking/TrackingPendingItemsPage";
-import { TrackingProjectsPage } from "../pages/tracking/TrackingProjectsPage";
 import { V2ProjectDetailPage } from "../pages/projects/V2ProjectDetailPage";
 import { V2ProjectStageDetailPage } from "../pages/projects/V2ProjectStageDetailPage";
-import { TaskReportsPage } from "../pages/reports/TaskReportsPage";
-import { PendingItemReportsPage } from "../pages/reports/PendingItemReportsPage";
-import { ProjectReportsPage } from "../pages/reports/ProjectReportsPage";
 import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 const placeholder = (title: string) => (
@@ -72,14 +66,6 @@ export const appRouter = createBrowserRouter([
           { path: "/tablas/tareas", element: <MasterTasksTablePage /> },
           { path: "/tablas/categorias", element: <CategoriesTablePage /> },
           { path: "/tablas/actividades", element: <ActivityMastersTablePage /> },
-          { path: "/seguimiento/tareas", element: <TrackingTasksPage /> },
-          { path: "/seguimiento/pendientes", element: <TrackingPendingItemsPage /> },
-          { path: "/seguimiento/proyectos", element: <TrackingProjectsPage /> },
-          { path: "/seguimiento/proyectos/:projectId", element: <V2ProjectDetailPage mode="tracking" /> },
-          { path: "/seguimiento/proyectos/:projectId/etapas/:stageId", element: <V2ProjectStageDetailPage mode="tracking" /> },
-          { path: "/reportes/tareas", element: <TaskReportsPage /> },
-          { path: "/reportes/pendientes", element: <PendingItemReportsPage /> },
-          { path: "/reportes/proyectos", element: <ProjectReportsPage /> },
           { path: "/configuracion", element: <ConfigurationPage /> },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,
