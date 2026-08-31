@@ -274,3 +274,10 @@ entregas. Las suscripciones Push pertenecen al usuario autenticado, admiten
 múltiples dispositivos y almacenan cifrados los datos sensibles. El navegador
 solo solicita permiso mediante una acción explícita. La generación efectiva de
 recordatorios, proveedores y entrega Push quedan en 12.2–12.4.
+
+Stage 12.2 completa Resumen diario y Revisión diaria reutilizando directamente
+las proyecciones de Inicio y el motor de Revisión. El contenido se compone al
+intentar entregar, después de revalidar cuenta, preferencia, horario y zona
+vigentes. Un resumen vacío conserva utilidad; una Revisión sin elementos se
+cancela sin Push. Las entregas por dispositivo registran éxitos, fallos
+transitorios y subscriptions inválidas sin duplicar dispositivos ya entregados.

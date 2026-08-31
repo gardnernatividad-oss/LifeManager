@@ -149,6 +149,7 @@ class DeliveryStatus(StringEnum):
 
 class NotificationJobStatus(StringEnum):
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     SENT = "SENT"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"

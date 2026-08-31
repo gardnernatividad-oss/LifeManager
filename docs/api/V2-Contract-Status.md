@@ -595,6 +595,18 @@ de lectura nunca expone endpoint ni claves Push. No existe endpoint público de
 scheduler o envío: Stage 12.1 solo ofrece el servicio interno idempotente y la
 persistencia de jobs lógicos; la entrega queda diferida.
 
+Stage 12.2 no añade rutas públicas. El worker interno compone
+`DAILY_SUMMARY_REMINDER` desde Inicio con destino allowlisted `/inicio`, y
+`DAILY_REVIEW_REMINDER` desde la selección global de Revisión con destino
+`/revision`. El payload Push se limita a tipo, título, cuerpo y clave de destino;
+no acepta URL, HTML, email ni datos de Workspace. El resumen vacío se entrega
+con texto breve; una Revisión vacía termina `CANCELLED` sin marcar envío.
+
+Cada job genera como máximo una Notification interna y una entrega por
+subscription. Un fallo transitorio mantiene el mismo job para retry y omite en
+el siguiente intento los dispositivos ya entregados. Una subscription inválida
+se desactiva; sin subscriptions el job se cancela y no finge éxito Push.
+
 La ventana del scheduler es semiabierta `[start,end)`. Los horarios locales
 inexistentes por DST avanzan al primer instante válido y los ambiguos producen
 una sola ejecución. La deduplicación determinista y una restricción única en

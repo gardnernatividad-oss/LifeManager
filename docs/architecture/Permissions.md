@@ -207,3 +207,8 @@ membership, ownership o `GLOBAL_ADMIN`. Antes de una futura entrega, el servicio
 revalida cuenta y preferencia; para recordatorios de Actividades también exige
 participación visible, Activity futura/programada y Workspace/membership
 `ACTIVE`. Una suscripción solo puede invalidarla su propio usuario.
+
+Stage 12.2 compone Resumen y Revisión únicamente mediante sus motores globales,
+que ya filtran cuenta, Workspace y membership `ACTIVE`, responsable y privacidad.
+El claim bloquea el job antes de volver a validar esos límites. `GLOBAL_ADMIN`
+no amplía selección ni permite entregar recursos ajenos.

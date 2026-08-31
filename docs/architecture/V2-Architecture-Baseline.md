@@ -529,3 +529,12 @@ claves se cifran en reposo, la identidad del endpoint se compara mediante un
 digest y ningún secreto Push se serializa. El service worker solo admite texto
 seguro y navegación interna. Stage 12.1 no configura VAPID, proveedor, worker
 externo ni envío real; esas decisiones permanecen en 12.2–12.4.
+
+Stage 12.2 incorpora un claim PostgreSQL con `FOR UPDATE SKIP LOCKED` y estado
+`PROCESSING`. La garantía es una ocurrencia lógica e intentos controlados, no
+exactly-once externo. `NotificationDelivery` conserva el resultado por
+subscription: los éxitos no se repiten, los fallos transitorios pueden
+reintentarse y los endpoints permanentemente inválidos se desactivan. El
+transporte permanece inyectable; los tests nunca contactan proveedores Push.
+No se promete exactly-once externo: una caída después de que el proveedor
+acepta el Push pero antes del commit puede requerir reconciliación o repetición.

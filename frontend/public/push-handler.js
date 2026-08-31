@@ -7,10 +7,13 @@ const notificationDestinations = {
 };
 
 self.addEventListener("push", (event) => {
-  let type = "";
-  try { type = event.data?.json()?.type ?? ""; } catch { type = ""; }
+  let payload = {};
+  try { payload = event.data?.json() ?? {}; } catch { payload = {}; }
+  const type = typeof payload.type === "string" ? payload.type : "";
   if (!(type in notificationDestinations)) return;
-  event.waitUntil(self.registration.showNotification("LifeManager", { body: "Tienes una actualización pendiente.", data: { type } }));
+  const title = typeof payload.title === "string" ? payload.title.slice(0, 160) : "LifeManager";
+  const body = typeof payload.body === "string" ? payload.body.slice(0, 500) : "Tienes una actualización pendiente.";
+  event.waitUntil(self.registration.showNotification(title, { body, data: { type } }));
 });
 
 self.addEventListener("notificationclick", (event) => {

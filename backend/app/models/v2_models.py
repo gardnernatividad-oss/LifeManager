@@ -581,6 +581,7 @@ class NotificationJob(BaseEntity):
     __tablename__ = "notification_jobs"
     __table_args__ = (
         UniqueConstraint("dedup_key", name="uq_notification_jobs_dedup_key"),
+        UniqueConstraint("notification_id", name="uq_notification_jobs_notification_id"),
         _enum_check("notification_type", NotificationType, "ck_notification_jobs_type_valid"),
         _enum_check("status", NotificationJobStatus, "ck_notification_jobs_status_valid"),
         CheckConstraint("length(btrim(dedup_key)) > 0", name="ck_notification_jobs_dedup_not_blank"),
@@ -589,6 +590,7 @@ class NotificationJob(BaseEntity):
         Index("ix_notification_jobs_user_schedule", "user_id", "scheduled_for", "id"),
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    notification_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("notifications.id", ondelete="SET NULL"), nullable=True)
     notification_type: Mapped[NotificationType] = mapped_column(String(48), nullable=False)
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[NotificationJobStatus] = mapped_column(String(16), default=NotificationJobStatus.PENDING, server_default=text("'PENDING'"), nullable=False)

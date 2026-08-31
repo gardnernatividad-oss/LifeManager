@@ -3,6 +3,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import sqlalchemy as sa
@@ -11,9 +12,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import NotificationJob, PushSubscription
+from app.models import Notification, NotificationDelivery, NotificationJob, PushSubscription
+from app.models.enums import NotificationJobStatus
 from app.schemas.v2_notifications import PushSubscriptionCreate
 from app.services.v2_notifications import PushSubscriptionConflictError, generate_scheduled_jobs, register_push_subscription
+from app.services.v2_notification_delivery import NotificationContent, PushResult, deliver_job
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
 
@@ -31,6 +34,7 @@ def test_notification_migration_dedupe_and_push_security_on_disposable_postgres(
         inspector = sa.inspect(engine)
         assert "notification_jobs" in inspector.get_table_names()
         assert {item["name"] for item in inspector.get_unique_constraints("notification_jobs")} >= {"uq_notification_jobs_dedup_key"}
+        assert "notification_id" in {item["name"] for item in inspector.get_columns("notification_jobs")}
         command.downgrade(config, "d1e2f3a4b5c6"); assert "notification_jobs" not in sa.inspect(engine).get_table_names()
         command.upgrade(config, "head")
         user_id, other_id = uuid.uuid4(), uuid.uuid4()
@@ -52,4 +56,44 @@ def test_notification_migration_dedupe_and_push_security_on_disposable_postgres(
             assert db.scalar(sa.select(sa.func.count()).select_from(PushSubscription)) == 1
             with pytest.raises(PushSubscriptionConflictError): register_push_subscription(db, user_id=other_id, subscription_in=payload, user_agent=None)
             db.rollback()
+
+        class SequenceTransport:
+            def __init__(self, results): self.results = iter(results); self.calls = []
+            def send(self, **kwargs): self.calls.append(kwargs); return next(self.results)
+
+        with Session(engine) as db:
+            second_payload = PushSubscriptionCreate.model_validate({"endpoint": "https://push.example/device-2", "keys": {"p256dh": "public-key-2", "auth": "auth-key-2"}})
+            register_push_subscription(db, user_id=user_id, subscription_in=second_payload, user_agent="test-2")
+            job = db.scalar(sa.select(NotificationJob).where(NotificationJob.user_id == user_id))
+            transport = SequenceTransport([PushResult.DELIVERED, PushResult.TRANSIENT_FAILURE])
+            with patch("app.services.v2_notification_delivery.compose_daily_summary", return_value=NotificationContent("Resumen de hoy", "1 tarea", "HOME")):
+                delivered = deliver_job(db, job_id=job.id, now=datetime(2026, 8, 30, 12, 1, tzinfo=timezone.utc), transport=transport)
+            db.commit()
+            assert delivered.status == NotificationJobStatus.FAILED
+            assert db.scalar(sa.select(sa.func.count()).select_from(Notification)) == 1
+            assert db.scalar(sa.select(sa.func.count()).select_from(NotificationDelivery)) == 2
+            retry = SequenceTransport([PushResult.DELIVERED])
+            with patch("app.services.v2_notification_delivery.compose_daily_summary", return_value=NotificationContent("Resumen de hoy", "1 tarea", "HOME")):
+                delivered = deliver_job(db, job_id=job.id, now=datetime(2026, 8, 30, 12, 2, tzinfo=timezone.utc), transport=retry)
+            db.commit()
+            assert delivered.status == NotificationJobStatus.SENT
+            assert len(retry.calls) == 1
+
+        concurrent_payload = PushSubscriptionCreate.model_validate({"endpoint": "https://push.example/concurrent", "keys": {"p256dh": "concurrent-key", "auth": "concurrent-auth"}})
+        with Session(engine) as db:
+            register_push_subscription(db, user_id=other_id, subscription_in=concurrent_payload, user_agent="concurrent")
+            concurrent_job_id = db.scalar(sa.select(NotificationJob.id).where(NotificationJob.user_id == other_id))
+            db.commit()
+        concurrent_transport = SequenceTransport([PushResult.DELIVERED])
+        def deliver_concurrently():
+            with Session(engine) as session:
+                result = deliver_job(session, job_id=concurrent_job_id, now=datetime(2026, 8, 30, 12, 3, tzinfo=timezone.utc), transport=concurrent_transport)
+                session.commit()
+                return result.status if result else None
+        with patch("app.services.v2_notification_delivery.compose_daily_summary", return_value=NotificationContent("Resumen de hoy", "Sin pendientes", "HOME")):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                statuses = list(pool.map(lambda _: deliver_concurrently(), range(2)))
+        assert statuses.count(NotificationJobStatus.SENT) == 1
+        assert statuses.count(None) == 1
+        assert len(concurrent_transport.calls) == 1
         engine.dispose()
