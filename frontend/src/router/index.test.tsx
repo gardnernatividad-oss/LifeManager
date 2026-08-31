@@ -8,6 +8,7 @@ import { PlanningPendingItemsPage } from "../pages/planning/PlanningPendingItems
 import { PlanningProjectsPage } from "../pages/planning/PlanningProjectsPage";
 import { PlanningTasksPage } from "../pages/planning/PlanningTasksPage";
 import { ReviewPage } from "../pages/review/ReviewPage";
+import { ReportsPage } from "../pages/reports/ReportsPage";
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { appRouter, v1PlaceholderRoutes } from "./index";
@@ -26,11 +27,12 @@ describe("V2 route contract", () => {
     expect(elementType("/planificacion/tareas")).toBe(PlanningTasksPage);
     expect(elementType("/planificacion/pendientes")).toBe(PlanningPendingItemsPage);
     expect(elementType("/planificacion/proyectos")).toBe(PlanningProjectsPage);
+    expect(elementType("/reportes")).toBe(ReportsPage);
     expect((route("/tablas/tareas")?.element as { type: unknown }).type).toBe(MasterTasksTablePage);
     expect((route("/tablas/categorias")?.element as { type: unknown }).type).toBe(CategoriesTablePage);
   });
 
-  it("does not expose V1 Tracking or Reports clients as active V2 routes", () => {
+  it("does not expose V1 Tracking or legacy nested Reports clients as active V2 routes", () => {
     const paths = protectedChildren?.map((item) => item.path).filter(Boolean) ?? [];
     expect(paths.some((path) => path?.startsWith("/seguimiento/"))).toBe(false);
     expect(paths.some((path) => path?.startsWith("/reportes/"))).toBe(false);

@@ -303,3 +303,9 @@ solo una selección accesible y usa el proxy local `/api/v2`. Las entradas activ
 de Seguimiento y Reportes V1 se retiraron del router y navegación sin eliminar
 sus módulos históricos; Revisión concentra el seguimiento V2 y Reportes queda
 pendiente de Fase 13. La reorganización visual definitiva permanece en Fase 16.
+
+Stage 13.1 habilita el motor global read-only de Reportes dentro del Workspace
+seleccionado. El resumen agrega Tareas, Pendientes, Proyectos y Actividades en
+SQL, con periodos por fecha local y filtros comunes de Categoría y persona
+responsable. La UI expone únicamente Resumen; los reportes detallados y sus
+gráficos permanecen en 13.2–13.4.

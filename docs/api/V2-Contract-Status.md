@@ -644,7 +644,20 @@ inexistentes por DST avanzan al primer instante válido y los ambiguos producen
 una sola ejecución. La deduplicación determinista y una restricción única en
 PostgreSQL impiden duplicados entre ejecuciones concurrentes.
 
-## 19. Decisiones aún operativas
+## 19. Reportes — Stage 13.1
+
+`GET /api/v2/workspaces/{workspace_id}/reports/summary` devuelve conteos
+agregados de Tareas, Pendientes, Proyectos y Actividades del Workspace. Admite
+`date_from`, `date_until`, `category_id` y `responsible_user_id`; las fechas son
+calendario local inclusivo y el rango invertido devuelve `INVALID_DATE_RANGE`.
+
+La persona responsable significa responsable en Tareas/Pendientes, Líder en
+Proyectos y Organizador en Actividades. La Categoría de recursos de catálogo se
+resuelve dinámicamente desde el maestro vigente; los recursos custom conservan
+su Categoría manual. El endpoint no expone filas ni muta datos. Los detalles por
+dominio se incorporarán en 13.2–13.4.
+
+## 20. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

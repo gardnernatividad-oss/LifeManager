@@ -1,111 +1,112 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 
-import { getDashboardStatistics, getDashboardSummary } from "../../api/dashboardApi";
 import { queryKeys } from "../../api/queryKeys";
-import { getReportTaskCounts } from "../../api/reportApi";
+import { listV2Catalog } from "../../api/v2CatalogApi";
+import { getV2ReportSummary } from "../../api/v2ReportApi";
+import { listWorkspaceMembers } from "../../api/workspaceApi";
 import { useAuth } from "../../hooks/useAuth";
-import type { DashboardStatistics, DashboardSummary } from "../../types/dashboard";
-import type { ReportPeriod, ReportPeriodBounds, ReportTaskCounts } from "../../types/report";
-import { getReportPeriodBounds } from "../../utils/reportPeriod";
+import type { V2Category } from "../../types/v2Catalog";
+import type { V2ReportFilters } from "../../types/v2Report";
+import { formatShortCalendarDate } from "../../utils/localizedDate";
+import { shiftDate, workspaceToday } from "../../utils/workspaceDate";
 
-const resultMetrics: Array<[keyof DashboardStatistics, string]> = [
-  ["completed_tasks", "Completadas"],
-  ["not_completed_tasks", "No realizadas"],
-  ["cancelled_tasks", "Canceladas"],
-  ["resolved_tasks", "Resueltas"],
-  ["pending_tasks", "Pendientes"],
-  ["scheduled_tasks", "Programadas"]
-];
+type Period = "LAST_7_DAYS" | "LAST_30_DAYS" | "CUSTOM" | "ALL";
 
-const currentMetrics: Array<[keyof DashboardSummary, string]> = [
-  ["total_tasks", "Total"],
-  ["overdue_tasks", "Vencidas"],
-  ["tasks_due_today", "Para hoy"],
-  ["tasks_due_next_7_days", "Próximos 7 días"],
-  ["pending_tasks", "Pendientes"],
-  ["scheduled_tasks", "Programadas"]
-];
-
-function ErrorPanel({ message, retry }: { message: string; retry: () => void }) {
-  return <div className="report-error" role="alert"><p>{message}</p><button className="secondary-button" type="button" onClick={retry}>Reintentar</button></div>;
-}
-
-function Loading({ label }: { label: string }) {
-  return <div className="report-skeleton" role="status" aria-label={label}><span className="sr-only">{label}</span></div>;
-}
-
-function periodLabel(bounds: ReportPeriodBounds): string {
-  const format = (value: string) => new Intl.DateTimeFormat("es-PE", {
-    day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
-  }).format(new Date(`${value}T00:00:00Z`));
-  return `${format(bounds.fromDate)} – ${format(bounds.toDate)}`;
-}
-
-function tasksLink(bounds: ReportPeriodBounds, outcome?: string): string {
-  const params = new URLSearchParams({ scheduled_from: bounds.scheduledFrom, scheduled_to: bounds.scheduledTo });
-  if (outcome) params.set("outcome", outcome);
-  return `/tasks?${params.toString()}`;
-}
-
-function PeriodResults({ counts, bounds }: { counts: ReportTaskCounts; bounds: ReportPeriodBounds }) {
-  const metrics: Array<[string, number]> = [
-    ["Tareas programadas", counts.total],
-    ["Completadas", counts.completed],
-    ["No realizadas", counts.notCompleted],
-    ["Canceladas", counts.cancelled],
-    ["Sin resultado terminal", counts.unresolved]
-  ];
-  return <>
-    {counts.total === 0 ? <div className="report-empty"><h3>No hay tareas programadas en este período</h3><p>Prueba otro período o crea una tarea para comenzar.</p><Link className="secondary-button" to="/tasks">Ir a Tareas</Link></div> :
-      <div className="report-period-results"><div className="report-metric-grid">{metrics.map(([label, value]) => <article className="metric-card" key={label}><span>{label}</span><strong>{value}</strong></article>)}</div><p className="report-period-help">“Sin resultado terminal” reúne las tareas pendientes y programadas cuyo resultado todavía no es completada, no realizada ni cancelada.</p>
-        <nav className="report-links" aria-label="Explorar tareas del período"><Link to={tasksLink(bounds)}>Ver todas las tareas programadas</Link><Link to={tasksLink(bounds, "completed")}>Ver completadas</Link><Link to={tasksLink(bounds, "not_completed")}>Ver no realizadas</Link><Link to={tasksLink(bounds, "cancelled")}>Ver canceladas</Link></nav>
-      </div>}
-  </>;
+function periodFilters(
+  period: Period,
+  timeZone: string,
+  customFrom: string,
+  customUntil: string,
+): V2ReportFilters | null {
+  if (period === "ALL") return {};
+  if (period === "CUSTOM") {
+    if (customFrom && customUntil && customFrom > customUntil) return null;
+    return {
+      ...(customFrom ? { date_from: customFrom } : {}),
+      ...(customUntil ? { date_until: customUntil } : {}),
+    };
+  }
+  const today = workspaceToday(timeZone);
+  return {
+    date_from: shiftDate(today, period === "LAST_7_DAYS" ? -6 : -29),
+    date_until: today,
+  };
 }
 
 export function ReportsPage() {
-  const { workspace } = useAuth();
+  const { workspace, user } = useAuth();
   const workspaceId = workspace?.id ?? "";
-  const [period, setPeriod] = useState<ReportPeriod>("this_month");
+  const shared = workspace?.kind === "SHARED";
+  const [period, setPeriod] = useState<Period>("LAST_30_DAYS");
   const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const bounds = useMemo(() => workspace ? getReportPeriodBounds(period, workspace.timezone, customFrom, customTo) : null, [period, workspace, customFrom, customTo]);
-  const summaryQuery = useQuery({ queryKey: queryKeys.dashboardSummary(workspaceId), queryFn: () => getDashboardSummary(workspaceId), enabled: Boolean(workspaceId), staleTime: 30_000 });
-  const statisticsQuery = useQuery({ queryKey: queryKeys.dashboardStatistics(workspaceId), queryFn: () => getDashboardStatistics(workspaceId), enabled: Boolean(workspaceId), staleTime: 30_000 });
-  const countsQuery = useQuery({
-    queryKey: queryKeys.reportTaskCounts(workspaceId, bounds?.scheduledFrom ?? "", bounds?.scheduledTo ?? ""),
-    queryFn: () => getReportTaskCounts(workspaceId, bounds!.scheduledFrom, bounds!.scheduledTo),
-    enabled: Boolean(workspaceId && bounds),
-    staleTime: 30_000
+  const [customUntil, setCustomUntil] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [responsibleId, setResponsibleId] = useState("");
+  const baseFilters = useMemo(
+    () => workspace ? periodFilters(period, workspace.timezone, customFrom, customUntil) : null,
+    [period, workspace, customFrom, customUntil],
+  );
+  const filters = useMemo<V2ReportFilters | null>(
+    () => baseFilters && ({
+      ...baseFilters,
+      ...(categoryId ? { category_id: categoryId } : {}),
+      ...(responsibleId ? { responsible_user_id: responsibleId } : {}),
+    }),
+    [baseFilters, categoryId, responsibleId],
+  );
+  const categories = useQuery({
+    queryKey: queryKeys.v2Catalog(workspaceId, "categories", { report: true }),
+    queryFn: () => listV2Catalog<V2Category>(workspaceId, "categories", {}),
+    enabled: Boolean(workspaceId),
+  });
+  const members = useQuery({
+    queryKey: queryKeys.workspaceMembers(workspaceId),
+    queryFn: () => listWorkspaceMembers(workspaceId),
+    enabled: Boolean(workspaceId && shared),
+  });
+  const optionsReady = categories.isSuccess && (!shared || members.isSuccess);
+  const report = useQuery({
+    queryKey: queryKeys.v2ReportSummary(workspaceId, filters ?? {}),
+    queryFn: () => getV2ReportSummary(workspaceId, filters!),
+    enabled: Boolean(workspaceId && filters && optionsReady),
   });
 
-  if (!workspace) return <div className="reports-page"><header className="reports-header"><p className="eyebrow">LifeManager</p><h1>Reportes</h1></header><section className="report-empty"><h2>Selecciona un espacio de trabajo</h2><p>Necesitas un espacio seleccionado para consultar sus resultados.</p></section></div>;
-  const refreshing = summaryQuery.isFetching || statisticsQuery.isFetching || countsQuery.isFetching;
-  const refresh = () => void Promise.all([summaryQuery.refetch(), statisticsQuery.refetch(), ...(bounds ? [countsQuery.refetch()] : [])]);
+  if (!workspace || !user) {
+    return <section className="reports-page"><header className="reports-header"><h1>Reportes</h1></header><div className="report-empty"><h2>Selecciona un espacio de trabajo</h2><p>Necesitas un espacio seleccionado para consultar sus reportes.</p></div></section>;
+  }
 
-  return <div className="reports-page">
-    <header className="reports-header"><div><p className="eyebrow">{workspace.name}</p><h1>Reportes</h1><p>Consulta resultados reales y el estado de las tareas del espacio seleccionado.</p></div><button className="secondary-button" type="button" disabled={refreshing} onClick={refresh}>{refreshing ? "Actualizando…" : "Actualizar reportes"}</button></header>
+  const retryOptions = () => void Promise.all([
+    categories.refetch(),
+    ...(shared ? [members.refetch()] : []),
+  ]);
+  const activeMembers = members.data?.filter((member) => member.status === "ACTIVE") ?? [];
+  const metrics = report.data ? [
+    ["Tareas", report.data.counts.tasks],
+    ["Pendientes", report.data.counts.pending_items],
+    ["Proyectos", report.data.counts.projects],
+    ["Actividades", report.data.counts.activities],
+  ] as const : [];
 
-    <section className="report-section" aria-labelledby="compliance-title"><h2 id="compliance-title">Resumen de cumplimiento</h2><p>La tasa corresponde a tareas completadas sobre todas las tareas resueltas del espacio.</p>
-      {statisticsQuery.isPending && <Loading label="Cargando resumen de cumplimiento" />}
-      {statisticsQuery.isError && <ErrorPanel message="No pudimos cargar el resumen de cumplimiento." retry={() => void statisticsQuery.refetch()} />}
-      {statisticsQuery.data && <div className="report-completion"><div className="completion-rate"><span>Tasa de cumplimiento</span><strong>{statisticsQuery.data.completion_rate.toFixed(2)}%</strong><div className="progress-track" role="progressbar" aria-label="Tasa de cumplimiento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statisticsQuery.data.completion_rate}><span style={{ width: `${statisticsQuery.data.completion_rate}%` }} /></div></div><dl className="statistics-grid">{resultMetrics.map(([field, label]) => <div key={field}><dt>{label}</dt><dd>{statisticsQuery.data[field]}</dd></div>)}</dl></div>}
+  return <section className="reports-page">
+    <header className="reports-header"><div><p className="eyebrow">{workspace.name}</p><h1>Reportes</h1><p>Consulta un resumen del espacio seleccionado.</p></div></header>
+    <nav className="report-tabs" aria-label="Secciones de Reportes"><span aria-current="page">Resumen</span>{["Tareas", "Pendientes", "Proyectos", "Actividades"].map((label) => <button key={label} type="button" disabled title="Disponible en una etapa posterior">{label}</button>)}</nav>
+    <section className="report-section" aria-labelledby="report-filters"><h2 id="report-filters">Filtros</h2>
+      <div className="report-period-controls">
+        <label>Periodo<select value={period} onChange={(event) => setPeriod(event.target.value as Period)}><option value="LAST_7_DAYS">Últimos 7 días</option><option value="LAST_30_DAYS">Últimos 30 días</option><option value="CUSTOM">Personalizado</option><option value="ALL">Todo el historial</option></select></label>
+        {period === "CUSTOM" ? <><label>Desde<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} /></label><label>Hasta<input type="date" value={customUntil} onChange={(event) => setCustomUntil(event.target.value)} /></label></> : null}
+        <label>Categoría<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={!optionsReady}><option value="">Todas</option>{categories.data?.items.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+        {shared ? <label>Responsable<select value={responsibleId} onChange={(event) => setResponsibleId(event.target.value)} disabled={!optionsReady}><option value="">Todas las personas</option>{activeMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}
+      </div>
+      {!baseFilters ? <p role="alert" className="report-period-help">La fecha Desde no puede ser posterior a Hasta.</p> : null}
+      {(categories.isPending || (shared && members.isPending)) ? <p role="status">Cargando filtros…</p> : null}
+      {(categories.isError || (shared && members.isError)) ? <div className="report-error" role="alert"><p>No pudimos cargar las opciones de filtros.</p><button className="secondary-button" type="button" onClick={retryOptions}>Reintentar</button></div> : null}
     </section>
-
-    <section className="report-section" aria-labelledby="current-title"><h2 id="current-title">Estado actual</h2><p>Una vista operativa de las tareas que requieren atención ahora.</p>
-      {summaryQuery.isPending && <Loading label="Cargando estado actual" />}
-      {summaryQuery.isError && <ErrorPanel message="No pudimos cargar el estado actual de las tareas." retry={() => void summaryQuery.refetch()} />}
-      {summaryQuery.data && (summaryQuery.data.total_tasks === 0 ? <div className="report-empty"><h3>Este espacio todavía no tiene tareas</h3><p>Crea una tarea para empezar a construir tu reporte.</p><Link className="secondary-button" to="/tasks">Crear o administrar tareas</Link></div> : <div className="report-metric-grid">{currentMetrics.map(([field, label]) => <article className="metric-card" key={field}><span>{label}</span><strong>{summaryQuery.data[field]}</strong></article>)}</div>)}
+    <section className="report-section" aria-labelledby="report-summary"><div className="report-section-heading"><div><h2 id="report-summary">Resumen</h2><p>Conteos del periodo y filtros seleccionados.</p></div>{report.data?.date_from || report.data?.date_until ? <strong>{report.data.date_from ? formatShortCalendarDate(report.data.date_from) : "Inicio"} – {report.data.date_until ? formatShortCalendarDate(report.data.date_until) : "Hoy"}</strong> : <strong>Todo el historial</strong>}</div>
+      {report.isPending && optionsReady && filters ? <div className="report-skeleton" role="status" aria-label="Cargando resumen de Reportes" /> : null}
+      {report.isError ? <div className="report-error" role="alert"><p>No pudimos cargar el resumen de Reportes.</p><button className="secondary-button" type="button" onClick={() => void report.refetch()}>Reintentar</button></div> : null}
+      {report.data && report.data.counts.total === 0 ? <div className="report-empty"><h3>No hay datos para estos filtros</h3><p>Prueba otro periodo, Categoría o Responsable.</p></div> : null}
+      {report.data && report.data.counts.total > 0 ? <><div className="report-metric-grid">{metrics.map(([label, value]) => <article className="metric-card" key={label}><span>{label}</span><strong>{value}</strong></article>)}</div><p className="report-total">Total de registros: <strong>{report.data.counts.total}</strong></p></> : null}
     </section>
-
-    <section className="report-section" aria-labelledby="period-title"><div className="report-section-heading"><div><h2 id="period-title">Tareas programadas por período</h2><p>Los resultados se filtran por la fecha programada de la tarea, no por su fecha de resolución.</p></div>{bounds && <strong>{periodLabel(bounds)}</strong>}</div>
-      <div className="report-period-controls"><label htmlFor="report-period">Período<select id="report-period" value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}><option value="this_week">Esta semana</option><option value="this_month">Este mes</option><option value="last_30_days">Últimos 30 días</option><option value="custom">Personalizado</option></select></label>{period === "custom" && <><label htmlFor="report-from">Desde<input id="report-from" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} /></label><label htmlFor="report-to">Hasta<input id="report-to" type="date" value={customTo} min={customFrom || undefined} onChange={(event) => setCustomTo(event.target.value)} /></label></>}</div>
-      {period === "custom" && !bounds && <p className="report-period-help" role="status">Selecciona un rango válido para consultar las tareas programadas.</p>}
-      {bounds && countsQuery.isPending && <Loading label="Cargando tareas programadas del período" />}
-      {bounds && countsQuery.isError && <ErrorPanel message="No pudimos cargar las tareas programadas del período." retry={() => void countsQuery.refetch()} />}
-      {bounds && countsQuery.data && <PeriodResults counts={countsQuery.data} bounds={bounds} />}
-    </section>
-  </div>;
+  </section>;
 }

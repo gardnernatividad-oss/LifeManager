@@ -223,3 +223,9 @@ visible que conserve membership `ACTIVE` en el Workspace `ACTIVE`. El reminder
 individual y la preferencia global deben seguir habilitados. Retiro, cancelación
 o pérdida de acceso cancela la elegibilidad de ese usuario sin afectar a otros;
 `GLOBAL_ADMIN` no obtiene bypass.
+
+Stage 13.1 permite consultar el resumen de Reportes a cualquier miembro ACTIVE
+de un Workspace ACTIVE. Toda agregación queda limitada al Workspace solicitado;
+owner y `GLOBAL_ADMIN` sin membership no amplían el acceso. El endpoint es
+read-only y los filtros de Categoría o responsable no conceden autoridad sobre
+identificadores externos.

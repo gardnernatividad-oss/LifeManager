@@ -1,46 +1,110 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo, useState, type PropsWithChildren } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import * as dashboardApi from "../../api/dashboardApi";
-import * as reportApi from "../../api/reportApi";
+import * as catalogApi from "../../api/v2CatalogApi";
+import * as reportApi from "../../api/v2ReportApi";
+import * as workspaceApi from "../../api/workspaceApi";
 import { useAuth } from "../../hooks/useAuth";
 import { AuthContext, type AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import type { WorkspaceSummary } from "../../types/auth";
-import type { DashboardStatistics, DashboardSummary } from "../../types/dashboard";
-import type { ReportTaskCounts } from "../../types/report";
+import type { V2Category } from "../../types/v2Catalog";
+import type { V2ReportSummary } from "../../types/v2Report";
 import { ReportsPage } from "./ReportsPage";
 
-vi.mock("../../api/dashboardApi", () => ({ getDashboardSummary: vi.fn(), getDashboardStatistics: vi.fn() }));
-vi.mock("../../api/reportApi", () => ({ getReportTaskCounts: vi.fn() }));
+vi.mock("../../api/v2CatalogApi", () => ({ listV2Catalog: vi.fn() }));
+vi.mock("../../api/v2ReportApi", () => ({ getV2ReportSummary: vi.fn() }));
+vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
 
-const workspace: WorkspaceSummary = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Personal", description: null, timezone: "America/Lima", created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" };
-const otherWorkspace: WorkspaceSummary = { ...workspace, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Trabajo", timezone: "Europe/Madrid" };
-const summary: DashboardSummary = { pending_tasks: 4, scheduled_tasks: 6, completed_tasks: 8, not_completed_tasks: 2, cancelled_tasks: 1, total_tasks: 21, tasks_due_today: 3, tasks_due_next_7_days: 5, overdue_tasks: 2 };
-const statistics: DashboardStatistics = { completion_rate: 72.73, completed_tasks: 8, not_completed_tasks: 2, cancelled_tasks: 1, resolved_tasks: 11, pending_tasks: 4, scheduled_tasks: 6 };
-const counts: ReportTaskCounts = { total: 10, completed: 5, notCompleted: 2, cancelled: 1, unresolved: 2 };
+const personal: WorkspaceSummary = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Personal", kind: "PERSONAL", timezone: "America/Lima" };
+const shared: WorkspaceSummary = { ...personal, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Familia", kind: "SHARED" };
+const category: V2Category = { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", workspace_id: personal.id, name: "Hogar", is_active: true, lock_version: 1, can_delete: false, created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" };
+const summary: V2ReportSummary = { local_date: "2026-08-31", date_from: "2026-08-02", date_until: "2026-08-31", category_id: null, responsible_user_id: null, counts: { tasks: 4, pending_items: 3, projects: 2, activities: 1, total: 10 } };
 
-function Auth({ children, initial = workspace }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) { const [selected, setWorkspace] = useState(initial); const value = useMemo<AuthState>(() => ({ user: testUser, workspace: selected, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace, clearSession: vi.fn(), setAuthenticatedUser: vi.fn() }), [selected]); return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>; }
-function Switcher() { const { setWorkspace } = useAuth(); return <button onClick={() => setWorkspace(otherWorkspace)}>Cambiar espacio</button>; }
-function renderPage(initial: WorkspaceSummary | null = workspace, switcher = false) { const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }); render(<QueryClientProvider client={client}><Auth initial={initial}><MemoryRouter>{switcher && <Switcher />}<ReportsPage /></MemoryRouter></Auth></QueryClientProvider>); return client; }
+function Auth({ children, initial = personal }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) {
+  const [workspace, setWorkspace] = useState(initial);
+  const value = useMemo<AuthState>(() => ({ user: testUser, workspace, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace, clearSession: vi.fn(), setAuthenticatedUser: vi.fn() }), [workspace]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+function Switcher() { const { setWorkspace } = useAuth(); return <button onClick={() => setWorkspace(shared)}>Cambiar espacio</button>; }
+function renderPage(initial: WorkspaceSummary | null = personal, switcher = false) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  render(<QueryClientProvider client={client}><Auth initial={initial}><MemoryRouter>{switcher ? <Switcher /> : null}<ReportsPage /></MemoryRouter></Auth></QueryClientProvider>);
+}
 
 describe("ReportsPage", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue(summary); vi.mocked(dashboardApi.getDashboardStatistics).mockResolvedValue(statistics); vi.mocked(reportApi.getReportTaskCounts).mockResolvedValue(counts); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-31T12:00:00Z"));
+    vi.mocked(catalogApi.listV2Catalog).mockResolvedValue({ items: [category], total: 1 });
+    vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: testUser.id, display_name: "Ada Lovelace", email: testUser.email, role: "Miembro", status: "ACTIVE", joined_at: "2026-01-01T00:00:00Z", ended_at: null }]);
+    vi.mocked(reportApi.getV2ReportSummary).mockResolvedValue(summary);
+  });
 
-  it("loads the selected Workspace and renders real summary and statistics", async () => { renderPage(); expect(await screen.findByText("72.73%")).toBeInTheDocument(); expect(screen.getByRole("progressbar", { name: "Tasa de cumplimiento" })).toHaveAttribute("aria-valuenow", "72.73"); const current = screen.getByRole("heading", { name: "Estado actual" }).closest("section")!; expect(within(current).getByText("21")).toBeInTheDocument(); expect(dashboardApi.getDashboardSummary).toHaveBeenCalledWith(workspace.id); });
-  it("does not make report calls without a selected Workspace", () => { renderPage(null); expect(screen.getByText("Selecciona un espacio de trabajo")).toBeInTheDocument(); expect(dashboardApi.getDashboardSummary).not.toHaveBeenCalled(); expect(reportApi.getReportTaskCounts).not.toHaveBeenCalled(); });
-  it("isolates all report queries when the Workspace changes", async () => { const user = userEvent.setup(); renderPage(workspace, true); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(workspace.id, expect.any(String), expect.any(String))); await user.click(screen.getByRole("button", { name: "Cambiar espacio" })); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(otherWorkspace.id, expect.any(String), expect.any(String))); expect(dashboardApi.getDashboardStatistics).toHaveBeenCalledWith(otherWorkspace.id); });
-  it("uses stable loading states instead of rendering zeros", () => { vi.mocked(dashboardApi.getDashboardSummary).mockReturnValue(new Promise(() => undefined)); vi.mocked(dashboardApi.getDashboardStatistics).mockReturnValue(new Promise(() => undefined)); vi.mocked(reportApi.getReportTaskCounts).mockReturnValue(new Promise(() => undefined)); renderPage(); expect(screen.getByRole("status", { name: "Cargando resumen de cumplimiento" })).toBeInTheDocument(); expect(screen.getByRole("status", { name: "Cargando estado actual" })).toBeInTheDocument(); expect(screen.queryByText("0")).not.toBeInTheDocument(); });
-  it("keeps successful sections visible after a partial API failure", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockRejectedValue(new Error("offline")); renderPage(); expect(await screen.findByText("No pudimos cargar el estado actual de las tareas.")).toBeInTheDocument(); expect(screen.getByText("72.73%")).toBeInTheDocument(); expect(await screen.findByText("Tareas programadas", { selector: "span" })).toBeInTheDocument(); });
-  it("offers section retries after a full report failure", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(summary); vi.mocked(dashboardApi.getDashboardStatistics).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(statistics); vi.mocked(reportApi.getReportTaskCounts).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(counts); const user = userEvent.setup(); renderPage(); expect((await screen.findAllByRole("button", { name: "Reintentar" }))).toHaveLength(3); for (const button of screen.getAllByRole("button", { name: "Reintentar" })) await user.click(button); expect(await screen.findByText("72.73%")).toBeInTheDocument(); expect(await screen.findByText("21")).toBeInTheDocument(); });
-  it("shows useful empty states for an empty Workspace and period", async () => { vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue({ ...summary, total_tasks: 0 }); vi.mocked(reportApi.getReportTaskCounts).mockResolvedValue({ total: 0, completed: 0, notCompleted: 0, cancelled: 0, unresolved: 0 }); renderPage(); expect(await screen.findByText("Este espacio todavía no tiene tareas")).toBeInTheDocument(); expect(await screen.findByText("No hay tareas programadas en este período")).toBeInTheDocument(); });
-  it("labels period metrics by scheduled date rather than resolution date", async () => { renderPage(); expect(screen.getByText(/se filtran por la fecha programada/)).toBeInTheDocument(); await screen.findByRole("link", { name: "Ver todas las tareas programadas" }); expect(screen.getByText("Tareas programadas", { selector: "span" })).toBeInTheDocument(); expect(screen.queryByText(/completadas durante/i)).not.toBeInTheDocument(); });
-  it("explains that unresolved means Tasks without a terminal outcome", async () => { renderPage(); await screen.findByRole("link", { name: "Ver todas las tareas programadas" }); expect(screen.getByText("Sin resultado terminal")).toBeInTheDocument(); expect(screen.getByText(/reúne las tareas pendientes y programadas/)).toBeInTheDocument(); });
-  it("supports custom periods and sends timezone-aware scheduled boundaries", async () => { const user = userEvent.setup(); renderPage(); await user.selectOptions(screen.getByLabelText("Período"), "custom"); expect(screen.getByText("Selecciona un rango válido para consultar las tareas programadas.")).toBeInTheDocument(); await user.type(screen.getByLabelText("Desde"), "2026-08-01"); await user.type(screen.getByLabelText("Hasta"), "2026-08-03"); await waitFor(() => expect(reportApi.getReportTaskCounts).toHaveBeenCalledWith(workspace.id, "2026-08-01T05:00:00.000Z", "2026-08-04T04:59:59.999Z")); });
-  it("provides valid Tasks deep links for the selected period", async () => { renderPage(); const link = await screen.findByRole("link", { name: "Ver no realizadas" }); expect(link.getAttribute("href")).toContain("/tasks?"); expect(link.getAttribute("href")).toContain("outcome=not_completed"); expect(link.getAttribute("href")).toContain("scheduled_from="); expect(link.getAttribute("href")).toContain("scheduled_to="); });
-  it("manually refreshes only the current report queries", async () => { const user = userEvent.setup(); renderPage(); await screen.findByText("72.73%"); await user.click(screen.getByRole("button", { name: "Actualizar reportes" })); await waitFor(() => expect(dashboardApi.getDashboardSummary).toHaveBeenCalledTimes(2)); expect(dashboardApi.getDashboardStatistics).toHaveBeenCalledTimes(2); expect(reportApi.getReportTaskCounts).toHaveBeenCalledTimes(2); });
+  it("loads a Personal Workspace summary with the default local period", async () => {
+    renderPage();
+    expect(await screen.findByText("Total de registros:")).toBeInTheDocument();
+    expect(screen.getByText("10")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Responsable")).not.toBeInTheDocument();
+    expect(reportApi.getV2ReportSummary).toHaveBeenCalledWith(personal.id, { date_from: "2026-08-02", date_until: "2026-08-31" });
+  });
+
+  it("applies Category and responsible filters in a Shared Workspace", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage(shared);
+    await screen.findByText("Total de registros:");
+    await user.selectOptions(screen.getByLabelText("Categoría"), category.id);
+    await user.selectOptions(screen.getByLabelText("Responsable"), testUser.id);
+    await waitFor(() => expect(reportApi.getV2ReportSummary).toHaveBeenLastCalledWith(shared.id, expect.objectContaining({ category_id: category.id, responsible_user_id: testUser.id })));
+  });
+
+  it("supports an open custom period and rejects a reversed range", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await screen.findByText("Total de registros:");
+    await user.selectOptions(screen.getByLabelText("Periodo"), "CUSTOM");
+    await user.type(screen.getByLabelText("Desde"), "2026-08-10");
+    await waitFor(() => expect(reportApi.getV2ReportSummary).toHaveBeenLastCalledWith(personal.id, { date_from: "2026-08-10" }));
+    await user.type(screen.getByLabelText("Hasta"), "2026-08-01");
+    expect(await screen.findByText("La fecha Desde no puede ser posterior a Hasta.")).toBeInTheDocument();
+  });
+
+  it("waits for filter options and retries them safely", async () => {
+    vi.mocked(catalogApi.listV2Catalog).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ items: [category], total: 1 });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    expect(await screen.findByText("No pudimos cargar las opciones de filtros.")).toBeInTheDocument();
+    expect(reportApi.getV2ReportSummary).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Total de registros:")).toBeInTheDocument();
+  });
+
+  it("renders recoverable error and empty states", async () => {
+    vi.mocked(reportApi.getV2ReportSummary).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ ...summary, counts: { tasks: 0, pending_items: 0, projects: 0, activities: 0, total: 0 } });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    expect(await screen.findByText("No pudimos cargar el resumen de Reportes.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("No hay datos para estos filtros")).toBeInTheDocument();
+  });
+
+  it("isolates queries when the selected Workspace changes", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage(personal, true);
+    await waitFor(() => expect(reportApi.getV2ReportSummary).toHaveBeenCalledWith(personal.id, expect.any(Object)));
+    await user.click(screen.getByRole("button", { name: "Cambiar espacio" }));
+    await waitFor(() => expect(reportApi.getV2ReportSummary).toHaveBeenCalledWith(shared.id, expect.any(Object)));
+  });
+
+  it("does not query without a selected Workspace", () => {
+    renderPage(null);
+    expect(screen.getByText("Selecciona un espacio de trabajo")).toBeInTheDocument();
+    expect(catalogApi.listV2Catalog).not.toHaveBeenCalled();
+    expect(reportApi.getV2ReportSummary).not.toHaveBeenCalled();
+  });
 });

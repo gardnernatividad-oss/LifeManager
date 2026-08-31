@@ -19,6 +19,7 @@ import { CalendarComparisonPage } from "../pages/calendar/CalendarComparisonPage
 import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { ActivityMastersTablePage } from "../pages/tables/ActivityMastersTablePage";
+import { ReportsPage } from "../pages/reports/ReportsPage";
 import { V2ProjectDetailPage } from "../pages/projects/V2ProjectDetailPage";
 import { V2ProjectStageDetailPage } from "../pages/projects/V2ProjectStageDetailPage";
 import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
@@ -66,6 +67,7 @@ export const appRouter = createBrowserRouter([
           { path: "/tablas/tareas", element: <MasterTasksTablePage /> },
           { path: "/tablas/categorias", element: <CategoriesTablePage /> },
           { path: "/tablas/actividades", element: <ActivityMastersTablePage /> },
+          { path: "/reportes", element: <ReportsPage /> },
           { path: "/configuracion", element: <ConfigurationPage /> },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,

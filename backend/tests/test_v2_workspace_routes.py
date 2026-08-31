@@ -461,4 +461,5 @@ def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
                 ("PATCH", "/api/v2/workspaces/{workspace_id}/activities/{activity_id}"),
                 ("DELETE", "/api/v2/workspaces/{workspace_id}/activities/{activity_id}"),
                 ("POST", "/api/v2/workspaces/{workspace_id}/activities/{activity_id}/leave"),
+                ("GET", "/api/v2/workspaces/{workspace_id}/reports/summary"),
         }

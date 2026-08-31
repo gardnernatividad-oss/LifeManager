@@ -28,5 +28,6 @@ export const appNavigation: readonly NavigationSection[] = [
       { label: "Categorías", path: "/tablas/categorias" }
     ]
   },
+  { label: "Reportes", path: "/reportes", icon: "▥" },
   { label: "Configuración", path: "/configuracion", icon: "⚙" }
 ] as const;

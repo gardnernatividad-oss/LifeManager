@@ -16,6 +16,7 @@ from app.api.v2.calendar_comparison import router as calendar_comparison_router
 from app.api.v2.review import router as review_router
 from app.api.v2.home import router as home_router
 from app.api.v2.notifications import router as notification_router
+from app.api.v2.reports import router as report_router
 
 
 api_router = APIRouter()
@@ -35,3 +36,4 @@ api_router.include_router(calendar_comparison_router)
 api_router.include_router(review_router)
 api_router.include_router(home_router)
 api_router.include_router(notification_router)
+api_router.include_router(report_router)

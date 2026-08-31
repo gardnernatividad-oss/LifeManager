@@ -17,6 +17,7 @@ export function Topbar({ isMenuOpen, menuButtonRef, onMenuToggle }: TopbarProps)
   const workspaceScoped = [
     "/planificacion/",
     "/tablas/",
+    "/reportes",
     "/configuracion",
   ].some((prefix) => location.pathname.startsWith(prefix));
 

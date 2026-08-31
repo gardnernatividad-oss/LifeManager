@@ -49,6 +49,7 @@ function renderLayout(initialEntry = "/inicio") {
           <Route path="/inicio" element={<h1>Contenido de Inicio</h1>} />
           <Route path="/revision" element={<h1>Contenido de Revisión</h1>} />
           <Route path="/calendario" element={<h1>Contenido de Mi calendario</h1>} />
+          <Route path="/reportes" element={<h1>Contenido de Reportes</h1>} />
           <Route path="/planificacion/tareas" element={<h1>Contenido de Planificación</h1>} />
         </Route>
         <Route path="/login" element={<h1>Destino de inicio de sesión</h1>} />
@@ -85,7 +86,7 @@ describe("AuthenticatedLayout V1", () => {
     expect(within(navigation).getByRole("link", { name: "Revisión" })).toBeInTheDocument();
     expect(within(navigation).getByText("Planificación")).toBeInTheDocument();
     expect(within(navigation).queryByText("Seguimiento")).not.toBeInTheDocument();
-    expect(within(navigation).queryByText("Reportes")).not.toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: "Reportes" })).toBeInTheDocument();
     expect(within(navigation).getByText("Tablas")).toBeInTheDocument();
     expect(within(navigation).getByRole("link", { name: "Configuración" })).toBeInTheDocument();
 

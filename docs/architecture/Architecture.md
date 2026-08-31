@@ -573,6 +573,14 @@ Los permisos deben validarse en el backend y no depender únicamente del fronten
 
 No se añadirá complejidad sin una necesidad real.
 
+### Reportes V2
+
+El motor base de Reportes es una proyección read-only, Workspace-scoped y
+autorizada por membership ACTIVE. Compone agregaciones SQL por dominio sin
+cargar registros completos ni duplicar reglas de clasificación. Los periodos
+usan fechas locales del Workspace y los filtros comunes forman parte de la
+clave de consulta frontend para mantener aislamiento de caché.
+
 ---
 
 ## 17. Fuente de verdad
