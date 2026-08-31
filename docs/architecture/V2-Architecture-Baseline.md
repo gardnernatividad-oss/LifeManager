@@ -544,3 +544,10 @@ no por recurso. Sus contenidos son únicamente counts agregados calculados cerca
 del delivery. Pendientes agrupa por responsabilidad y Proyectos por liderazgo,
 con agregados SQL de Etapas para evitar N+1. Los jobs vacíos se cancelan antes
 de crear Notification o delivery.
+
+Stage 12.4 añade al scheduler la consulta batch de `ActivityReminder` sobre
+occurrences ya materializadas. La dedupe incluye usuario, Activity e instante
+del reminder, permitiendo que una reprogramación válida cree una identidad nueva
+sin revivir la anterior. Los entry points internos finales son
+`generate_scheduled_jobs(window_start, window_end)`, `claim_due_job_ids(now)` y
+`deliver_job(job_id, now, transport)`. No existe endpoint público de worker.

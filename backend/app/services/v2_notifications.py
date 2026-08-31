@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from cryptography.fernet import Fernet
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -143,6 +143,53 @@ def generate_scheduled_jobs(db: Session, *, window_start: datetime, window_end: 
                     notification_type = NOTIFICATION_TYPES[preference.reminder_type]
                     values.append({"id": uuid.uuid4(), "user_id": user.id, "notification_type": notification_type, "scheduled_for": due, "dedup_key": f"{user.id}:{notification_type}:{day.isoformat()}"})
             day += timedelta(days=1)
+    activity_preferences = {
+        row.user_id: row for row in db.scalars(select(ReminderPreference).where(
+            ReminderPreference.reminder_type == ReminderType.ACTIVITY_REMINDERS,
+        )).all()
+    }
+    activity_rows = db.execute(
+        select(ActivityReminder, Activity)
+        .join(Activity, and_(Activity.id == ActivityReminder.activity_id, Activity.workspace_id == ActivityReminder.workspace_id))
+        .join(User, User.id == ActivityReminder.user_id)
+        .join(Workspace, Workspace.id == ActivityReminder.workspace_id)
+        .join(WorkspaceMember, and_(WorkspaceMember.workspace_id == ActivityReminder.workspace_id, WorkspaceMember.user_id == ActivityReminder.user_id))
+        .outerjoin(ActivityParticipant, and_(
+            ActivityParticipant.activity_id == ActivityReminder.activity_id,
+            ActivityParticipant.workspace_id == ActivityReminder.workspace_id,
+            ActivityParticipant.user_id == ActivityReminder.user_id,
+        ))
+        .where(
+            ActivityReminder.is_enabled.is_(True),
+            Activity.status == ActivityStatus.SCHEDULED,
+            Activity.starts_at > window_start,
+            User.account_status == AccountStatus.ACTIVE,
+            Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,
+            WorkspaceMember.status == MembershipStatus.ACTIVE,
+            or_(
+                Activity.organizer_user_id == ActivityReminder.user_id,
+                ActivityParticipant.calendar_status == ParticipantCalendarStatus.VISIBLE,
+            ),
+            Activity.starts_at - (ActivityReminder.minutes_before * text("interval '1 minute'")) >= window_start,
+            Activity.starts_at - (ActivityReminder.minutes_before * text("interval '1 minute'")) < window_end,
+        )
+        .order_by(ActivityReminder.activity_id, ActivityReminder.user_id)
+    ).all()
+    for reminder, activity in activity_rows:
+        preference = activity_preferences.get(reminder.user_id)
+        if preference is not None and not preference.is_enabled:
+            continue
+        due = activity.starts_at - timedelta(minutes=reminder.minutes_before)
+        values.append({
+            "id": uuid.uuid4(),
+            "user_id": reminder.user_id,
+            "notification_type": NotificationType.ACTIVITY_REMINDER,
+            "scheduled_for": due,
+            "dedup_key": f"{reminder.user_id}:{NotificationType.ACTIVITY_REMINDER}:{activity.id}:{due.isoformat()}",
+            "entity_type": "ACTIVITY",
+            "entity_id": activity.id,
+        })
+        reminder.last_scheduled_for = due
     if not values:
         return 0
     result = db.execute(insert(NotificationJob).values(values).on_conflict_do_nothing(index_elements=[NotificationJob.dedup_key]).returning(NotificationJob.id))
@@ -172,15 +219,15 @@ def activity_reminder_is_still_eligible(
     eligible_id = db.scalar(
         select(ActivityReminder.id)
         .join(
+            Activity,
+            (Activity.id == ActivityReminder.activity_id)
+            & (Activity.workspace_id == ActivityReminder.workspace_id),
+        )
+        .outerjoin(
             ActivityParticipant,
             (ActivityParticipant.activity_id == ActivityReminder.activity_id)
             & (ActivityParticipant.workspace_id == ActivityReminder.workspace_id)
             & (ActivityParticipant.user_id == ActivityReminder.user_id),
-        )
-        .join(
-            Activity,
-            (Activity.id == ActivityReminder.activity_id)
-            & (Activity.workspace_id == ActivityReminder.workspace_id),
         )
         .join(Workspace, Workspace.id == ActivityReminder.workspace_id)
         .join(
@@ -192,7 +239,10 @@ def activity_reminder_is_still_eligible(
             ActivityReminder.id == reminder_id,
             ActivityReminder.user_id == user_id,
             ActivityReminder.is_enabled.is_(True),
-            ActivityParticipant.calendar_status == ParticipantCalendarStatus.VISIBLE,
+            or_(
+                Activity.organizer_user_id == ActivityReminder.user_id,
+                ActivityParticipant.calendar_status == ParticipantCalendarStatus.VISIBLE,
+            ),
             Activity.status == ActivityStatus.SCHEDULED,
             Activity.starts_at > now,
             Workspace.lifecycle == WorkspaceLifecycle.ACTIVE,

@@ -12,8 +12,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import Notification, NotificationDelivery, NotificationJob, PushSubscription
-from app.models.enums import NotificationJobStatus, NotificationType
+from app.models import (
+    Activity, ActivityParticipant, ActivityReminder, Category, Notification,
+    NotificationDelivery, NotificationJob, PushSubscription, Workspace, WorkspaceMember,
+)
+from app.models.enums import NotificationJobStatus, NotificationType, WorkspaceKind
 from app.schemas.v2_notifications import PushSubscriptionCreate
 from app.services.v2_notifications import PushSubscriptionConflictError, generate_scheduled_jobs, register_push_subscription
 from app.services.v2_notification_delivery import NotificationContent, PushResult, deliver_job
@@ -21,6 +24,13 @@ from tests.postgres_safety import alembic_config_for_test_database, disposable_p
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def generate_window(engine, start: datetime, end: datetime) -> int:
+    with Session(engine) as session:
+        created = generate_scheduled_jobs(session, window_start=start, window_end=end)
+        session.commit()
+        return created
 
 
 def test_notification_migration_dedupe_and_push_security_on_disposable_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -113,4 +123,29 @@ def test_notification_migration_dedupe_and_push_security_on_disposable_postgres(
             db.commit()
             links = set(db.scalars(sa.select(Notification.deep_link).where(Notification.recipient_user_id == user_id)).all())
             assert {"/seguimiento/pendientes", "/seguimiento/proyectos"} <= links
+
+        workspace_id, category_id, activity_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        with Session(engine) as db:
+            db.add(Workspace(id=workspace_id, name="Agenda", kind=WorkspaceKind.PERSONAL, owner_user_id=user_id))
+            db.flush()
+            db.add(WorkspaceMember(workspace_id=workspace_id, user_id=user_id))
+            db.add(Category(id=category_id, workspace_id=workspace_id, name="Personal", normalized_name="personal"))
+            db.flush()
+            activity = Activity(id=activity_id, workspace_id=workspace_id, organizer_user_id=user_id, title="Cena familiar", custom_category_id=category_id, starts_at=datetime(2026, 9, 1, 23, tzinfo=timezone.utc), ends_at=datetime(2026, 9, 2, 0, tzinfo=timezone.utc))
+            db.add(activity); db.flush()
+            db.add(ActivityParticipant(activity_id=activity_id, workspace_id=workspace_id, user_id=user_id))
+            db.add(ActivityReminder(activity_id=activity_id, workspace_id=workspace_id, user_id=user_id, minutes_before=30))
+            db.commit()
+        activity_start, activity_end = datetime(2026, 9, 1, 22, 29, tzinfo=timezone.utc), datetime(2026, 9, 1, 22, 31, tzinfo=timezone.utc)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            activity_counts = list(pool.map(lambda _: generate_window(engine, activity_start, activity_end), range(2)))
+        assert sorted(activity_counts) == [0, 1]
+        with Session(engine) as db:
+            activity_job = db.scalar(sa.select(NotificationJob).where(NotificationJob.entity_id == activity_id))
+            transport = SequenceTransport([PushResult.DELIVERED, PushResult.DELIVERED])
+            result = deliver_job(db, job_id=activity_job.id, now=datetime(2026, 9, 1, 22, 30, tzinfo=timezone.utc), transport=transport)
+            db.commit()
+            assert result.status == NotificationJobStatus.SENT
+            assert result.notification_id is not None
+            assert db.get(Notification, result.notification_id).deep_link == "/calendario"
         engine.dispose()

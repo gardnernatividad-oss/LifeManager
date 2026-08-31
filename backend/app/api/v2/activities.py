@@ -47,6 +47,7 @@ def _read(db: SessionDependency, activity: Activity, account: User, *, personal:
         organizer_user_id=organizer.id,
         organizer_display_name=f"{organizer.first_name} {organizer.last_name}".strip(), organizer_email=organizer.email,
         participants=[ActivityParticipantRead(user_id=user.id, display_name=f"{user.first_name} {user.last_name}".strip(), email=user.email, calendar_status=item.calendar_status) for item, user in participants],
+        reminder_minutes_before=next((item.minutes_before for item in activity.reminders if item.is_enabled), None),
         starts_at=activity.starts_at, ends_at=activity.ends_at, status=activity.status,
         temporal_state=state, lock_version=activity.lock_version,
         is_generated=activity.generation_batch_id is not None,

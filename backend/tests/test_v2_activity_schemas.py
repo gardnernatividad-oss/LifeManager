@@ -31,3 +31,19 @@ def test_activity_update_is_strict_versioned_and_rejects_mass_assignment() -> No
         ActivityUpdate.model_validate({"starts_at": "2026-09-01T10:00:00Z", "lock_version": 1, "workspace_id": str(uuid.uuid4()), "can_edit": True})
     with pytest.raises(ValidationError):
         ActivityUpdate.model_validate({"participant_user_ids": [], "lock_version": 1, "scope": "ALL"})
+
+
+def test_activity_reminder_minutes_are_optional_bounded_and_removable() -> None:
+    start = datetime(2026, 9, 1, 15, tzinfo=timezone.utc)
+    created = ActivityCreate(
+        activity_master_id=uuid.uuid4(), starts_at=start,
+        ends_at=start + timedelta(hours=1), reminder_minutes_before=30,
+    )
+    assert created.reminder_minutes_before == 30
+    assert ActivityUpdate(reminder_minutes_before=None, lock_version=1).reminder_minutes_before is None
+    for invalid in (-1, 10081):
+        with pytest.raises(ValidationError):
+            ActivityCreate(
+                activity_master_id=uuid.uuid4(), starts_at=start,
+                ends_at=start + timedelta(hours=1), reminder_minutes_before=invalid,
+            )

@@ -5,7 +5,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   server: {
     proxy: {
-      "/api/v1": "http://localhost:8000"
+      "/api/v1": "http://localhost:8000",
+      "/api/v2": "http://localhost:8000"
     }
   },
   plugins: [

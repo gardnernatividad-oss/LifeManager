@@ -617,6 +617,23 @@ agregación de Etapas. Si el total es cero no se crea Notification.
 Los destinos son exclusivamente `/seguimiento/pendientes` y
 `/seguimiento/proyectos`, derivados en servidor y en el Service Worker por tipo.
 
+Stage 12.4 completa `ACTIVITY_REMINDER` sin rutas públicas nuevas. Su identidad
+combina usuario, Activity occurrence e instante efectivo del reminder. El
+scheduler solo considera reminders dentro de `[start,end)` y occurrences
+futuras materializadas. El contenido usa el nombre de la Activity y su hora
+local actual; el destino fijo es `/calendario`.
+
+Los contratos de creación puntual, creación recurrente y actualización de
+Activity aceptan `reminder_minutes_before` entre 0 y 10080; `null` en update
+elimina el reminder. `ActivityRead` expone el valor efectivo o `null`. Los
+scopes `THIS` y `THIS_AND_FUTURE` reutilizan el lifecycle canónico de
+occurrences, incluidos cambios de participantes y organizer.
+
+Antes del delivery se revalidan reminder habilitado, Activity `SCHEDULED` y
+futura, organizer o participación visible, Workspace/membership/cuenta activos,
+preferencia global y coincidencia exacta del instante. Un cambio vuelve obsoleto
+el job anterior; nunca se envía retroactivamente.
+
 La ventana del scheduler es semiabierta `[start,end)`. Los horarios locales
 inexistentes por DST avanzan al primer instante válido y los ambiguos producen
 una sola ejecución. La deduplicación determinista y una restricción única en

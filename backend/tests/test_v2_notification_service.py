@@ -55,11 +55,13 @@ def test_dst_policy_moves_nonexistent_forward_and_uses_ambiguous_once() -> None:
 
 def test_scheduler_uses_one_user_query_one_preference_query_and_half_open_window() -> None:
     db = MagicMock(); user = User(id=uuid.uuid4(), timezone="America/Lima", account_status=AccountStatus.ACTIVE)
-    db.scalars.side_effect = [MagicMock(all=lambda: [user]), MagicMock(all=lambda: [])]
-    db.execute.return_value.scalars.return_value.all.return_value = [uuid.uuid4() for _ in range(4)]
+    db.scalars.side_effect = [MagicMock(all=lambda: [user]), MagicMock(all=lambda: []), MagicMock(all=lambda: [])]
+    activity_result = MagicMock(); activity_result.all.return_value = []
+    insert_result = MagicMock(); insert_result.scalars.return_value.all.return_value = [uuid.uuid4() for _ in range(4)]
+    db.execute.side_effect = [activity_result, insert_result]
     count = generate_scheduled_jobs(db, window_start=datetime(2026, 8, 30, 12, tzinfo=timezone.utc), window_end=datetime(2026, 8, 31, 3, 1, tzinfo=timezone.utc))
     assert count == 4
-    assert db.scalars.call_count == 2
+    assert db.scalars.call_count == 3
     db.flush.assert_called_once()
 
 
@@ -80,6 +82,8 @@ def test_activity_reminder_revalidates_domain_and_global_preference() -> None:
     assert "activity_reminders" in eligibility_sql
     assert "activity_participants" in eligibility_sql
     assert "activities" in eligibility_sql
+    assert "LEFT OUTER JOIN activity_participants" in eligibility_sql
+    assert "activities.organizer_user_id = activity_reminders.user_id" in eligibility_sql
     assert "workspace_members" in eligibility_sql
     assert "activities.starts_at >" in eligibility_sql
     assert "activity_reminders.is_enabled IS true" in eligibility_sql

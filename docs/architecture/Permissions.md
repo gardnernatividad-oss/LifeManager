@@ -217,3 +217,9 @@ Stage 12.3 mantiene la misma frontera: Pendientes requiere responsable actual;
 Proyectos requiere Líder actual. Ambos exigen Workspace y membership `ACTIVE`
 al componer. Cambios de responsable, liderazgo o lifecycle anteriores al
 delivery se reflejan inmediatamente; owner y `GLOBAL_ADMIN` no amplían datos.
+
+Stage 12.4 entrega recordatorios de Actividades solo al organizer o participante
+visible que conserve membership `ACTIVE` en el Workspace `ACTIVE`. El reminder
+individual y la preferencia global deben seguir habilitados. Retiro, cancelación
+o pérdida de acceso cancela la elegibilidad de ese usuario sin afectar a otros;
+`GLOBAL_ADMIN` no obtiene bypass.

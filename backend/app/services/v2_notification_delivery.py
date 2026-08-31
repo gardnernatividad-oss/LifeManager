@@ -1,7 +1,7 @@
 import uuid
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Protocol
 from zoneinfo import ZoneInfo
@@ -18,6 +18,8 @@ from app.models import (
     ProjectStage,
     PushSubscription,
     ReminderPreference,
+    Activity,
+    ActivityReminder,
     User,
     Workspace,
     WorkspaceMember,
@@ -31,7 +33,13 @@ from app.models.enums import (
     WorkspaceLifecycle,
 )
 from app.services.v2_home import get_home_summary
-from app.services.v2_notifications import NOTIFICATION_TYPES, _fernet, job_is_still_eligible, scheduled_instant
+from app.services.v2_notifications import (
+    NOTIFICATION_TYPES,
+    _fernet,
+    activity_reminder_is_still_eligible,
+    job_is_still_eligible,
+    scheduled_instant,
+)
 from app.services.v2_review import get_global_review
 
 
@@ -173,6 +181,29 @@ def compose_project_weekly(db: Session, *, user: User, now: datetime) -> Notific
     return NotificationContent("Proyectos", _compact(parts), "PROJECTS")
 
 
+def compose_activity_reminder(
+    db: Session, *, job: NotificationJob, user: User, now: datetime,
+) -> NotificationContent | None:
+    if job.entity_type != "ACTIVITY" or job.entity_id is None:
+        return None
+    row = db.execute(
+        select(ActivityReminder, Activity)
+        .join(Activity, and_(Activity.id == ActivityReminder.activity_id, Activity.workspace_id == ActivityReminder.workspace_id))
+        .where(
+            ActivityReminder.activity_id == job.entity_id,
+            ActivityReminder.user_id == user.id,
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    reminder, activity = row
+    due = activity.starts_at - timedelta(minutes=reminder.minutes_before)
+    if due != job.scheduled_for or now >= activity.starts_at:
+        return None
+    local_time = activity.starts_at.astimezone(ZoneInfo(user.timezone)).strftime("%H:%M")
+    return NotificationContent(activity.title, f"Comienza a las {local_time}", "ACTIVITY")
+
+
 def _current_schedule_matches(db: Session, *, job: NotificationJob, user: User) -> bool:
     preference_type = next((key for key, value in NOTIFICATION_TYPES.items() if value == job.notification_type), None)
     if preference_type is None:
@@ -222,6 +253,7 @@ def _destination_path(destination: str) -> str:
         "REVIEW": "/revision",
         "PENDING": "/seguimiento/pendientes",
         "PROJECTS": "/seguimiento/proyectos",
+        "ACTIVITY": "/calendario",
     }[destination]
 
 
@@ -242,7 +274,18 @@ def deliver_job(
     job.status = NotificationJobStatus.PROCESSING
     job.attempted_at = now
     user = db.get(User, job.user_id)
-    if user is None or not job_is_still_eligible(db, job=job) or not _current_schedule_matches(db, job=job, user=user):
+    is_activity = job.notification_type == NotificationType.ACTIVITY_REMINDER
+    reminder_id = db.scalar(select(ActivityReminder.id).where(
+        ActivityReminder.activity_id == job.entity_id,
+        ActivityReminder.user_id == job.user_id,
+    )) if is_activity and job.entity_id is not None else None
+    eligible = (
+        activity_reminder_is_still_eligible(db, reminder_id=reminder_id, user_id=job.user_id, now=now)
+        if reminder_id is not None
+        else job_is_still_eligible(db, job=job) if not is_activity else False
+    )
+    schedule_matches = True if is_activity else _current_schedule_matches(db, job=job, user=user) if user is not None else False
+    if user is None or not eligible or not schedule_matches:
         job.status = NotificationJobStatus.CANCELLED
         db.flush()
         return job
@@ -255,6 +298,8 @@ def deliver_job(
         content = compose_pending_weekly(db, user=user, now=now)
     elif job.notification_type == NotificationType.PROJECT_FOLLOW_UP_REMINDER:
         content = compose_project_weekly(db, user=user, now=now)
+    elif job.notification_type == NotificationType.ACTIVITY_REMINDER:
+        content = compose_activity_reminder(db, job=job, user=user, now=now)
     else:
         job.status = NotificationJobStatus.CANCELLED
         db.flush()

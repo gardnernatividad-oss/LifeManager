@@ -22,6 +22,7 @@ export interface V2Activity {
   organizer_display_name: string;
   organizer_email: string;
   participants: V2ActivityParticipant[];
+  reminder_minutes_before: number | null;
   starts_at: string;
   ends_at: string;
   status: "SCHEDULED" | "CANCELLED";
@@ -62,6 +63,7 @@ export type V2ActivityCreate = V2ActivitySourceWrite & {
   participant_user_ids: string[];
   starts_at: string;
   ends_at: string;
+  reminder_minutes_before?: number | null;
 };
 
 export type V2ActivityUpdate = Partial<V2ActivitySourceWrite & {
@@ -69,6 +71,7 @@ export type V2ActivityUpdate = Partial<V2ActivitySourceWrite & {
   participant_user_ids: string[];
   starts_at: string;
   ends_at: string;
+  reminder_minutes_before: number | null;
 }> & { lock_version: number; scope?: ActivityMutationScope };
 
 export type ActivityRecurrencePattern = "DAILY" | "WEEKLY" | "MONTHLY";
@@ -78,6 +81,7 @@ export type V2RecurringActivityCreate = V2ActivitySourceWrite & {
   participant_user_ids: string[];
   start_time: string;
   end_time: string;
+  reminder_minutes_before?: number | null;
   timezone: string;
   recurrence: {
     pattern: ActivityRecurrencePattern;

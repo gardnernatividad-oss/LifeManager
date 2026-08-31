@@ -288,3 +288,11 @@ usuario. Proyectos agrega los Proyectos activos que lidera el usuario y deriva
 su finalización y fecha planificada desde Etapas. Ambos usan fecha local para
 atrasos, cancelan jobs vacíos y navegan mediante destinos internos allowlisted.
 Las alarmas finales de Actividades permanecen en 12.4.
+
+Stage 12.4 completa recordatorios de Actividades y cierra Fase 12. El scheduler
+consulta en batch las occurrences materializadas cuyo reminder cae en la
+ventana, creando un job por usuario, Activity e instante. Organizer y
+participantes visibles requieren cuenta, Workspace y membership `ACTIVE`. La
+entrega revalida reminder, participación, lifecycle, hora de inicio y
+preferencia global; ediciones, cancelaciones, THIS, THIS_AND_FUTURE y retiros se
+reflejan mediante las filas canónicas del dominio sin motor recurrente paralelo.

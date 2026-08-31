@@ -30,6 +30,7 @@ class ActivityCreate(_StrictModel):
     custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] = Field(default_factory=list)
+    reminder_minutes_before: int | None = Field(default=None, ge=0, le=10080)
     starts_at: datetime
     ends_at: datetime
 
@@ -69,6 +70,7 @@ class RecurringActivityCreate(_StrictModel):
     custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] = Field(default_factory=list)
+    reminder_minutes_before: int | None = Field(default=None, ge=0, le=10080)
     start_time: time
     end_time: time
     timezone: str = Field(min_length=1, max_length=100)
@@ -99,6 +101,7 @@ class ActivityUpdate(_StrictModel):
     custom_category_id: uuid.UUID | None = None
     organizer_user_id: uuid.UUID | None = None
     participant_user_ids: list[uuid.UUID] | None = None
+    reminder_minutes_before: int | None = Field(default=None, ge=0, le=10080)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     lock_version: int = Field(ge=1)
@@ -108,9 +111,9 @@ class ActivityUpdate(_StrictModel):
     @classmethod
     def validate_input(cls, value: object) -> object:
         if isinstance(value, dict):
-            editable = ("activity_master_id", "custom_name", "custom_category_id", "organizer_user_id", "participant_user_ids", "starts_at", "ends_at")
+            editable = ("activity_master_id", "custom_name", "custom_category_id", "organizer_user_id", "participant_user_ids", "starts_at", "ends_at", "reminder_minutes_before")
             for field in editable:
-                if field in value and value[field] is None:
+                if field in value and value[field] is None and field != "reminder_minutes_before":
                     raise ValueError(f"{field} cannot be null")
             if not any(field in value for field in editable):
                 raise ValueError("at least one editable field is required")
@@ -155,6 +158,7 @@ class ActivityRead(_StrictModel):
     organizer_display_name: str
     organizer_email: str
     participants: list[ActivityParticipantRead]
+    reminder_minutes_before: int | None = None
     starts_at: datetime
     ends_at: datetime
     status: ActivityStatus

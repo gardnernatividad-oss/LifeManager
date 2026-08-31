@@ -12,6 +12,7 @@ from app.services.v2_notification_delivery import (
     claim_due_job_ids,
     compose_daily_review,
     compose_daily_summary,
+    compose_activity_reminder,
     compose_pending_weekly,
     compose_project_weekly,
     pending_weekly_counts,
@@ -85,3 +86,22 @@ def test_project_weekly_uses_leader_and_stage_aggregate() -> None:
     assert content == NotificationContent("Proyectos", "3 proyectos activos · 1 atrasado", "PROJECTS")
     with patch("app.services.v2_notification_delivery.project_weekly_counts", return_value=(0, 0)):
         assert compose_project_weekly(db, user=user, now=datetime.now(timezone.utc)) is None
+
+
+def test_activity_reminder_uses_current_occurrence_and_rejects_stale_schedule() -> None:
+    user = User(id=uuid.uuid4(), timezone="America/Lima")
+    activity_id = uuid.uuid4(); reminder_id = uuid.uuid4()
+    starts_at = datetime(2026, 8, 30, 23, tzinfo=timezone.utc)
+    activity = SimpleNamespace(id=activity_id, title="Cena familiar", starts_at=starts_at)
+    reminder = SimpleNamespace(id=reminder_id, minutes_before=30)
+    job = NotificationJob(
+        id=uuid.uuid4(), user_id=user.id, notification_type=NotificationType.ACTIVITY_REMINDER,
+        scheduled_for=datetime(2026, 8, 30, 22, 30, tzinfo=timezone.utc),
+        dedup_key="activity", entity_type="ACTIVITY", entity_id=activity_id,
+        status=NotificationJobStatus.PENDING,
+    )
+    db = MagicMock(); db.execute.return_value.one_or_none.return_value = (reminder, activity)
+    content = compose_activity_reminder(db, job=job, user=user, now=datetime(2026, 8, 30, 22, 30, tzinfo=timezone.utc))
+    assert content == NotificationContent("Cena familiar", "Comienza a las 18:00", "ACTIVITY")
+    job.scheduled_for = datetime(2026, 8, 30, 22, tzinfo=timezone.utc)
+    assert compose_activity_reminder(db, job=job, user=user, now=datetime(2026, 8, 30, 22, tzinfo=timezone.utc)) is None

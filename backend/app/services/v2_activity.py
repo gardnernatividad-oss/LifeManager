@@ -103,7 +103,7 @@ def _eligible_users(db: Session, *, workspace_id: uuid.UUID, user_ids: set[uuid.
 
 
 def _activity(db: Session, *, workspace_id: uuid.UUID, activity_id: uuid.UUID, lock: bool = False) -> Activity:
-    statement = select(Activity).options(selectinload(Activity.participants)).where(Activity.id == activity_id, Activity.workspace_id == workspace_id)
+    statement = select(Activity).options(selectinload(Activity.participants), selectinload(Activity.reminders)).where(Activity.id == activity_id, Activity.workspace_id == workspace_id)
     if lock:
         statement = statement.with_for_update()
     activity = db.scalar(statement)
@@ -139,6 +139,8 @@ def create_activity(db: Session, *, access: WorkspaceAccess, actor: User, activi
     db.add(activity)
     _flush(db)
     db.add_all(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id) for user_id in sorted(participant_ids, key=str))
+    if activity_in.reminder_minutes_before is not None:
+        db.add_all(ActivityReminder(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id, minutes_before=activity_in.reminder_minutes_before) for user_id in sorted(participant_ids | {organizer_id}, key=str))
     _flush(db)
     return activity
 
@@ -197,6 +199,9 @@ def create_recurring_activities(
     _flush(db)
     db.add_all(ActivityParticipant(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id)
                for activity in activities for user_id in sorted(participant_ids, key=str))
+    if activity_in.reminder_minutes_before is not None:
+        db.add_all(ActivityReminder(activity_id=activity.id, workspace_id=activity.workspace_id, user_id=user_id, minutes_before=activity_in.reminder_minutes_before)
+                   for activity in activities for user_id in sorted(participant_ids | {organizer_id}, key=str))
     _flush(db)
     return activities
 
@@ -222,7 +227,7 @@ def list_activities(
     joins_master = category_id is not None
     joins_participant = participant_user_id is not None
     count = select(func.count(func.distinct(Activity.id))).select_from(Activity)
-    items = select(Activity).options(selectinload(Activity.participants))
+    items = select(Activity).options(selectinload(Activity.participants), selectinload(Activity.reminders))
     if joins_master:
         count = count.outerjoin(ActivityMaster, and_(ActivityMaster.id == Activity.activity_master_id, ActivityMaster.workspace_id == Activity.workspace_id))
         items = items.outerjoin(ActivityMaster, and_(ActivityMaster.id == Activity.activity_master_id, ActivityMaster.workspace_id == Activity.workspace_id))
@@ -305,7 +310,7 @@ def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.U
     now = _now()
     activity, affected, batch = _mutation_scope_activities(db, workspace_id=access.workspace.id, activity_id=activity_id, scope=activity_in.scope, now=now)
     _check_version(activity, activity_in.lock_version)
-    values = activity_in.model_dump(exclude_unset=True, exclude={"lock_version", "scope", "participant_user_ids"})
+    values = activity_in.model_dump(exclude_unset=True, exclude={"lock_version", "scope", "participant_user_ids", "reminder_minutes_before"})
     if access.workspace.kind == WorkspaceKind.PERSONAL:
         values.pop("organizer_user_id", None)
     starts_at = values.get("starts_at", activity.starts_at); ends_at = values.get("ends_at", activity.ends_at)
@@ -352,6 +357,38 @@ def update_activity(db: Session, *, access: WorkspaceAccess, activity_id: uuid.U
         requested = set(participant_ids)
         _eligible_users(db, workspace_id=access.workspace.id, user_ids=requested)
         _set_participants(db, activities=affected, requested=requested, changed_at=now)
+    reminder_is_explicit = "reminder_minutes_before" in activity_in.model_fields_set
+    if reminder_is_explicit or participant_ids is not None or "organizer_user_id" in values:
+        minutes = activity_in.reminder_minutes_before if reminder_is_explicit else None
+        activity_ids = [item.id for item in affected]
+        reminders = list(db.scalars(select(ActivityReminder).where(ActivityReminder.activity_id.in_(activity_ids)).order_by(ActivityReminder.activity_id, ActivityReminder.user_id).with_for_update()))
+        by_key = {(item.activity_id, item.user_id): item for item in reminders}
+        for item in affected:
+            organizer_id = values.get("organizer_user_id", item.organizer_user_id)
+            visible_participants = requested if participant_ids is not None else {
+                participant.user_id
+                for participant in item.participants
+                if participant.calendar_status == ParticipantCalendarStatus.VISIBLE
+            }
+            eligible = {organizer_id} | visible_participants
+            inherited_minutes = next(
+                (reminder.minutes_before for reminder in reminders if reminder.activity_id == item.id and reminder.is_enabled),
+                None,
+            )
+            effective_minutes = minutes if reminder_is_explicit else inherited_minutes
+            for reminder in reminders:
+                if reminder.activity_id == item.id and reminder.user_id not in eligible and reminder.is_enabled:
+                    reminder.is_enabled = False
+                    reminder.lock_version += 1
+            for user_id in eligible:
+                reminder = by_key.get((item.id, user_id))
+                if reminder_is_explicit and effective_minutes is None:
+                    if reminder is not None and reminder.is_enabled: reminder.is_enabled = False; reminder.lock_version += 1
+                elif effective_minutes is not None:
+                    if reminder is None:
+                        db.add(ActivityReminder(activity_id=item.id, workspace_id=item.workspace_id, user_id=user_id, minutes_before=effective_minutes))
+                    else:
+                        reminder.minutes_before = effective_minutes; reminder.is_enabled = True; reminder.lock_version += 1
     for item in affected:
         if source_fields:
             item.activity_master_id, item.title, item.custom_category_id = activity.activity_master_id, activity.title, activity.custom_category_id
