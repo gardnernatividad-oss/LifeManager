@@ -5,6 +5,7 @@ from fastapi import APIRouter, status
 from app.api.v2.dependencies import SessionDependency, UsableAccount
 from app.api.v2.errors import V2APIError
 from app.schemas.v2_workspace import SharedWorkspaceCreate, WorkspaceAppearanceUpdate, WorkspaceRead, WorkspaceSummaryRead
+from app.models.enums import WorkspaceKind
 from app.services.v2_workspace import (
     WorkspaceAccess,
     WorkspaceAccessNotFoundError,
@@ -28,21 +29,22 @@ def _summary(
 ) -> WorkspaceSummaryRead:
     workspace = access.workspace
     is_owner = access.is_owner
+    is_shared = workspace.kind == WorkspaceKind.SHARED
     return WorkspaceSummaryRead(
         id=workspace.id,
         name=workspace.name,
         kind=workspace.kind,
         lifecycle=workspace.lifecycle,
         visible_role="Propietario" if is_owner else "Miembro",
-        can_manage=is_owner and workspace.kind.value == "SHARED",
+        can_manage=is_owner and is_shared,
         can_delete=(
             is_owner
-            and workspace.kind.value == "SHARED"
+            and is_shared
             and workspace_can_be_hard_deleted(db, workspace=workspace)
         ),
         timezone=timezone,
-        color=workspace.color or ("GREEN" if workspace.kind.value == "PERSONAL" else "BLUE"),
-        icon=workspace.icon or ("HOME" if workspace.kind.value == "PERSONAL" else "USERS"),
+        color=workspace.color or ("BLUE" if is_shared else "GREEN"),
+        icon=workspace.icon or ("USERS" if is_shared else "HOME"),
         lock_version=workspace.lock_version or 1,
     )
 

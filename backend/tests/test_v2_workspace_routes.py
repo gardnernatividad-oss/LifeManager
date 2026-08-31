@@ -325,6 +325,44 @@ def test_active_and_management_workspace_listings_are_explicit_and_read_only() -
     db.flush.assert_not_called()
 
 
+def test_persisted_string_workspace_enums_serialize_without_runtime_error() -> None:
+    """String columns return str values after a real PostgreSQL round trip."""
+    db = MagicMock()
+    account = _account(global_admin=True)
+    personal = _workspace(account, "Personal")
+    personal.kind = "PERSONAL"
+    personal.lifecycle = "ACTIVE"
+    personal.color = "GREEN"
+    personal.icon = "HOME"
+    access = WorkspaceAccess(
+        workspace=personal,
+        membership=SimpleNamespace(user_id=account.id),
+    )
+    with patch(
+        "app.api.v2.workspaces.list_active_workspaces",
+        return_value=[access],
+    ), _client(db, account=account) as client:
+        response = client.get("/api/v2/workspaces")
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        "id": str(personal.id),
+        "name": "Personal",
+        "kind": "PERSONAL",
+        "lifecycle": "ACTIVE",
+        "visible_role": "Propietario",
+        "can_manage": False,
+        "can_delete": False,
+        "timezone": "America/Lima",
+        "color": "GREEN",
+        "icon": "HOME",
+        "lock_version": 1,
+    }]
+    db.commit.assert_not_called()
+    db.flush.assert_not_called()
+    db.rollback.assert_not_called()
+
+
 def test_openapi_has_one_authoritative_workspace_route_inventory() -> None:
     methods = {"get", "post", "put", "patch", "delete"}
     operations = {
