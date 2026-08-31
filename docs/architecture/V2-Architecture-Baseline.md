@@ -538,3 +538,9 @@ reintentarse y los endpoints permanentemente inválidos se desactivan. El
 transporte permanece inyectable; los tests nunca contactan proveedores Push.
 No se promete exactly-once externo: una caída después de que el proveedor
 acepta el Push pero antes del commit puede requerir reconciliación o repetición.
+
+Los seguimientos semanales de Stage 12.3 usan un job por usuario y ocurrencia,
+no por recurso. Sus contenidos son únicamente counts agregados calculados cerca
+del delivery. Pendientes agrupa por responsabilidad y Proyectos por liderazgo,
+con agregados SQL de Etapas para evitar N+1. Los jobs vacíos se cancelan antes
+de crear Notification o delivery.

@@ -12,6 +12,10 @@ from app.services.v2_notification_delivery import (
     claim_due_job_ids,
     compose_daily_review,
     compose_daily_summary,
+    compose_pending_weekly,
+    compose_project_weekly,
+    pending_weekly_counts,
+    project_weekly_counts,
 )
 
 
@@ -52,3 +56,32 @@ def test_payload_contract_uses_only_safe_fields() -> None:
     payload = {"type": NotificationType.DAILY_SUMMARY_REMINDER.value, "title": content.title, "body": content.body, "destination": content.destination}
     assert set(payload) == {"type", "title", "body", "destination"}
     assert "url" not in payload and "workspace_id" not in payload and "email" not in payload
+
+
+def test_pending_weekly_uses_one_scoped_aggregate_and_compact_content() -> None:
+    user = User(id=uuid.uuid4(), timezone="America/Lima")
+    db = MagicMock(); db.execute.return_value.one.return_value = (5, 2)
+    assert pending_weekly_counts(db, user=user, now=datetime(2026, 8, 30, 12, tzinfo=timezone.utc)) == (5, 2)
+    sql = str(db.execute.call_args.args[0])
+    assert "pending_items.responsible_user_id" in sql
+    assert "pending_items.is_active IS true" in sql and "pending_items.progress <" in sql
+    assert "workspace_members.status" in sql and "workspaces.lifecycle" in sql
+    with patch("app.services.v2_notification_delivery.pending_weekly_counts", return_value=(5, 2)):
+        content = compose_pending_weekly(db, user=user, now=datetime.now(timezone.utc))
+    assert content == NotificationContent("Pendientes", "5 pendientes activos · 2 atrasados", "PENDING")
+    with patch("app.services.v2_notification_delivery.pending_weekly_counts", return_value=(0, 0)):
+        assert compose_pending_weekly(db, user=user, now=datetime.now(timezone.utc)) is None
+
+
+def test_project_weekly_uses_leader_and_stage_aggregate() -> None:
+    user = User(id=uuid.uuid4(), timezone="America/Lima")
+    db = MagicMock(); db.execute.return_value.one.return_value = (3, 1)
+    assert project_weekly_counts(db, user=user, now=datetime(2026, 8, 30, 12, tzinfo=timezone.utc)) == (3, 1)
+    sql = str(db.execute.call_args.args[0])
+    assert "projects.leader_user_id" in sql and "projects.is_active IS true" in sql
+    assert "project_stages" in sql and "workspace_members.status" in sql
+    with patch("app.services.v2_notification_delivery.project_weekly_counts", return_value=(3, 1)):
+        content = compose_project_weekly(db, user=user, now=datetime.now(timezone.utc))
+    assert content == NotificationContent("Proyectos", "3 proyectos activos · 1 atrasado", "PROJECTS")
+    with patch("app.services.v2_notification_delivery.project_weekly_counts", return_value=(0, 0)):
+        assert compose_project_weekly(db, user=user, now=datetime.now(timezone.utc)) is None

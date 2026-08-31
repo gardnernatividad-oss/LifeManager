@@ -85,7 +85,7 @@ El roadmap conservará exactamente estas columnas:
 | 11. Inicio | 11.2 | Próximas Actividades/días, navegación, responsive, consultas eficientes y gate de Inicio | Completado |
 | 12. Notificaciones y recordatorios | 12.1 | Infraestructura de eventos, centro de notificaciones, push, scheduler y preferencias técnicas | Completado |
 | 12. Notificaciones y recordatorios | 12.2 | Recordatorio diario, Revisión diaria y seguimientos configurables de Pendientes/Proyectos | Completado |
-| 12. Notificaciones y recordatorios | 12.3 | Alarmas de Actividades, recurrencia de recordatorios, agrupación, privacidad y deep links | Pendiente |
+| 12. Notificaciones y recordatorios | 12.3 | Recordatorios semanales de Pendientes y Proyectos | Completado |
 | 12. Notificaciones y recordatorios | 12.4 | Autorización, aislamiento, seguridad, scheduler, PostgreSQL y gate de notificaciones | Pendiente |
 | 13. Reportes | 13.1 | Motor global de Reportes, alcance Workspace, periodos, filtros y agregaciones reutilizables | Pendiente |
 | 13. Reportes | 13.2 | Reportes de Tareas, Pendientes y Proyectos/Etapas: cumplimiento, avance, categorías y evolución | Pendiente |

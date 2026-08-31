@@ -212,3 +212,8 @@ Stage 12.2 compone Resumen y Revisión únicamente mediante sus motores globales
 que ya filtran cuenta, Workspace y membership `ACTIVE`, responsable y privacidad.
 El claim bloquea el job antes de volver a validar esos límites. `GLOBAL_ADMIN`
 no amplía selección ni permite entregar recursos ajenos.
+
+Stage 12.3 mantiene la misma frontera: Pendientes requiere responsable actual;
+Proyectos requiere Líder actual. Ambos exigen Workspace y membership `ACTIVE`
+al componer. Cambios de responsable, liderazgo o lifecycle anteriores al
+delivery se reflejan inmediatamente; owner y `GLOBAL_ADMIN` no amplían datos.

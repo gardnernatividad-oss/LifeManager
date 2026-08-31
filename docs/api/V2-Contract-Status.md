@@ -607,6 +607,16 @@ subscription. Un fallo transitorio mantiene el mismo job para retry y omite en
 el siguiente intento los dispositivos ya entregados. Una subscription inválida
 se desactiva; sin subscriptions el job se cancela y no finge éxito Push.
 
+Stage 12.3 incorpora composición interna para `PENDING_FOLLOW_UP_REMINDER` y
+`PROJECT_FOLLOW_UP_REMINDER` sin añadir rutas públicas. Pendientes cuenta todos
+los registros activos, incompletos y asignados al usuario, marcando como
+atrasados solo los anteriores a su fecha local. Proyectos cuenta los activos e
+incompletos liderados por el usuario; fecha y finalización se derivan en una
+agregación de Etapas. Si el total es cero no se crea Notification.
+
+Los destinos son exclusivamente `/seguimiento/pendientes` y
+`/seguimiento/proyectos`, derivados en servidor y en el Service Worker por tipo.
+
 La ventana del scheduler es semiabierta `[start,end)`. Los horarios locales
 inexistentes por DST avanzan al primer instante válido y los ambiguos producen
 una sola ejecución. La deduplicación determinista y una restricción única en

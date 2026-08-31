@@ -281,3 +281,10 @@ intentar entregar, después de revalidar cuenta, preferencia, horario y zona
 vigentes. Un resumen vacío conserva utilidad; una Revisión sin elementos se
 cancela sin Push. Las entregas por dispositivo registran éxitos, fallos
 transitorios y subscriptions inválidas sin duplicar dispositivos ya entregados.
+
+Stage 12.3 completa los seguimientos semanales. Pendientes agrega en una sola
+consulta los registros activos e incompletos cuyo responsable actual es el
+usuario. Proyectos agrega los Proyectos activos que lidera el usuario y deriva
+su finalización y fecha planificada desde Etapas. Ambos usan fecha local para
+atrasos, cancelan jobs vacíos y navegan mediante destinos internos allowlisted.
+Las alarmas finales de Actividades permanecen en 12.4.

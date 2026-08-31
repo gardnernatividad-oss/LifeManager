@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db import session as db_session
 from app.models import Notification, NotificationDelivery, NotificationJob, PushSubscription
-from app.models.enums import NotificationJobStatus
+from app.models.enums import NotificationJobStatus, NotificationType
 from app.schemas.v2_notifications import PushSubscriptionCreate
 from app.services.v2_notifications import PushSubscriptionConflictError, generate_scheduled_jobs, register_push_subscription
 from app.services.v2_notification_delivery import NotificationContent, PushResult, deliver_job
@@ -96,4 +96,21 @@ def test_notification_migration_dedupe_and_push_security_on_disposable_postgres(
         assert statuses.count(NotificationJobStatus.SENT) == 1
         assert statuses.count(None) == 1
         assert len(concurrent_transport.calls) == 1
+
+        weekly_cases = [
+            (NotificationType.PENDING_FOLLOW_UP_REMINDER, datetime(2026, 8, 31, 3, tzinfo=timezone.utc), NotificationContent("Pendientes", "2 pendientes activos", "PENDING"), "compose_pending_weekly"),
+            (NotificationType.PROJECT_FOLLOW_UP_REMINDER, datetime(2026, 8, 31, 3, 30, tzinfo=timezone.utc), NotificationContent("Proyectos", "1 proyecto activo", "PROJECTS"), "compose_project_weekly"),
+        ]
+        with Session(engine) as db:
+            for notification_type, scheduled_for, content, composer in weekly_cases:
+                job = NotificationJob(user_id=user_id, notification_type=notification_type, scheduled_for=scheduled_for, dedup_key=f"{user_id}:{notification_type}:2026-08-30")
+                db.add(job); db.flush()
+                transport = SequenceTransport([PushResult.DELIVERED, PushResult.DELIVERED])
+                with patch(f"app.services.v2_notification_delivery.{composer}", return_value=content):
+                    result = deliver_job(db, job_id=job.id, now=scheduled_for, transport=transport)
+                assert result.status == NotificationJobStatus.SENT
+                assert len(transport.calls) == 2
+            db.commit()
+            links = set(db.scalars(sa.select(Notification.deep_link).where(Notification.recipient_user_id == user_id)).all())
+            assert {"/seguimiento/pendientes", "/seguimiento/proyectos"} <= links
         engine.dispose()
