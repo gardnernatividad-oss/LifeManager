@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { V2PendingReport, V2ProjectReport, V2ReportFilters, V2ReportSummary, V2TaskReport } from "../types/v2Report";
+import type { V2ActivityReport, V2PendingReport, V2ProjectReport, V2ReportFilters, V2ReportSummary, V2TaskReport } from "../types/v2Report";
 import { env } from "../utils/env";
 
 const reportSummaryUrl = (workspaceId: string) =>
@@ -20,3 +20,5 @@ async function getReport<T>(workspaceId: string, section: string, filters: objec
 export const getV2TaskReport = (workspaceId: string, filters: V2TaskReportFilters) => getReport<V2TaskReport>(workspaceId, "tasks", filters);
 export const getV2PendingReport = (workspaceId: string, filters: V2ReportFilters) => getReport<V2PendingReport>(workspaceId, "pending-items", filters);
 export const getV2ProjectReport = (workspaceId: string, filters: V2ReportFilters) => getReport<V2ProjectReport>(workspaceId, "projects", filters);
+export interface V2ActivityReportFilters extends V2ReportFilters { activity_master_id?: string; custom_activities?: boolean }
+export const getV2ActivityReport = (workspaceId: string, filters: V2ActivityReportFilters) => getReport<V2ActivityReport>(workspaceId, "activities", filters);

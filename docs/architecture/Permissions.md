@@ -234,3 +234,9 @@ Stage 13.2 aplica exactamente la misma frontera a Tareas, Pendientes y
 Proyectos/Etapas. Los filtros por maestro, Categoría, responsable o Líder se
 combinan siempre con `workspace_id`; un UUID extranjero produce una población
 vacía y nunca amplía resultados ni confirma la existencia del recurso.
+
+Stage 13.3 conserva la misma frontera para Actividades. Los filtros por
+`ActivityMaster`, Categoría y Organizador siempre se intersectan con
+`workspace_id`; participantes no conceden acceso adicional ni alteran el
+reporte Workspace-scoped. Cancelación o self-removal no permite consultar otro
+Workspace y `GLOBAL_ADMIN` continúa sin bypass de membership.

@@ -657,6 +657,11 @@ resuelve dinámicamente desde el maestro vigente; los recursos custom conservan
 su Categoría manual. El endpoint no expone filas ni muta datos. Los detalles por
 dominio se incorporarán en 13.2–13.4.
 
+El frontend expone este filtro común también en Personal: `Responsable` en
+Resumen/Tareas/Pendientes, `Líder` en Proyectos y `Organizador` en
+Actividades. Personal ofrece al usuario activo; Shared carga exclusivamente
+memberships `ACTIVE` del Workspace seleccionado.
+
 ## 20. Reportes detallados — Stage 13.2
 
 `GET /api/v2/workspaces/{workspace_id}/reports/tasks`, `/pending-items` y
@@ -670,7 +675,25 @@ cumplimiento desde `planned_date`/`completion_date`. Proyectos deriva fecha,
 avance Decimal y estado desde Etapas, y reporta cumplimiento de Etapas. Todas
 las respuestas incluyen agrupaciones/evolución agregadas y son read-only.
 
-## 21. Decisiones aún operativas
+## 21. Reporte de Actividades — Stage 13.3
+
+`GET /api/v2/workspaces/{workspace_id}/reports/activities` reutiliza el periodo
+local inclusivo y los filtros `category_id` y `responsible_user_id` (Organizador),
+y añade `activity_master_id` y `custom_activities`. Resume cantidad programada y
+cancelada, duración total/promedio y distribuciones por Actividad, Categoría,
+Organizador y fecha local. Opera sobre ocurrencias persistidas, incluidas las
+materializadas por recurrencia.
+
+`total_duration_minutes = Σ((ends_at - starts_at) en minutos)` y
+`average_duration_minutes = total_duration_minutes / total_count`; ambas usan
+todas las ocurrencias históricas del filtro, mientras `scheduled_count` y
+`cancelled_count` exponen su distribución de lifecycle.
+
+La agrupación custom se denomina `Otras actividades`; el título real permanece
+en la ocurrencia. Catálogo resuelve nombre/Categoría desde el `ActivityMaster`
+vigente y custom usa Categoría manual. No expone resultado ni cumplimiento.
+
+## 22. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

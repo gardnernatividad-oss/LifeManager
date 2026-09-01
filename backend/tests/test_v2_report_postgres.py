@@ -12,9 +12,9 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.db import session as db_session
-from app.models import Activity, ActivityMaster, Category, MasterTask, PendingItem, Project, ProjectStage, Task, User, Workspace, WorkspaceMember
-from app.models.enums import AccountStatus, MembershipStatus, TaskResult, WorkspaceKind
-from app.services.v2_report import get_pending_item_report, get_project_report, get_report_summary, get_task_report
+from app.models import Activity, ActivityMaster, Category, GenerationBatch, MasterTask, PendingItem, Project, ProjectStage, Task, User, Workspace, WorkspaceMember
+from app.models.enums import AccountStatus, GenerationEntityType, GenerationPattern, MembershipStatus, TaskResult, WorkspaceKind
+from app.services.v2_report import get_activity_report, get_pending_item_report, get_project_report, get_report_summary, get_task_report
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
 
@@ -49,7 +49,10 @@ def test_report_summary_aggregates_workspace_data_on_disposable_postgres(monkeyp
             db.add_all([category_a, category_b, foreign_category]); db.flush()
             master_task = MasterTask(id=uuid.uuid4(), workspace_id=workspace.id, category_id=category_a.id, name="Comprar", normalized_name="comprar")
             activity_master = ActivityMaster(id=uuid.uuid4(), workspace_id=workspace.id, category_id=category_a.id, name="Consulta", normalized_name="consulta")
-            db.add_all([master_task, activity_master]); db.flush()
+            foreign_activity_master = ActivityMaster(id=uuid.uuid4(), workspace_id=foreign.id, category_id=foreign_category.id, name="Ajena", normalized_name="ajena")
+            db.add_all([master_task, activity_master, foreign_activity_master]); db.flush()
+            activity_batch = GenerationBatch(id=uuid.uuid4(), workspace_id=workspace.id, entity_type=GenerationEntityType.ACTIVITY, pattern=GenerationPattern.DAILY, date_from=date(2026, 8, 10), date_until=date(2026, 8, 10), timezone="America/Lima", created_by_user_id=owner.id)
+            db.add(activity_batch); db.flush()
             db.add_all([
                 Task(id=uuid.uuid4(), workspace_id=workspace.id, master_task_id=master_task.id, responsible_user_id=owner.id, planned_date=date(2026, 8, 10), result=TaskResult.COMPLETED, resolved_at=now, resolved_by_user_id=owner.id, created_by_user_id=owner.id),
                 Task(id=uuid.uuid4(), workspace_id=workspace.id, custom_name="Otra tarea real", custom_category_id=category_b.id, responsible_user_id=member.id, planned_date=date(2026, 8, 11), result=TaskResult.NOT_COMPLETED, resolved_at=now, resolved_by_user_id=member.id, created_by_user_id=owner.id),
@@ -60,8 +63,8 @@ def test_report_summary_aggregates_workspace_data_on_disposable_postgres(monkeyp
             db.add_all([
                 ProjectStage(id=uuid.uuid4(), workspace_id=workspace.id, project_id=project.id, responsible_user_id=owner.id, name="Inicio", position=1, weight=50, planned_date=date(2026, 8, 9), progress=50),
                 ProjectStage(id=uuid.uuid4(), workspace_id=workspace.id, project_id=project.id, responsible_user_id=member.id, name="Fin", position=2, weight=50, planned_date=date(2026, 8, 12), progress=0),
-                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=owner.id, activity_master_id=activity_master.id, title="Consulta", starts_at=datetime(2026, 8, 10, 5, tzinfo=timezone.utc), ends_at=datetime(2026, 8, 10, 6, tzinfo=timezone.utc)),
-                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=member.id, custom_category_id=category_b.id, title="Otra actividad real", starts_at=datetime(2026, 8, 12, 4, 30, tzinfo=timezone.utc), ends_at=datetime(2026, 8, 12, 5, 30, tzinfo=timezone.utc)),
+                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=owner.id, activity_master_id=activity_master.id, title="Consulta", starts_at=datetime(2026, 8, 10, 5, tzinfo=timezone.utc), ends_at=datetime(2026, 8, 10, 6, tzinfo=timezone.utc), generation_batch_id=activity_batch.id),
+                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=member.id, custom_category_id=category_b.id, title="Otra actividad real", starts_at=datetime(2026, 8, 12, 4, 30, tzinfo=timezone.utc), ends_at=datetime(2026, 8, 12, 5, 30, tzinfo=timezone.utc), status="CANCELLED", cancelled_at=now, cancelled_by_user_id=member.id),
                 PendingItem(id=uuid.uuid4(), workspace_id=foreign.id, category_id=foreign_category.id, responsible_user_id=outsider.id, name="No visible", planned_date=date(2026, 8, 10), progress=0, created_by_user_id=outsider.id),
             ]); db.commit()
 
@@ -89,4 +92,37 @@ def test_report_summary_aggregates_workspace_data_on_disposable_postgres(monkeyp
             assert projects["by_project"][0]["state"] == "EN_PROCESO"
             assert projects["stage_compliance"]["atrasado_count"] == 1
             assert get_project_report(db, workspace_id=workspace.id, local_date=date(2026, 8, 11), responsible_user_id=outsider.id)["summary"]["total_count"] == 0
+            activities = get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima")
+            assert activities["summary"] == {"total_count": 2, "scheduled_count": 1, "cancelled_count": 1, "total_duration_minutes": Decimal("120.00"), "average_duration_minutes": Decimal("60.00")}
+            assert [(row["label"], row["total_count"]) for row in activities["by_activity"]] == [("Consulta", 1), ("Otras actividades", 1)]
+            assert db.scalar(sa.select(Activity.title).where(Activity.workspace_id == workspace.id, Activity.activity_master_id.is_(None))) == "Otra actividad real"
+            assert {row["label"] for row in activities["by_category"]} == {"Casa", "Salud"}
+            assert get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", custom_activities=True)["summary"]["total_count"] == 1
+            assert get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", activity_master_id=activity_master.id)["summary"]["total_count"] == 1
+            assert get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", activity_master_id=foreign_activity_master.id)["summary"]["total_count"] == 0
+            assert get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", responsible_user_id=outsider.id)["summary"]["total_count"] == 0
+            assert get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", category_id=foreign_category.id)["summary"]["total_count"] == 0
+            master_task.name = "Comprar actualizado"
+            master_task.category_id = category_b.id
+            activity_master.name = "Consulta actualizada"
+            activity_master.category_id = category_b.id
+            db.flush()
+            reclassified_tasks = get_task_report(db, workspace_id=workspace.id, category_id=category_b.id)
+            assert reclassified_tasks["summary"]["total_count"] == 2
+            assert {row["label"] for row in reclassified_tasks["by_task"]} == {"Comprar actualizado", "Otras tareas"}
+            reclassified = get_activity_report(db, workspace_id=workspace.id, timezone_name="America/Lima", category_id=category_b.id)
+            assert reclassified["summary"]["total_count"] == 2
+            assert {row["label"] for row in reclassified["by_activity"]} == {"Consulta actualizada", "Otras actividades"}
+            db.add_all([
+                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=owner.id, activity_master_id=activity_master.id, title="DST", starts_at=datetime(2026, 3, 8, 6, 30, tzinfo=timezone.utc), ends_at=datetime(2026, 3, 8, 7, 30, tzinfo=timezone.utc)),
+                Activity(id=uuid.uuid4(), workspace_id=workspace.id, organizer_user_id=owner.id, activity_master_id=activity_master.id, title="Cruce", starts_at=datetime(2026, 3, 10, 3, 30, tzinfo=timezone.utc), ends_at=datetime(2026, 3, 10, 4, 30, tzinfo=timezone.utc)),
+            ])
+            db.flush()
+            dst = get_activity_report(db, workspace_id=workspace.id, timezone_name="America/New_York", date_from=date(2026, 3, 8), date_until=date(2026, 3, 8))
+            assert dst["summary"]["total_count"] == 1
+            assert dst["summary"]["total_duration_minutes"] == Decimal("60.00")
+            assert dst["evolution"][0]["local_date"] == date(2026, 3, 8)
+            midnight = get_activity_report(db, workspace_id=workspace.id, timezone_name="America/New_York", date_from=date(2026, 3, 9), date_until=date(2026, 3, 9))
+            assert midnight["summary"]["total_count"] == 1
+            assert midnight["evolution"][0]["local_date"] == date(2026, 3, 9)
         engine.dispose()

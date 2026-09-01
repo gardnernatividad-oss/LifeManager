@@ -13,11 +13,11 @@ import { AuthContext, type AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import type { WorkspaceSummary } from "../../types/auth";
 import type { V2Category } from "../../types/v2Catalog";
-import type { V2PendingReport, V2ProjectReport, V2ReportSummary, V2TaskReport } from "../../types/v2Report";
+import type { V2ActivityReport, V2PendingReport, V2ProjectReport, V2ReportSummary, V2TaskReport } from "../../types/v2Report";
 import { ReportsPage } from "./ReportsPage";
 
 vi.mock("../../api/v2CatalogApi", () => ({ listV2Catalog: vi.fn() }));
-vi.mock("../../api/v2ReportApi", () => ({ getV2ReportSummary: vi.fn(), getV2TaskReport: vi.fn(), getV2PendingReport: vi.fn(), getV2ProjectReport: vi.fn() }));
+vi.mock("../../api/v2ReportApi", () => ({ getV2ReportSummary: vi.fn(), getV2TaskReport: vi.fn(), getV2PendingReport: vi.fn(), getV2ProjectReport: vi.fn(), getV2ActivityReport: vi.fn() }));
 vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
 
 const personal: WorkspaceSummary = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Personal", kind: "PERSONAL", timezone: "America/Lima" };
@@ -29,6 +29,7 @@ const compliance = { en_plazo_count: 0, atrasado_count: 1, con_adelanto_count: 0
 const taskReport: V2TaskReport = { period: { date_from: null, date_until: null }, filters: {}, master_task_id: null, custom_tasks: null, summary: { total_count: 2, pending_count: 0, completed_count: 1, not_completed_count: 1, resolved_count: 2, completion_rate: "50.00" }, by_task: [{ key: "CUSTOM", label: "Otras tareas", total_count: 1, pending_count: 0, completed_count: 1, not_completed_count: 0, resolved_count: 1, completion_rate: "100.00" }], by_category: [], evolution: [] };
 const pendingReport: V2PendingReport = { period: { date_from: null, date_until: null }, filters: {}, summary: progress, compliance, by_category: [], evolution: [] };
 const projectReport: V2ProjectReport = { period: { date_from: null, date_until: null }, filters: {}, summary: progress, stage_compliance: compliance, by_category: [], by_project: [{ project_id: "project-1", project_name: "Mudanza", category_id: category.id, category_name: "Hogar", planned_date: "2026-08-31", progress: "60.00", state: "EN_PROCESO", stage_count: 2 }], evolution: [] };
+const activityReport: V2ActivityReport = { period: { date_from: null, date_until: null }, filters: {}, activity_master_id: null, custom_activities: null, summary: { total_count: 2, scheduled_count: 1, cancelled_count: 1, total_duration_minutes: "150.00", average_duration_minutes: "75.00" }, by_activity: [{ key: "CUSTOM", label: "Otras actividades", total_count: 1, scheduled_count: 1, cancelled_count: 0, total_duration_minutes: "90.00", average_duration_minutes: "90.00" }], by_category: [], by_organizer: [], evolution: [{ local_date: "2026-08-31", total_count: 2, scheduled_count: 1, cancelled_count: 1, total_duration_minutes: "150.00", average_duration_minutes: "75.00" }] };
 
 function Auth({ children, initial = personal }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) {
   const [workspace, setWorkspace] = useState(initial);
@@ -52,13 +53,15 @@ describe("ReportsPage", () => {
     vi.mocked(reportApi.getV2TaskReport).mockResolvedValue(taskReport);
     vi.mocked(reportApi.getV2PendingReport).mockResolvedValue(pendingReport);
     vi.mocked(reportApi.getV2ProjectReport).mockResolvedValue(projectReport);
+    vi.mocked(reportApi.getV2ActivityReport).mockResolvedValue(activityReport);
   });
 
   it("loads a Personal Workspace summary with the default local period", async () => {
     renderPage();
     expect(await screen.findByText("Total de registros:")).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Responsable")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Responsable")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Ada Lovelace" })).toBeInTheDocument();
     expect(reportApi.getV2ReportSummary).toHaveBeenCalledWith(personal.id, { date_from: "2026-08-02", date_until: "2026-08-31" });
   });
 
@@ -136,5 +139,67 @@ describe("ReportsPage", () => {
     expect(await screen.findByText("Cumplimiento de Etapas")).toBeInTheDocument();
     expect(screen.getByText("Mudanza")).toBeInTheDocument();
     expect(screen.getByText("31/08/2026")).toBeInTheDocument();
+  });
+
+  it("loads Activity filters and renders duration without compliance", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Actividades" }));
+    expect(await screen.findByText("Cantidad y duración de ocurrencias persistidas.")).toBeInTheDocument();
+    expect(screen.getAllByText("Otras actividades").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("150.00 min").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Cumplimiento")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Actividad"), "CUSTOM");
+    await waitFor(() => expect(reportApi.getV2ActivityReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ custom_activities: true })));
+  });
+
+  it("retries Activity filter and report failures and renders the empty state", async () => {
+    vi.mocked(catalogApi.listV2Catalog)
+      .mockResolvedValueOnce({ items: [category], total: 1 })
+      .mockRejectedValueOnce(new Error("masters offline"))
+      .mockResolvedValueOnce({ items: [], total: 0 });
+    vi.mocked(reportApi.getV2ActivityReport)
+      .mockRejectedValueOnce(new Error("report offline"))
+      .mockResolvedValueOnce({ ...activityReport, summary: { ...activityReport.summary, total_count: 0 } });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Actividades" }));
+    expect(await screen.findByText("No pudimos cargar las opciones de filtros.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("No pudimos cargar el reporte de Actividades.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("No hay Actividades para estos filtros")).toBeInTheDocument();
+  });
+
+  it("uses the responsible contract as Organizer for Shared Activity reports", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage(shared);
+    await user.click(screen.getByRole("button", { name: "Actividades" }));
+    await screen.findByText("Cantidad y duración de ocurrencias persistidas.");
+    await user.selectOptions(screen.getByLabelText("Organizador"), testUser.id);
+    await waitFor(() => expect(reportApi.getV2ActivityReport).toHaveBeenLastCalledWith(shared.id, expect.objectContaining({ responsible_user_id: testUser.id })));
+  });
+
+  it("shows the documented person filter with domain-specific labels", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    expect(await screen.findByLabelText("Responsable")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tareas" }));
+    expect(await screen.findByLabelText("Responsable")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Responsable"), testUser.id);
+    await waitFor(() => expect(reportApi.getV2TaskReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ responsible_user_id: testUser.id })));
+
+    await user.click(screen.getByRole("button", { name: "Pendientes" }));
+    expect(screen.getByLabelText("Responsable")).toBeInTheDocument();
+    await waitFor(() => expect(reportApi.getV2PendingReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ responsible_user_id: testUser.id })));
+
+    await user.click(screen.getByRole("button", { name: "Proyectos" }));
+    expect(screen.getByLabelText("Líder")).toBeInTheDocument();
+    await waitFor(() => expect(reportApi.getV2ProjectReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ responsible_user_id: testUser.id })));
+
+    await user.click(screen.getByRole("button", { name: "Actividades" }));
+    expect(screen.getByLabelText("Organizador")).toBeInTheDocument();
+    await waitFor(() => expect(reportApi.getV2ActivityReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ responsible_user_id: testUser.id })));
   });
 });

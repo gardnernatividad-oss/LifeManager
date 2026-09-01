@@ -586,6 +586,13 @@ agrupaciones por catálogo/Categoría y series por fecha planificada se calculan
 con `GROUP BY`, `CASE`, subqueries y agregados PostgreSQL. El servicio no carga
 colecciones ORM para resumirlas y conserva Decimal en avance ponderado.
 
+Stage 13.3 mantiene esa arquitectura para Actividades. Las fechas de periodo se
+convierten desde medianoche local IANA a instantes `TIMESTAMPTZ` con fin
+exclusivo del día siguiente; la evolución agrupa `starts_at` por fecha local y
+la duración usa la diferencia real `ends_at - starts_at`. Los joins con
+`ActivityMaster` y `Category` aplican reclasificación vigente sin reescribir las
+ocurrencias. No existe agregación Python, N+1 ni semántica de cumplimiento.
+
 ---
 
 ## 17. Fuente de verdad

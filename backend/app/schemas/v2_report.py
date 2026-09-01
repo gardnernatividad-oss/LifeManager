@@ -122,3 +122,32 @@ class ProjectReportRead(_StrictModel):
     by_category: list[ProgressCategoryGroup]
     by_project: list[ProjectReportRow]
     evolution: list[ProgressEvolution]
+
+
+class ActivityReportMetrics(_StrictModel):
+    total_count: int = Field(ge=0)
+    scheduled_count: int = Field(ge=0)
+    cancelled_count: int = Field(ge=0)
+    total_duration_minutes: Decimal = Field(ge=0)
+    average_duration_minutes: Decimal | None = Field(default=None, ge=0)
+
+
+class ActivityReportGroup(ActivityReportMetrics):
+    key: str
+    label: str
+
+
+class ActivityReportEvolution(ActivityReportMetrics):
+    local_date: date
+
+
+class ActivityReportRead(_StrictModel):
+    period: ReportPeriod
+    filters: ReportCommonFilters
+    activity_master_id: uuid.UUID | None
+    custom_activities: bool | None
+    summary: ActivityReportMetrics
+    by_activity: list[ActivityReportGroup]
+    by_category: list[ActivityReportGroup]
+    by_organizer: list[ActivityReportGroup]
+    evolution: list[ActivityReportEvolution]

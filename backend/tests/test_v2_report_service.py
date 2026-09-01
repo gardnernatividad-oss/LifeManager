@@ -4,7 +4,7 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from app.services.v2_report import get_report_summary
+from app.services.v2_report import get_activity_report, get_report_summary
 
 
 def test_report_summary_uses_one_workspace_scoped_aggregate_query() -> None:
@@ -64,3 +64,25 @@ def test_report_summary_supports_open_periods_and_timezone_activity_boundaries()
     sql = str(statement)
     assert "activities.starts_at >=" in sql
     assert "activities.starts_at <" not in sql
+
+
+def test_activity_report_uses_sql_aggregation_and_local_dst_boundaries() -> None:
+    metric = SimpleNamespace(total_count=0, scheduled_count=0, cancelled_count=0, total_duration_minutes=0, average_duration_minutes=None)
+    empty = MagicMock(); empty.all.return_value = []
+    summary = MagicMock(); summary.one.return_value = metric
+    db = MagicMock(); db.execute.side_effect = [summary, empty, empty, empty, empty]
+
+    result = get_activity_report(
+        db, workspace_id=uuid.uuid4(), timezone_name="America/New_York",
+        date_from=date(2026, 3, 8), date_until=date(2026, 3, 8), custom_activities=True,
+    )
+
+    assert result["summary"]["total_count"] == 0
+    assert len(db.execute.call_args_list) == 5
+    sql = "\n".join(str(call.args[0]) for call in db.execute.call_args_list)
+    assert "activity_masters" in sql and "categories" in sql and "users" in sql
+    assert "extract(epoch from" in sql.lower() and "activities.ends_at - activities.starts_at" in sql
+    assert "activities.activity_master_id IS NULL" in sql
+    parameters = [value for call in db.execute.call_args_list for value in call.args[0].compile().params.values()]
+    assert any(getattr(value, "isoformat", lambda: "")() == "2026-03-08T00:00:00-05:00" for value in parameters)
+    assert any(getattr(value, "isoformat", lambda: "")() == "2026-03-09T00:00:00-04:00" for value in parameters)

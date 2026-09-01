@@ -3,16 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 
 import { queryKeys } from "../../api/queryKeys";
 import { listV2Catalog } from "../../api/v2CatalogApi";
-import { getV2PendingReport, getV2ProjectReport, getV2ReportSummary, getV2TaskReport } from "../../api/v2ReportApi";
+import { getV2ActivityReport, getV2PendingReport, getV2ProjectReport, getV2ReportSummary, getV2TaskReport } from "../../api/v2ReportApi";
 import { listWorkspaceMembers } from "../../api/workspaceApi";
 import { useAuth } from "../../hooks/useAuth";
 import type { V2CatalogItem, V2Category } from "../../types/v2Catalog";
-import type { ComplianceMetrics, ProgressCategoryGroup, ProgressEvolution, ProgressReportMetrics, TaskReportEvolution, TaskReportGroup, V2ReportFilters } from "../../types/v2Report";
+import type { ActivityReportGroup, ComplianceMetrics, ProgressCategoryGroup, ProgressEvolution, ProgressReportMetrics, TaskReportEvolution, TaskReportGroup, V2ReportFilters } from "../../types/v2Report";
 import { formatShortCalendarDate } from "../../utils/localizedDate";
 import { shiftDate, workspaceToday } from "../../utils/workspaceDate";
 
 type Period = "LAST_7_DAYS" | "LAST_30_DAYS" | "CUSTOM" | "ALL";
-type Section = "summary" | "tasks" | "pending-items" | "projects";
+type Section = "summary" | "tasks" | "pending-items" | "projects" | "activities";
+
+function ActivityBreakdown({ title, rows }: { title: string; rows: ActivityReportGroup[] }) {
+  return <><h3>{title}</h3><div className="report-table-wrap"><table><thead><tr><th>{title.replace("Por ", "")}</th><th>Cantidad</th><th>Duración total</th><th>Duración promedio</th></tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td>{row.label}</td><td>{row.total_count}</td><td>{row.total_duration_minutes} min</td><td>{row.average_duration_minutes === null ? "—" : `${row.average_duration_minutes} min`}</td></tr>)}</tbody></table></div></>;
+}
 
 function ProgressMetrics({ values }: { values: ProgressReportMetrics }) {
   return <div className="report-metric-grid"><article className="metric-card"><span>Total</span><strong>{values.total_count}</strong></article><article className="metric-card"><span>No iniciados</span><strong>{values.no_iniciado_count}</strong></article><article className="metric-card"><span>En proceso</span><strong>{values.en_proceso_count}</strong></article><article className="metric-card"><span>Finalizados</span><strong>{values.finalizado_count}</strong></article>{values.configuracion_incompleta_count ? <article className="metric-card"><span>Configuración incompleta</span><strong>{values.configuracion_incompleta_count}</strong></article> : null}<article className="metric-card"><span>Avance promedio</span><strong>{values.average_progress === null ? "—" : `${values.average_progress}%`}</strong></article></div>;
@@ -66,6 +70,7 @@ export function ReportsPage() {
   const [categoryId, setCategoryId] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
   const [taskSource, setTaskSource] = useState("");
+  const [activitySource, setActivitySource] = useState("");
   const baseFilters = useMemo(
     () => workspace ? periodFilters(period, workspace.timezone, customFrom, customUntil) : null,
     [period, workspace, customFrom, customUntil],
@@ -89,7 +94,8 @@ export function ReportsPage() {
     enabled: Boolean(workspaceId && shared),
   });
   const masters = useQuery({ queryKey: queryKeys.v2Catalog(workspaceId, "master-tasks", { report: true }), queryFn: () => listV2Catalog<V2CatalogItem>(workspaceId, "master-tasks", {}), enabled: Boolean(workspaceId && section === "tasks") });
-  const optionsReady = categories.isSuccess && (!shared || members.isSuccess) && (section !== "tasks" || masters.isSuccess);
+  const activityMasters = useQuery({ queryKey: queryKeys.v2Catalog(workspaceId, "activity-masters", { report: true }), queryFn: () => listV2Catalog<V2CatalogItem>(workspaceId, "activity-masters", {}), enabled: Boolean(workspaceId && section === "activities") });
+  const optionsReady = categories.isSuccess && (!shared || members.isSuccess) && (section !== "tasks" || masters.isSuccess) && (section !== "activities" || activityMasters.isSuccess);
   const report = useQuery({
     queryKey: queryKeys.v2ReportSummary(workspaceId, filters ?? {}),
     queryFn: () => getV2ReportSummary(workspaceId, filters!),
@@ -99,6 +105,8 @@ export function ReportsPage() {
   const tasksReport = useQuery({ queryKey: queryKeys.v2ReportDetail(workspaceId, "tasks", taskFilters), queryFn: () => getV2TaskReport(workspaceId, taskFilters), enabled: Boolean(workspaceId && filters && optionsReady && section === "tasks") });
   const pendingReport = useQuery({ queryKey: queryKeys.v2ReportDetail(workspaceId, "pending-items", filters ?? {}), queryFn: () => getV2PendingReport(workspaceId, filters!), enabled: Boolean(workspaceId && filters && optionsReady && section === "pending-items") });
   const projectReport = useQuery({ queryKey: queryKeys.v2ReportDetail(workspaceId, "projects", filters ?? {}), queryFn: () => getV2ProjectReport(workspaceId, filters!), enabled: Boolean(workspaceId && filters && optionsReady && section === "projects") });
+  const activityFilters = useMemo(() => ({ ...(filters ?? {}), ...(activitySource === "CUSTOM" ? { custom_activities: true } : activitySource ? { activity_master_id: activitySource } : {}) }), [filters, activitySource]);
+  const activityReport = useQuery({ queryKey: queryKeys.v2ReportDetail(workspaceId, "activities", activityFilters), queryFn: () => getV2ActivityReport(workspaceId, activityFilters), enabled: Boolean(workspaceId && filters && optionsReady && section === "activities") });
 
   if (!workspace || !user) {
     return <section className="reports-page"><header className="reports-header"><h1>Reportes</h1></header><div className="report-empty"><h2>Selecciona un espacio de trabajo</h2><p>Necesitas un espacio seleccionado para consultar sus reportes.</p></div></section>;
@@ -108,8 +116,12 @@ export function ReportsPage() {
     categories.refetch(),
     ...(shared ? [members.refetch()] : []),
     ...(section === "tasks" ? [masters.refetch()] : []),
+    ...(section === "activities" ? [activityMasters.refetch()] : []),
   ]);
-  const activeMembers = members.data?.filter((member) => member.status === "ACTIVE") ?? [];
+  const activeMembers = shared
+    ? members.data?.filter((member) => member.status === "ACTIVE") ?? []
+    : [{ user_id: user.id, display_name: `${user.first_name} ${user.last_name}`, email: user.email }];
+  const personFilterLabel = section === "projects" ? "Líder" : section === "activities" ? "Organizador" : "Responsable";
   const metrics = report.data ? [
     ["Tareas", report.data.counts.tasks],
     ["Pendientes", report.data.counts.pending_items],
@@ -119,18 +131,19 @@ export function ReportsPage() {
 
   return <section className="reports-page">
     <header className="reports-header"><div><p className="eyebrow">{workspace.name}</p><h1>Reportes</h1><p>Consulta un resumen del espacio seleccionado.</p></div></header>
-    <nav className="report-tabs" aria-label="Secciones de Reportes">{[["summary", "Resumen"], ["tasks", "Tareas"], ["pending-items", "Pendientes"], ["projects", "Proyectos"]].map(([value, label]) => <button key={value} type="button" aria-current={section === value ? "page" : undefined} onClick={() => setSection(value as Section)}>{label}</button>)}<button type="button" disabled title="Disponible en una etapa posterior">Actividades</button></nav>
+    <nav className="report-tabs" aria-label="Secciones de Reportes">{[["summary", "Resumen"], ["tasks", "Tareas"], ["pending-items", "Pendientes"], ["projects", "Proyectos"], ["activities", "Actividades"]].map(([value, label]) => <button key={value} type="button" aria-current={section === value ? "page" : undefined} onClick={() => setSection(value as Section)}>{label}</button>)}</nav>
     <section className="report-section" aria-labelledby="report-filters"><h2 id="report-filters">Filtros</h2>
       <div className="report-period-controls">
         <label>Periodo<select value={period} onChange={(event) => setPeriod(event.target.value as Period)}><option value="LAST_7_DAYS">Últimos 7 días</option><option value="LAST_30_DAYS">Últimos 30 días</option><option value="CUSTOM">Personalizado</option><option value="ALL">Todo el historial</option></select></label>
         {period === "CUSTOM" ? <><label>Desde<input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} /></label><label>Hasta<input type="date" value={customUntil} onChange={(event) => setCustomUntil(event.target.value)} /></label></> : null}
         <label>Categoría<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={!optionsReady}><option value="">Todas</option>{categories.data?.items.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-        {shared ? <label>Responsable<select value={responsibleId} onChange={(event) => setResponsibleId(event.target.value)} disabled={!optionsReady}><option value="">Todas las personas</option>{activeMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label> : null}
+        <label>{personFilterLabel}<select value={responsibleId} onChange={(event) => setResponsibleId(event.target.value)} disabled={!optionsReady}><option value="">Todas las personas</option>{activeMembers.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select></label>
         {section === "tasks" ? <label>Tarea<select value={taskSource} onChange={(event) => setTaskSource(event.target.value)} disabled={!optionsReady}><option value="">Todas</option>{masters.data?.items.map((master) => <option key={master.id} value={master.id}>{master.name}</option>)}<option value="CUSTOM">Otras tareas</option></select></label> : null}
+        {section === "activities" ? <label>Actividad<select value={activitySource} onChange={(event) => setActivitySource(event.target.value)} disabled={!optionsReady}><option value="">Todas</option>{activityMasters.data?.items.map((master) => <option key={master.id} value={master.id}>{master.name}</option>)}<option value="CUSTOM">Otras actividades</option></select></label> : null}
       </div>
       {!baseFilters ? <p role="alert" className="report-period-help">La fecha Desde no puede ser posterior a Hasta.</p> : null}
-      {(categories.isPending || (shared && members.isPending) || (section === "tasks" && masters.isPending)) ? <p role="status">Cargando filtros…</p> : null}
-      {(categories.isError || (shared && members.isError) || (section === "tasks" && masters.isError)) ? <div className="report-error" role="alert"><p>No pudimos cargar las opciones de filtros.</p><button className="secondary-button" type="button" onClick={retryOptions}>Reintentar</button></div> : null}
+      {(categories.isPending || (shared && members.isPending) || (section === "tasks" && masters.isPending) || (section === "activities" && activityMasters.isPending)) ? <p role="status">Cargando filtros…</p> : null}
+      {(categories.isError || (shared && members.isError) || (section === "tasks" && masters.isError) || (section === "activities" && activityMasters.isError)) ? <div className="report-error" role="alert"><p>No pudimos cargar las opciones de filtros.</p><button className="secondary-button" type="button" onClick={retryOptions}>Reintentar</button></div> : null}
     </section>
     {section === "summary" ? <section className="report-section" aria-labelledby="report-summary"><div className="report-section-heading"><div><h2 id="report-summary">Resumen</h2><p>Conteos del periodo y filtros seleccionados.</p></div>{report.data?.date_from || report.data?.date_until ? <strong>{report.data.date_from ? formatShortCalendarDate(report.data.date_from) : "Inicio"} – {report.data.date_until ? formatShortCalendarDate(report.data.date_until) : "Hoy"}</strong> : <strong>Todo el historial</strong>}</div>
       {report.isPending && optionsReady && filters ? <div className="report-skeleton" role="status" aria-label="Cargando resumen de Reportes" /> : null}
@@ -141,5 +154,6 @@ export function ReportsPage() {
     {section === "tasks" ? <section className="report-section"><h2>Resultados de Tareas</h2>{tasksReport.isPending && optionsReady ? <div className="report-skeleton" role="status" aria-label="Cargando reporte de Tareas" /> : null}{tasksReport.isError ? <div className="report-error" role="alert"><p>No pudimos cargar el reporte de Tareas.</p><button type="button" onClick={() => void tasksReport.refetch()}>Reintentar</button></div> : null}{tasksReport.data?.summary.total_count === 0 ? <div className="report-empty"><h3>No hay Tareas para estos filtros</h3></div> : null}{tasksReport.data && tasksReport.data.summary.total_count > 0 ? <><div className="report-metric-grid"><article className="metric-card"><span>Total</span><strong>{tasksReport.data.summary.total_count}</strong></article><article className="metric-card"><span>Pendientes</span><strong>{tasksReport.data.summary.pending_count}</strong></article><article className="metric-card"><span>Completadas</span><strong>{tasksReport.data.summary.completed_count}</strong></article><article className="metric-card"><span>No realizadas</span><strong>{tasksReport.data.summary.not_completed_count}</strong></article><article className="metric-card"><span>Cumplimiento</span><strong>{tasksReport.data.summary.completion_rate === null ? "—" : `${tasksReport.data.summary.completion_rate}%`}</strong></article></div><TaskBreakdown title="Por Tarea" rows={tasksReport.data.by_task} /><TaskBreakdown title="Por Categoría" rows={tasksReport.data.by_category} /><TaskEvolutionTable rows={tasksReport.data.evolution} /></> : null}</section> : null}
     {section === "pending-items" ? <section className="report-section"><h2>Avance de Pendientes</h2>{pendingReport.isPending && optionsReady ? <div className="report-skeleton" role="status" aria-label="Cargando reporte de Pendientes" /> : null}{pendingReport.isError ? <div className="report-error" role="alert"><p>No pudimos cargar el reporte de Pendientes.</p><button type="button" onClick={() => void pendingReport.refetch()}>Reintentar</button></div> : null}{pendingReport.data?.summary.total_count === 0 ? <div className="report-empty"><h3>No hay Pendientes para estos filtros</h3></div> : null}{pendingReport.data && pendingReport.data.summary.total_count > 0 ? <><ProgressMetrics values={pendingReport.data.summary} /><Compliance values={pendingReport.data.compliance} /><ProgressBreakdowns categories={pendingReport.data.by_category} evolution={pendingReport.data.evolution} /></> : null}</section> : null}
     {section === "projects" ? <section className="report-section"><h2>Proyectos y Etapas</h2>{projectReport.isPending && optionsReady ? <div className="report-skeleton" role="status" aria-label="Cargando reporte de Proyectos" /> : null}{projectReport.isError ? <div className="report-error" role="alert"><p>No pudimos cargar el reporte de Proyectos.</p><button type="button" onClick={() => void projectReport.refetch()}>Reintentar</button></div> : null}{projectReport.data?.summary.total_count === 0 ? <div className="report-empty"><h3>No hay Proyectos para estos filtros</h3></div> : null}{projectReport.data && projectReport.data.summary.total_count > 0 ? <><ProgressMetrics values={projectReport.data.summary} /><Compliance values={projectReport.data.stage_compliance} title="Cumplimiento de Etapas" /><ProgressBreakdowns categories={projectReport.data.by_category} evolution={projectReport.data.evolution} /><div className="report-table-wrap"><table><thead><tr><th>Proyecto</th><th>Categoría</th><th>Fecha planificada</th><th>Avance</th><th>Estado</th></tr></thead><tbody>{projectReport.data.by_project.map((row) => <tr key={row.project_id}><td>{row.project_name}</td><td>{row.category_name}</td><td>{row.planned_date ? formatShortCalendarDate(row.planned_date) : "—"}</td><td>{row.progress === null ? "—" : `${row.progress}%`}</td><td>{row.state}</td></tr>)}</tbody></table></div></> : null}</section> : null}
+    {section === "activities" ? <section className="report-section"><h2>Actividades</h2><p>Cantidad y duración de ocurrencias persistidas.</p>{activityReport.isPending && optionsReady ? <div className="report-skeleton" role="status" aria-label="Cargando reporte de Actividades" /> : null}{activityReport.isError ? <div className="report-error" role="alert"><p>No pudimos cargar el reporte de Actividades.</p><button type="button" onClick={() => void activityReport.refetch()}>Reintentar</button></div> : null}{activityReport.data?.summary.total_count === 0 ? <div className="report-empty"><h3>No hay Actividades para estos filtros</h3></div> : null}{activityReport.data && activityReport.data.summary.total_count > 0 ? <><div className="report-metric-grid"><article className="metric-card"><span>Total</span><strong>{activityReport.data.summary.total_count}</strong></article><article className="metric-card"><span>Programadas</span><strong>{activityReport.data.summary.scheduled_count}</strong></article><article className="metric-card"><span>Canceladas</span><strong>{activityReport.data.summary.cancelled_count}</strong></article><article className="metric-card"><span>Duración total</span><strong>{activityReport.data.summary.total_duration_minutes} min</strong></article><article className="metric-card"><span>Duración promedio</span><strong>{activityReport.data.summary.average_duration_minutes === null ? "—" : `${activityReport.data.summary.average_duration_minutes} min`}</strong></article></div><ActivityBreakdown title="Por Actividad" rows={activityReport.data.by_activity} /><ActivityBreakdown title="Por Categoría" rows={activityReport.data.by_category} /><ActivityBreakdown title="Por Organizador" rows={activityReport.data.by_organizer} /><h3>Evolución por fecha local</h3><div className="report-table-wrap"><table><thead><tr><th>Fecha</th><th>Cantidad</th><th>Duración total</th></tr></thead><tbody>{activityReport.data.evolution.map((row) => <tr key={row.local_date}><td>{formatShortCalendarDate(row.local_date)}</td><td>{row.total_count}</td><td>{row.total_duration_minutes} min</td></tr>)}</tbody></table></div></> : null}</section> : null}
   </section>;
 }

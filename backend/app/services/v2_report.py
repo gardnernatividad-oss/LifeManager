@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import String, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Activity, ActivityMaster, Category, MasterTask, PendingItem, Project, ProjectStage, Task, TaskResult
+from app.models import Activity, ActivityMaster, ActivityStatus, Category, MasterTask, PendingItem, Project, ProjectStage, Task, TaskResult, User
 
 
 @dataclass(frozen=True)
@@ -106,6 +106,83 @@ def get_project_report(db: Session, *, workspace_id: uuid.UUID, local_date: date
     compliance = db.execute(select(*_compliance_columns(ProjectStage, local_date)).where(ProjectStage.workspace_id == workspace_id, ProjectStage.project_id.in_(select(population.c.project_id)))).one()
     evolution = db.execute(select(population.c.planned_date, func.count(population.c.project_id).label("total_count"), func.avg(population.c.progress).label("average_progress")).where(population.c.planned_date.is_not(None)).group_by(population.c.planned_date).order_by(population.c.planned_date)).all()
     return {"summary": _progress_metrics(summary), "stage_compliance": _compliance(compliance), "by_category": [{"category_id": row.category_id, "category_name": row.category_name, **_progress_metrics(row)} for row in categories], "by_project": [{"project_id": row.project_id, "project_name": row.project_name, "category_id": row.category_id, "category_name": row.category_name, "planned_date": row.planned_date, "progress": _decimal(row.progress), "state": row.state, "stage_count": int(row.stage_count)} for row in rows], "evolution": [{"planned_date": row.planned_date, "total_count": int(row.total_count), "average_progress": _decimal(row.average_progress)} for row in evolution]}
+
+
+def _activity_columns():
+    duration = func.extract("epoch", Activity.ends_at - Activity.starts_at) / Decimal("60")
+    return (
+        func.count(Activity.id).label("total_count"),
+        func.count(Activity.id).filter(Activity.status == ActivityStatus.SCHEDULED).label("scheduled_count"),
+        func.count(Activity.id).filter(Activity.status == ActivityStatus.CANCELLED).label("cancelled_count"),
+        func.coalesce(func.sum(duration), 0).label("total_duration_minutes"),
+        func.avg(duration).label("average_duration_minutes"),
+    )
+
+
+def _activity_metrics(values) -> dict:
+    return {
+        "total_count": int(values.total_count or 0),
+        "scheduled_count": int(values.scheduled_count or 0),
+        "cancelled_count": int(values.cancelled_count or 0),
+        "total_duration_minutes": _decimal(values.total_duration_minutes) or Decimal("0.00"),
+        "average_duration_minutes": _decimal(values.average_duration_minutes),
+    }
+
+
+def get_activity_report(
+    db: Session,
+    *,
+    workspace_id: uuid.UUID,
+    timezone_name: str,
+    date_from: date | None = None,
+    date_until: date | None = None,
+    category_id: uuid.UUID | None = None,
+    responsible_user_id: uuid.UUID | None = None,
+    activity_master_id: uuid.UUID | None = None,
+    custom_activities: bool | None = None,
+) -> dict:
+    """Aggregate persisted Activity occurrences using current master classification."""
+    zone = ZoneInfo(timezone_name)
+    filters = [Activity.workspace_id == workspace_id]
+    if date_from is not None:
+        filters.append(Activity.starts_at >= datetime.combine(date_from, time.min, zone))
+    if date_until is not None:
+        filters.append(Activity.starts_at < datetime.combine(date_until + timedelta(days=1), time.min, zone))
+    if category_id is not None:
+        filters.append(or_(ActivityMaster.category_id == category_id, Activity.custom_category_id == category_id))
+    if responsible_user_id is not None:
+        filters.append(Activity.organizer_user_id == responsible_user_id)
+    if activity_master_id is not None:
+        filters.append(Activity.activity_master_id == activity_master_id)
+    if custom_activities is True:
+        filters.append(Activity.activity_master_id.is_(None))
+    elif custom_activities is False:
+        filters.append(Activity.activity_master_id.is_not(None))
+
+    source = (
+        Activity.__table__
+        .outerjoin(ActivityMaster, and_(ActivityMaster.id == Activity.activity_master_id, ActivityMaster.workspace_id == Activity.workspace_id))
+        .join(Category, Category.id == func.coalesce(ActivityMaster.category_id, Activity.custom_category_id))
+        .join(User, User.id == Activity.organizer_user_id)
+    )
+    activity_key = func.coalesce(func.cast(ActivityMaster.id, String), "CUSTOM")
+    activity_label = func.coalesce(ActivityMaster.name, "Otras actividades")
+    category_key = func.cast(Category.id, String)
+    organizer_label = func.concat(User.first_name, " ", User.last_name)
+    local_day = func.date(func.timezone(timezone_name, Activity.starts_at))
+
+    summary = db.execute(select(*_activity_columns()).select_from(source).where(*filters)).one()
+    by_activity = db.execute(select(activity_key.label("key"), activity_label.label("label"), *_activity_columns()).select_from(source).where(*filters).group_by(activity_key, activity_label).order_by(activity_label, activity_key)).all()
+    by_category = db.execute(select(category_key.label("key"), Category.name.label("label"), *_activity_columns()).select_from(source).where(*filters).group_by(Category.id, Category.name).order_by(Category.name, Category.id)).all()
+    by_organizer = db.execute(select(func.cast(User.id, String).label("key"), organizer_label.label("label"), *_activity_columns()).select_from(source).where(*filters).group_by(User.id, User.first_name, User.last_name).order_by(organizer_label, User.id)).all()
+    evolution = db.execute(select(local_day.label("local_date"), *_activity_columns()).select_from(source).where(*filters).group_by(local_day).order_by(local_day)).all()
+    return {
+        "summary": _activity_metrics(summary),
+        "by_activity": [{"key": row.key, "label": row.label, **_activity_metrics(row)} for row in by_activity],
+        "by_category": [{"key": row.key, "label": row.label, **_activity_metrics(row)} for row in by_category],
+        "by_organizer": [{"key": row.key, "label": row.label, **_activity_metrics(row)} for row in by_organizer],
+        "evolution": [{"local_date": row.local_date, **_activity_metrics(row)} for row in evolution],
+    }
 
 
 def _date_filters(column, date_from: date | None, date_until: date | None):

@@ -131,13 +131,19 @@ def test_detailed_report_routes_reuse_scope_filters_and_are_read_only() -> None:
     compliance = {"en_plazo_count": 0, "atrasado_count": 1, "con_adelanto_count": 0, "a_tiempo_count": 1, "con_retraso_count": 0}
     pending_result = {"summary": progress, "compliance": compliance, "by_category": [], "evolution": []}
     project_result = {"summary": progress, "stage_compliance": compliance, "by_category": [], "by_project": [], "evolution": []}
+    activity_result = {"summary": {"total_count": 2, "scheduled_count": 1, "cancelled_count": 1, "total_duration_minutes": "120.00", "average_duration_minutes": "60.00"}, "by_activity": [], "by_category": [], "by_organizer": [], "evolution": []}
     try:
-        with patch("app.api.v2.reports.get_task_report", return_value=task_result) as task_service, patch("app.api.v2.reports.get_pending_item_report", return_value=pending_result), patch("app.api.v2.reports.get_project_report", return_value=project_result):
+        with patch("app.api.v2.reports.get_task_report", return_value=task_result) as task_service, patch("app.api.v2.reports.get_pending_item_report", return_value=pending_result), patch("app.api.v2.reports.get_project_report", return_value=project_result), patch("app.api.v2.reports.get_activity_report", return_value=activity_result) as activity_service:
             assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/tasks", params={"custom_tasks": True}).status_code == 200
             assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/pending-items").status_code == 200
             assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/projects").status_code == 200
+            response = client.get(f"/api/v2/workspaces/{workspace.id}/reports/activities", params={"custom_activities": True})
+            assert response.status_code == 200
+            assert "compliance" not in response.json()
         assert task_service.call_args.kwargs["workspace_id"] == workspace.id
         assert task_service.call_args.kwargs["custom_tasks"] is True
+        assert activity_service.call_args.kwargs["timezone_name"] == "America/Lima"
+        assert activity_service.call_args.kwargs["custom_activities"] is True
         db.add.assert_not_called(); db.flush.assert_not_called(); db.commit.assert_not_called(); db.rollback.assert_not_called()
     finally:
         app.dependency_overrides.clear()
@@ -157,7 +163,7 @@ def test_detailed_reports_reject_reversed_ranges_before_services() -> None:
 
 def test_detailed_report_openapi_contracts_are_get_only() -> None:
     paths = app.openapi()["paths"]
-    for suffix in ("tasks", "pending-items", "projects"):
+    for suffix in ("tasks", "pending-items", "projects", "activities"):
         operations = paths[f"/api/v2/workspaces/{{workspace_id}}/reports/{suffix}"]
         assert set(operations) == {"get"}
         assert "requestBody" not in operations["get"]

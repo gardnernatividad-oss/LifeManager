@@ -316,4 +316,16 @@ sobre resultados terminales; las custom se agrupan como `Otras tareas`.
 Pendientes y Proyectos exponen avance promedio, estado y cumplimiento canónico;
 el progreso de Proyecto continúa ponderado por Etapas con Decimal. Las
 distribuciones por Categoría y la evolución por fecha planificada son
-agregaciones SQL read-only. Actividades permanece en 13.3.
+agregaciones SQL read-only.
+
+Stage 13.3 incorpora Actividades al mismo motor: cuenta ocurrencias persistidas,
+calcula duración desde `starts_at`/`ends_at` y agrupa por Actividad, Categoría,
+Organizador y fecha local. Catálogo usa nombre y Categoría actuales del
+`ActivityMaster`; custom se agrupa como `Otras actividades` y conserva su título
+y Categoría manual. La reclasificación dinámica se confirma también para
+Tareas. Actividades no adquiere resultado ni cumplimiento.
+
+El gate correctivo de 13.3 hace visible el filtro común de persona en todos los
+Workspaces: Responsable para Tareas/Pendientes, Líder para Proyectos,
+Organizador para Actividades y Responsable en Resumen. En Personal la única opción
+es el usuario activo; en Shared las opciones provienen de memberships `ACTIVE`.

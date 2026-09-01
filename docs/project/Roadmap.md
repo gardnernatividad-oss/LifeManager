@@ -90,7 +90,7 @@ El roadmap conservará exactamente estas columnas:
 | 12. Notificaciones y recordatorios | 12.5 | Reconciliación frontend V2 y gate de integración | Completado |
 | 13. Reportes | 13.1 | Motor global de Reportes, alcance Workspace, periodos, filtros y agregaciones reutilizables | Completado |
 | 13. Reportes | 13.2 | Reportes de Tareas, Pendientes y Proyectos/Etapas: cumplimiento, avance, categorías y evolución | Completado |
-| 13. Reportes | 13.3 | Reportes de Actividades, Otras actividades/tareas y reclasificación histórica dinámica por maestros | Pendiente |
+| 13. Reportes | 13.3 | Reportes de Actividades, Otras actividades/tareas y reclasificación histórica dinámica por maestros | Completado |
 | 13. Reportes | 13.4 | Tablas históricas, gráficos, filtros, responsive, exportabilidad prevista, autorización y gate de Reportes | Pendiente |
 | 14. Configuración | 14.1 | Perfil de usuario, cuenta, idioma, zona horaria y estructura general de Configuración | Pendiente |
 | 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Pendiente |
