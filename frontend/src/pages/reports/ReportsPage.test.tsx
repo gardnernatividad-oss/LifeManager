@@ -202,4 +202,22 @@ describe("ReportsPage", () => {
     expect(screen.getByLabelText("Organizador")).toBeInTheDocument();
     await waitFor(() => expect(reportApi.getV2ActivityReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ responsible_user_id: testUser.id })));
   });
+
+  it("exposes accessible responsive report tables without inventing historical events", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Tareas" }));
+    const taskTable = await screen.findByRole("table", { name: "Por Tarea" });
+    expect(taskTable.querySelector('td[data-label="Tarea"]')).toHaveTextContent("Otras tareas");
+    expect(screen.getByText("Distribución por fecha planificada")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Proyectos" }));
+    const projectTable = await screen.findByRole("table", { name: "Detalle de Proyectos" });
+    expect(projectTable.querySelector('td[data-label="Proyecto"]')).toHaveTextContent("Mudanza");
+
+    await user.click(screen.getByRole("button", { name: "Actividades" }));
+    const activityTable = await screen.findByRole("table", { name: "Distribución de Actividades por fecha local" });
+    expect(activityTable.querySelector('td[data-label="Fecha"]')).toHaveTextContent("31/08/2026");
+    expect(screen.queryByText(/historial de eventos/i)).not.toBeInTheDocument();
+  });
 });

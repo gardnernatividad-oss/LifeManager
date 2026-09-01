@@ -693,7 +693,17 @@ La agrupación custom se denomina `Otras actividades`; el título real permanece
 en la ocurrencia. Catálogo resuelve nombre/Categoría desde el `ActivityMaster`
 vigente y custom usa Categoría manual. No expone resultado ni cumplimiento.
 
-## 22. Decisiones aún operativas
+## 22. Gate integral de Reportes — Stage 13.4
+
+Los cinco contratos de Reportes quedan cerrados como endpoints JSON read-only.
+Las colecciones `by_*` y `evolution` son tablas analíticas del estado filtrado:
+agrupan por dimensión o fecha, pero no reconstruyen un historial de eventos.
+No se incorpora endpoint de exportación porque no existe todavía contrato de
+formato, columnas o permisos. Tampoco se incorporan gráficos: la especificación
+no define ninguno y las tablas numéricas accesibles siguen siendo la
+representación canónica.
+
+## 23. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

@@ -240,3 +240,9 @@ Stage 13.3 conserva la misma frontera para Actividades. Los filtros por
 `workspace_id`; participantes no conceden acceso adicional ni alteran el
 reporte Workspace-scoped. Cancelación o self-removal no permite consultar otro
 Workspace y `GLOBAL_ADMIN` continúa sin bypass de membership.
+
+Stage 13.4 cierra el gate sin ampliar permisos: las cinco pestañas requieren
+Account, Workspace y membership `ACTIVE`. Selectores Personal/Shared no otorgan
+acceso; únicamente producen filtros que el backend vuelve a intersectar con el
+Workspace. Una futura exportación deberá reutilizar esta misma frontera y no se
+autoriza implícitamente por la preparación actual.

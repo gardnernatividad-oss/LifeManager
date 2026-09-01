@@ -1637,6 +1637,24 @@ div.settings-toggles { border: 0; padding: 0; }
 .report-table-wrap table { width: 100%; min-width: 38rem; border-collapse: collapse; }
 .report-table-wrap th, .report-table-wrap td { padding: 0.7rem; border-bottom: 1px solid var(--color-border); text-align: left; }
 
+@media (max-width: 48rem) {
+  .report-period-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  .report-period-controls input, .report-period-controls select { width: 100%; min-width: 0; }
+  .report-table-wrap { overflow: visible; }
+  .report-table-wrap table, .report-table-wrap tbody, .report-table-wrap tr, .report-table-wrap td { display: block; width: 100%; min-width: 0; }
+  .report-table-wrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .report-table-wrap tbody { display: grid; gap: 0.75rem; }
+  .report-table-wrap tr { padding: 0.35rem 0.75rem; border: 1px solid var(--color-border); border-radius: 0.6rem; background: var(--color-surface); }
+  .report-table-wrap td { display: grid; grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 1.2fr); gap: 0.75rem; padding: 0.45rem 0; }
+  .report-table-wrap td::before { content: attr(data-label); color: var(--color-muted); font-weight: 700; }
+}
+
+@media (max-width: 32rem) {
+  .report-period-controls { grid-template-columns: 1fr; }
+  .report-tabs > * { flex: 1 1 calc(50% - 0.5rem); }
+  .report-table-wrap td { grid-template-columns: 1fr; gap: 0.15rem; }
+}
+
 .pending-planning-page { display: grid; gap: 1.25rem; }
 .pending-planning-page header h1 { margin: 0.15rem 0; }
 .pending-planning-panel { padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); }

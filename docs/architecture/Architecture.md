@@ -593,6 +593,14 @@ la duración usa la diferencia real `ends_at - starts_at`. Los joins con
 `ActivityMaster` y `Category` aplican reclasificación vigente sin reescribir las
 ocurrencias. No existe agregación Python, N+1 ni semántica de cumplimiento.
 
+Stage 13.4 conserva los DTOs JSON como frontera preparada para consumidores
+futuros, incluida una exportación cuando exista contrato explícito. La UI no
+descarga datasets completos: representa los agregados existentes mediante
+tablas semánticas que en móvil se reorganizan como tarjetas etiquetadas, sin
+perder encabezados accesibles. Las series llamadas `evolution` en el contrato
+son distribuciones del estado filtrado por fecha, no event sourcing ni snapshots
+históricos. No se añade otra consulta, gráfico, índice o dependencia.
+
 ---
 
 ## 17. Fuente de verdad

@@ -307,8 +307,8 @@ pendiente de Fase 13. La reorganización visual definitiva permanece en Fase 16.
 Stage 13.1 habilita el motor global read-only de Reportes dentro del Workspace
 seleccionado. El resumen agrega Tareas, Pendientes, Proyectos y Actividades en
 SQL, con periodos por fecha local y filtros comunes de Categoría y persona
-responsable. La UI expone únicamente Resumen; los reportes detallados y sus
-gráficos permanecen en 13.2–13.4.
+responsable. La entrega incremental añadió los reportes detallados en 13.2–13.3
+y reservó 13.4 para su cierre visual, responsive y de autorización.
 
 Stage 13.2 extiende ese mismo motor con reportes detallados de Tareas,
 Pendientes y Proyectos/Etapas. Tareas mide resultados actuales y cumplimiento
@@ -329,3 +329,11 @@ El gate correctivo de 13.3 hace visible el filtro común de persona en todos los
 Workspaces: Responsable para Tareas/Pendientes, Líder para Proyectos,
 Organizador para Actividades y Responsable en Resumen. En Personal la única opción
 es el usuario activo; en Shared las opciones provienen de memberships `ACTIVE`.
+
+Stage 13.4 cierra Reportes V2 con el gate integral de las cinco pestañas,
+filtros Personal/Shared y tablas analíticas responsive con equivalencia
+numérica accesible. La información disponible representa estado actual dentro
+del periodo y distribuciones agregadas por fecha; no se presenta como historial
+de eventos. La especificación no define gráficos concretos ni contrato de
+exportación, por lo que no se inventan. Los DTOs read-only y filtros server-side
+quedan preparados para una futura exportabilidad especificada.
