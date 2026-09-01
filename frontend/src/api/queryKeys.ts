@@ -25,6 +25,7 @@ export const queryKeys = {
   v2CatalogSelector: (workspaceId: string, kind: string, currentId?: string, search?: string) => ["v2-catalog-selector", workspaceId, kind, currentId, search] as const,
   v2CatalogSelectorRoot: (workspaceId: string) => ["v2-catalog-selector", workspaceId] as const,
   v2ReportSummary: (workspaceId: string, filters: object) => ["v2-reports", workspaceId, "summary", filters] as const,
+  v2ReportDetail: (workspaceId: string, section: string, filters: object) => ["v2-reports", workspaceId, section, filters] as const,
   home: ["home"] as const,
   review: ["review"] as const,
   masterTasks: ["master-tasks", "options"] as const,

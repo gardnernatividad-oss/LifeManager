@@ -581,6 +581,11 @@ cargar registros completos ni duplicar reglas de clasificación. Los periodos
 usan fechas locales del Workspace y los filtros comunes forman parte de la
 clave de consulta frontend para mantener aislamiento de caché.
 
+Los detalles de Stage 13.2 extienden esta proyección por dominio. Las métricas,
+agrupaciones por catálogo/Categoría y series por fecha planificada se calculan
+con `GROUP BY`, `CASE`, subqueries y agregados PostgreSQL. El servicio no carga
+colecciones ORM para resumirlas y conserva Decimal en avance ponderado.
+
 ---
 
 ## 17. Fuente de verdad

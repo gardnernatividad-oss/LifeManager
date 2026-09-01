@@ -309,3 +309,11 @@ seleccionado. El resumen agrega Tareas, Pendientes, Proyectos y Actividades en
 SQL, con periodos por fecha local y filtros comunes de Categoría y persona
 responsable. La UI expone únicamente Resumen; los reportes detallados y sus
 gráficos permanecen en 13.2–13.4.
+
+Stage 13.2 extiende ese mismo motor con reportes detallados de Tareas,
+Pendientes y Proyectos/Etapas. Tareas mide resultados actuales y cumplimiento
+sobre resultados terminales; las custom se agrupan como `Otras tareas`.
+Pendientes y Proyectos exponen avance promedio, estado y cumplimiento canónico;
+el progreso de Proyecto continúa ponderado por Etapas con Decimal. Las
+distribuciones por Categoría y la evolución por fecha planificada son
+agregaciones SQL read-only. Actividades permanece en 13.3.

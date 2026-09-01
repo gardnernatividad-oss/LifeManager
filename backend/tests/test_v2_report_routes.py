@@ -122,3 +122,42 @@ def test_report_summary_openapi_contract_is_minimal_and_read_only() -> None:
         "workspace_id", "date_from", "date_until", "category_id", "responsible_user_id",
     }
     assert "requestBody" not in operation
+
+
+def test_detailed_report_routes_reuse_scope_filters_and_are_read_only() -> None:
+    client, _user, workspace, db = _client()
+    task_result = {"summary": {"total_count": 3, "pending_count": 1, "completed_count": 1, "not_completed_count": 1, "resolved_count": 2, "completion_rate": "50.00"}, "by_task": [], "by_category": [], "evolution": []}
+    progress = {"total_count": 2, "no_iniciado_count": 0, "en_proceso_count": 1, "finalizado_count": 1, "average_progress": "60.00"}
+    compliance = {"en_plazo_count": 0, "atrasado_count": 1, "con_adelanto_count": 0, "a_tiempo_count": 1, "con_retraso_count": 0}
+    pending_result = {"summary": progress, "compliance": compliance, "by_category": [], "evolution": []}
+    project_result = {"summary": progress, "stage_compliance": compliance, "by_category": [], "by_project": [], "evolution": []}
+    try:
+        with patch("app.api.v2.reports.get_task_report", return_value=task_result) as task_service, patch("app.api.v2.reports.get_pending_item_report", return_value=pending_result), patch("app.api.v2.reports.get_project_report", return_value=project_result):
+            assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/tasks", params={"custom_tasks": True}).status_code == 200
+            assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/pending-items").status_code == 200
+            assert client.get(f"/api/v2/workspaces/{workspace.id}/reports/projects").status_code == 200
+        assert task_service.call_args.kwargs["workspace_id"] == workspace.id
+        assert task_service.call_args.kwargs["custom_tasks"] is True
+        db.add.assert_not_called(); db.flush.assert_not_called(); db.commit.assert_not_called(); db.rollback.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_detailed_reports_reject_reversed_ranges_before_services() -> None:
+    client, _user, workspace, _db = _client()
+    try:
+        with patch("app.api.v2.reports.get_task_report") as service:
+            response = client.get(f"/api/v2/workspaces/{workspace.id}/reports/tasks", params={"date_from": "2026-09-02", "date_until": "2026-09-01"})
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
+        service.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_detailed_report_openapi_contracts_are_get_only() -> None:
+    paths = app.openapi()["paths"]
+    for suffix in ("tasks", "pending-items", "projects"):
+        operations = paths[f"/api/v2/workspaces/{{workspace_id}}/reports/{suffix}"]
+        assert set(operations) == {"get"}
+        assert "requestBody" not in operations["get"]

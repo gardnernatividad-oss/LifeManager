@@ -657,7 +657,20 @@ resuelve dinámicamente desde el maestro vigente; los recursos custom conservan
 su Categoría manual. El endpoint no expone filas ni muta datos. Los detalles por
 dominio se incorporarán en 13.2–13.4.
 
-## 20. Decisiones aún operativas
+## 20. Reportes detallados — Stage 13.2
+
+`GET /api/v2/workspaces/{workspace_id}/reports/tasks`, `/pending-items` y
+`/projects` reutilizan periodos inclusivos, Categoría, persona responsable y
+autorización de Stage 13.1. Tareas añade `master_task_id` y `custom_tasks`; las
+custom se agrupan como `Otras tareas` sin perder su nombre persistido.
+
+El cumplimiento de Tareas es `Completadas / (Completadas + No realizadas) ×
+100`; sin resultados terminales es `null`. Pendientes informa avance medio y
+cumplimiento desde `planned_date`/`completion_date`. Proyectos deriva fecha,
+avance Decimal y estado desde Etapas, y reporta cumplimiento de Etapas. Todas
+las respuestas incluyen agrupaciones/evolución agregadas y son read-only.
+
+## 21. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

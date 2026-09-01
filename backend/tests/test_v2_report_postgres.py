@@ -1,6 +1,7 @@
 import uuid
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.db import session as db_session
 from app.models import Activity, ActivityMaster, Category, MasterTask, PendingItem, Project, ProjectStage, Task, User, Workspace, WorkspaceMember
-from app.models.enums import AccountStatus, MembershipStatus, WorkspaceKind
-from app.services.v2_report import get_report_summary
+from app.models.enums import AccountStatus, MembershipStatus, TaskResult, WorkspaceKind
+from app.services.v2_report import get_pending_item_report, get_project_report, get_report_summary, get_task_report
 from tests.postgres_safety import alembic_config_for_test_database, disposable_postgres_database
 
 
@@ -50,8 +51,8 @@ def test_report_summary_aggregates_workspace_data_on_disposable_postgres(monkeyp
             activity_master = ActivityMaster(id=uuid.uuid4(), workspace_id=workspace.id, category_id=category_a.id, name="Consulta", normalized_name="consulta")
             db.add_all([master_task, activity_master]); db.flush()
             db.add_all([
-                Task(id=uuid.uuid4(), workspace_id=workspace.id, master_task_id=master_task.id, responsible_user_id=owner.id, planned_date=date(2026, 8, 10), created_by_user_id=owner.id),
-                Task(id=uuid.uuid4(), workspace_id=workspace.id, custom_name="Otra tarea real", custom_category_id=category_b.id, responsible_user_id=member.id, planned_date=date(2026, 8, 11), created_by_user_id=owner.id),
+                Task(id=uuid.uuid4(), workspace_id=workspace.id, master_task_id=master_task.id, responsible_user_id=owner.id, planned_date=date(2026, 8, 10), result=TaskResult.COMPLETED, resolved_at=now, resolved_by_user_id=owner.id, created_by_user_id=owner.id),
+                Task(id=uuid.uuid4(), workspace_id=workspace.id, custom_name="Otra tarea real", custom_category_id=category_b.id, responsible_user_id=member.id, planned_date=date(2026, 8, 11), result=TaskResult.NOT_COMPLETED, resolved_at=now, resolved_by_user_id=member.id, created_by_user_id=owner.id),
                 PendingItem(id=uuid.uuid4(), workspace_id=workspace.id, category_id=category_a.id, responsible_user_id=owner.id, name="Pendiente", planned_date=date(2026, 8, 10), progress=20, created_by_user_id=owner.id),
             ]); db.flush()
             project = Project(id=uuid.uuid4(), workspace_id=workspace.id, category_id=category_a.id, leader_user_id=owner.id, name="Proyecto", created_by_user_id=owner.id)
@@ -72,4 +73,20 @@ def test_report_summary_aggregates_workspace_data_on_disposable_postgres(monkeyp
             assert (owner_counts.tasks, owner_counts.pending_items, owner_counts.projects, owner_counts.activities) == (1, 1, 1, 1)
             bounded = get_report_summary(db, workspace_id=workspace.id, timezone_name="America/Lima", date_from=date(2026, 8, 10), date_until=date(2026, 8, 11))
             assert (bounded.tasks, bounded.pending_items, bounded.projects, bounded.activities) == (2, 1, 0, 2)
+            tasks = get_task_report(db, workspace_id=workspace.id)
+            assert tasks["summary"] == {"total_count": 2, "pending_count": 0, "completed_count": 1, "not_completed_count": 1, "resolved_count": 2, "completion_rate": 50}
+            assert [(row["label"], row["total_count"]) for row in tasks["by_task"]] == [("Comprar", 1), ("Otras tareas", 1)]
+            assert get_task_report(db, workspace_id=workspace.id, category_id=category_b.id)["summary"]["total_count"] == 1
+            assert get_task_report(db, workspace_id=workspace.id, master_task_id=master_task.id)["summary"]["completed_count"] == 1
+            assert get_task_report(db, workspace_id=workspace.id, category_id=foreign_category.id)["summary"]["total_count"] == 0
+            assert get_task_report(db, workspace_id=workspace.id, responsible_user_id=outsider.id)["summary"]["total_count"] == 0
+            pending = get_pending_item_report(db, workspace_id=workspace.id, local_date=date(2026, 8, 11))
+            assert pending["summary"]["average_progress"] == 20
+            assert pending["compliance"]["atrasado_count"] == 1
+            assert get_pending_item_report(db, workspace_id=workspace.id, local_date=date(2026, 8, 11), category_id=foreign_category.id)["summary"]["total_count"] == 0
+            projects = get_project_report(db, workspace_id=workspace.id, local_date=date(2026, 8, 11))
+            assert projects["summary"]["average_progress"] == Decimal("25.00")
+            assert projects["by_project"][0]["state"] == "EN_PROCESO"
+            assert projects["stage_compliance"]["atrasado_count"] == 1
+            assert get_project_report(db, workspace_id=workspace.id, local_date=date(2026, 8, 11), responsible_user_id=outsider.id)["summary"]["total_count"] == 0
         engine.dispose()

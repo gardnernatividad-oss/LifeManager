@@ -1633,6 +1633,9 @@ div.settings-toggles { border: 0; padding: 0; }
 .report-tabs [aria-current="page"] { border-color: var(--color-primary); color: var(--color-primary); font-weight: 750; }
 .report-tabs button:disabled { opacity: 0.55; cursor: default; }
 .report-total { margin-bottom: 0; text-align: right; }
+.report-table-wrap { overflow-x: auto; margin-top: 1rem; }
+.report-table-wrap table { width: 100%; min-width: 38rem; border-collapse: collapse; }
+.report-table-wrap th, .report-table-wrap td { padding: 0.7rem; border-bottom: 1px solid var(--color-border); text-align: left; }
 
 .pending-planning-page { display: grid; gap: 1.25rem; }
 .pending-planning-page header h1 { margin: 0.15rem 0; }

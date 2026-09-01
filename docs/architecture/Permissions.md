@@ -229,3 +229,8 @@ de un Workspace ACTIVE. Toda agregación queda limitada al Workspace solicitado;
 owner y `GLOBAL_ADMIN` sin membership no amplían el acceso. El endpoint es
 read-only y los filtros de Categoría o responsable no conceden autoridad sobre
 identificadores externos.
+
+Stage 13.2 aplica exactamente la misma frontera a Tareas, Pendientes y
+Proyectos/Etapas. Los filtros por maestro, Categoría, responsable o Líder se
+combinan siempre con `workspace_id`; un UUID extranjero produce una población
+vacía y nunca amplía resultados ni confirma la existencia del recurso.

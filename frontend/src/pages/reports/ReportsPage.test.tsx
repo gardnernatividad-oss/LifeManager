@@ -13,17 +13,22 @@ import { AuthContext, type AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import type { WorkspaceSummary } from "../../types/auth";
 import type { V2Category } from "../../types/v2Catalog";
-import type { V2ReportSummary } from "../../types/v2Report";
+import type { V2PendingReport, V2ProjectReport, V2ReportSummary, V2TaskReport } from "../../types/v2Report";
 import { ReportsPage } from "./ReportsPage";
 
 vi.mock("../../api/v2CatalogApi", () => ({ listV2Catalog: vi.fn() }));
-vi.mock("../../api/v2ReportApi", () => ({ getV2ReportSummary: vi.fn() }));
+vi.mock("../../api/v2ReportApi", () => ({ getV2ReportSummary: vi.fn(), getV2TaskReport: vi.fn(), getV2PendingReport: vi.fn(), getV2ProjectReport: vi.fn() }));
 vi.mock("../../api/workspaceApi", () => ({ listWorkspaceMembers: vi.fn() }));
 
 const personal: WorkspaceSummary = { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Personal", kind: "PERSONAL", timezone: "America/Lima" };
 const shared: WorkspaceSummary = { ...personal, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Familia", kind: "SHARED" };
 const category: V2Category = { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", workspace_id: personal.id, name: "Hogar", is_active: true, lock_version: 1, can_delete: false, created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" };
 const summary: V2ReportSummary = { local_date: "2026-08-31", date_from: "2026-08-02", date_until: "2026-08-31", category_id: null, responsible_user_id: null, counts: { tasks: 4, pending_items: 3, projects: 2, activities: 1, total: 10 } };
+const progress = { total_count: 2, no_iniciado_count: 0, en_proceso_count: 1, finalizado_count: 1, average_progress: "60.00" };
+const compliance = { en_plazo_count: 0, atrasado_count: 1, con_adelanto_count: 0, a_tiempo_count: 1, con_retraso_count: 0 };
+const taskReport: V2TaskReport = { period: { date_from: null, date_until: null }, filters: {}, master_task_id: null, custom_tasks: null, summary: { total_count: 2, pending_count: 0, completed_count: 1, not_completed_count: 1, resolved_count: 2, completion_rate: "50.00" }, by_task: [{ key: "CUSTOM", label: "Otras tareas", total_count: 1, pending_count: 0, completed_count: 1, not_completed_count: 0, resolved_count: 1, completion_rate: "100.00" }], by_category: [], evolution: [] };
+const pendingReport: V2PendingReport = { period: { date_from: null, date_until: null }, filters: {}, summary: progress, compliance, by_category: [], evolution: [] };
+const projectReport: V2ProjectReport = { period: { date_from: null, date_until: null }, filters: {}, summary: progress, stage_compliance: compliance, by_category: [], by_project: [{ project_id: "project-1", project_name: "Mudanza", category_id: category.id, category_name: "Hogar", planned_date: "2026-08-31", progress: "60.00", state: "EN_PROCESO", stage_count: 2 }], evolution: [] };
 
 function Auth({ children, initial = personal }: PropsWithChildren<{ initial?: WorkspaceSummary | null }>) {
   const [workspace, setWorkspace] = useState(initial);
@@ -44,6 +49,9 @@ describe("ReportsPage", () => {
     vi.mocked(catalogApi.listV2Catalog).mockResolvedValue({ items: [category], total: 1 });
     vi.mocked(workspaceApi.listWorkspaceMembers).mockResolvedValue([{ user_id: testUser.id, display_name: "Ada Lovelace", email: testUser.email, role: "Miembro", status: "ACTIVE", joined_at: "2026-01-01T00:00:00Z", ended_at: null }]);
     vi.mocked(reportApi.getV2ReportSummary).mockResolvedValue(summary);
+    vi.mocked(reportApi.getV2TaskReport).mockResolvedValue(taskReport);
+    vi.mocked(reportApi.getV2PendingReport).mockResolvedValue(pendingReport);
+    vi.mocked(reportApi.getV2ProjectReport).mockResolvedValue(projectReport);
   });
 
   it("loads a Personal Workspace summary with the default local period", async () => {
@@ -106,5 +114,27 @@ describe("ReportsPage", () => {
     expect(screen.getByText("Selecciona un espacio de trabajo")).toBeInTheDocument();
     expect(catalogApi.listV2Catalog).not.toHaveBeenCalled();
     expect(reportApi.getV2ReportSummary).not.toHaveBeenCalled();
+  });
+
+  it("renders detailed Task results and the Otras tareas grouping", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Tareas" }));
+    expect(await screen.findByText("Resultados de Tareas")).toBeInTheDocument();
+    expect(screen.getAllByText("Otras tareas").length).toBeGreaterThan(0);
+    await user.selectOptions(screen.getByLabelText("Tarea"), "CUSTOM");
+    await waitFor(() => expect(reportApi.getV2TaskReport).toHaveBeenLastCalledWith(personal.id, expect.objectContaining({ custom_tasks: true })));
+  });
+
+  it("renders Pending and Project progress and compliance", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Pendientes" }));
+    expect(await screen.findByText("Avance de Pendientes")).toBeInTheDocument();
+    expect(screen.getByText("60.00%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Proyectos" }));
+    expect(await screen.findByText("Cumplimiento de Etapas")).toBeInTheDocument();
+    expect(screen.getByText("Mudanza")).toBeInTheDocument();
+    expect(screen.getByText("31/08/2026")).toBeInTheDocument();
   });
 });
