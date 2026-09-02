@@ -561,3 +561,17 @@ Stage 12.5 establece el bootstrap frontend de Workspace en el shell autenticado:
 por defecto o una preferencia todavía accesible y purga caché workspace-scoped
 al cambiar. El servidor sigue siendo autoridad sobre membership y lifecycle;
 no existe fallback a `/api/v1/workspaces` ni bypass por `GLOBAL_ADMIN`.
+
+## 34. Cierre de Configuración — Stage 14.4
+
+Configuración queda compuesta por Perfil, Notificaciones, Workspaces,
+Privacidad, Seguridad y Acerca de sobre los verticales V2 existentes. El shell
+usa una única operación `POST /api/v2/auth/logout`; el sidebar conserva el
+footer y desplaza únicamente su navegación para mantener esa salida accesible
+en desktop y móvil.
+
+La recuperación pública ya dispone de tokens persistidos por digest,
+expiración, single-use, anti-enumeration, rate limiting, Turnstile e
+invalidación de sesiones en backend. Su interfaz desde Login queda asignada a
+17.2; el provider de email real y su configuración operacional pertenecen a
+17.4. La metadata técnica se normalizará al preparar la publicación en Fase 19.

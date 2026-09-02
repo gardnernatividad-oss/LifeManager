@@ -751,6 +751,19 @@ Stage 14.2.
   histórico `0.1.0` no se convierte en fuente de versión; su consolidación
   mediante `VERSION` continúa diferida conforme a la arquitectura.
 
+### Gate integral de Configuración — Stage 14.4
+
+- Perfil, Notificaciones, Workspaces, Privacidad, Seguridad y Acerca de
+  conservan sus rutas y fronteras V2 sin contratos paralelos ni rutas V1.
+- El logout canónico continúa en `POST /api/v2/auth/logout`, protegido por CSRF,
+  y el shell mantiene una única acción accesible en desktop y móvil.
+- `POST /api/v2/auth/password-recovery-requests` y
+  `POST /api/v2/auth/password-resets` ya proporcionan el backend público seguro;
+  la pantalla pública de recuperación se implementará en 17.2. El proveedor de
+  correo operacional pertenece a 17.4 y no se simula desde Configuración.
+- Configuración queda cerrada funcionalmente. La revisión visual transversal
+  permanece en Fase 16 y la versión técnica definitiva en Fase 19.
+
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
 - DTOs y actions exactos de cada vertical;

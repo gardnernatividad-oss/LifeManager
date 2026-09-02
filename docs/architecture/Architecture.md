@@ -633,6 +633,13 @@ El router posee `commit/rollback`. La versión de credencial derivada del hash
 revoca server-side toda sesión previa; el frontend no almacena contraseñas ni
 simula dispositivos/sesiones inexistentes.
 
+Stage 14.4 valida el conjunto de Configuración sin crear otro vertical ni
+alterar sus contratos. Perfil, Notificaciones, Privacidad, Seguridad y
+Workspaces conservan `Router → Service → Session → PostgreSQL`; Acerca de es
+contenido estático. El logout existente permanece como única salida de sesión
+y el shell garantiza su accesibilidad mediante scroll interno de navegación.
+La UI pública de recuperación se difiere a 17.2 y el email operacional a 17.4.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;

@@ -366,3 +366,13 @@ verificación de email y administración global permanecen en sus flujos
 separados. Acerca de identifica LifeManager V2.0.0 como versión en desarrollo;
 la normalización futura de metadata técnica continúa regida por la línea base
 de versionado.
+
+Stage 14.4 cierra integralmente Configuración V2 mediante el gate conjunto de
+Perfil, Notificaciones, Workspaces, Privacidad, Seguridad y Acerca de. El shell
+mantiene un único logout server-side y su navegación obtiene scroll propio para
+que la acción permanezca accesible en desktop y móvil. El backend de
+recuperación pública ya conserva token seguro, expiración, single-use,
+anti-enumeration, rate limiting e invalidación de sesiones; su experiencia
+frontend desde Login se asigna explícitamente a 17.2 y la entrega operacional
+de correo a 17.4. La pasada estética global continúa en Fase 16 y la metadata
+definitiva de release en Fase 19.

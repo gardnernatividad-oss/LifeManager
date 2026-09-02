@@ -268,3 +268,10 @@ exige CSRF, limita intentos por actor y verifica la contraseña actual antes de
 persistir el nuevo hash. Cambiar la huella de credencial invalida todas las
 sesiones anteriores. Recuperación de contraseña y administración global siguen
 siendo superficies separadas.
+
+Stage 14.4 cierra Configuración sin ampliar autoridad. Perfil, preferencias,
+privacidad y contraseña continúan derivando el usuario de la sesión; la gestión
+de Workspace conserva sus roles y membership `ACTIVE`. El logout solo invalida
+la sesión autenticada y exige CSRF. Ni owner ni `GLOBAL_ADMIN` obtienen acceso a
+configuración privada ajena; UUIDs externos y payloads adicionales siguen sin
+conceder capacidad.

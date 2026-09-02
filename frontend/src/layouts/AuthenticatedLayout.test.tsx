@@ -154,4 +154,18 @@ describe("AuthenticatedLayout V1", () => {
     await waitFor(() => expect(sidebar).not.toHaveClass("sidebar--open"));
     expect(menuButton).toHaveFocus();
   });
+
+  it("keeps logout available from the mobile sidebar", async () => {
+    setMobileViewport(true);
+    const logout = vi.fn();
+    vi.mocked(useAuth).mockReturnValue(authenticatedState(logout));
+    const user = userEvent.setup();
+    renderLayout();
+
+    await user.click(await screen.findByRole("button", { name: "Abrir menú de navegación" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    expect(logout).toHaveBeenCalledOnce();
+    expect(await screen.findByRole("heading", { name: "Destino de inicio de sesión" })).toBeInTheDocument();
+  });
 });

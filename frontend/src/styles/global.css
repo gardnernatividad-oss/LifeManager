@@ -120,8 +120,12 @@ p {
 }
 
 .sidebar__nav {
+  min-height: 0;
+  flex: 1;
   display: grid;
+  align-content: start;
   gap: 0.25rem;
+  overflow-y: auto;
 }
 
 .sidebar__link {
@@ -213,7 +217,7 @@ p {
 }
 
 .sidebar__footer {
-  margin-top: auto;
+  flex: 0 0 auto;
   padding-top: 1rem;
   border-top: 1px solid rgb(255 255 255 / 18%);
 }

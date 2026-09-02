@@ -95,14 +95,14 @@ El roadmap conservará exactamente estas columnas:
 | 14. Configuración | 14.1 | Perfil de usuario, cuenta, zona horaria y estructura general de Configuración | Completado |
 | 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Completado |
 | 14. Configuración | 14.3 | Gestión de Workspaces, membresías/propiedad, seguridad visible de cuenta y Acerca de | Completado |
-| 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Pendiente |
+| 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Completado |
 | 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Pendiente |
 | 15. Administración global | 15.2 | Aislamiento del administrador global, auditoría, seguridad, pruebas y gate administrativo | Pendiente |
 | 16. Integración UX y PWA | 16.1 | Integración visual completa, navegación global/contextual y patrones comunes de interacción | Pendiente |
 | 16. Integración UX y PWA | 16.2 | Auditoría desktop/mobile-first, tablas, formularios, estados visuales y accesibilidad | Pendiente |
 | 16. Integración UX y PWA | 16.3 | PWA, instalación, service worker, caché, actualización segura y gate UX/PWA | Pendiente |
 | 17. Hardening de seguridad | 17.1 | Threat model final, secretos, Git/cloud, bundles y superficie expuesta al navegador | Pendiente |
-| 17. Hardening de seguridad | 17.2 | Autenticación, sesiones, autorización, IDOR, aislamiento Workspace/usuario y privacidad final | Pendiente |
+| 17. Hardening de seguridad | 17.2 | Autenticación pública, recuperación de contraseña frontend, sesiones, autorización, IDOR, aislamiento Workspace/usuario y privacidad final | Pendiente |
 | 17. Hardening de seguridad | 17.3 | Injection, XSS, mass assignment, API mínima, CORS, CSP, headers y almacenamiento del navegador | Pendiente |
 | 17. Hardening de seguridad | 17.4 | Dependencias, supply chain, infraestructura, correo, push, logs y configuración productiva | Pendiente |
 | 17. Hardening de seguridad | 17.5 | Pruebas ofensivas, remediación, regresión de vulnerabilidades y gate formal de seguridad | Pendiente |
