@@ -386,3 +386,30 @@ listado paginado y filtrable de cuentas y las transiciones auditadas ordinarias
 de usuarios ni acceso a contenido Workspace. El bootstrap inicial continúa sin
 endpoint o seed automático: 17.2 revisará su seguridad y 19.1 definirá el
 procedimiento operacional explícito y auditado antes del despliegue.
+
+Stage 15.2 cierra el gate administrativo sin ampliar operaciones. Confirma que
+`GLOBAL_ADMIN` administra cuentas, pero no adquiere membership ni acceso a
+Tareas, Pendientes, Proyectos/Etapas, Actividades, Calendarios, Reportes,
+Configuración privada o Workspaces ajenos. Aprobación, rechazo, deshabilitación
+y reactivación producen eventos append-only con actor, target, transición y
+timestamp, sin credenciales ni contenido privado. PostgreSQL valida locks,
+versiones stale, concurrencia, rollback y unicidad del Personal Workspace.
+Cada transición actualiza `status_changed_at`, parte de la huella de sesión, de
+modo que una sesión revocada al deshabilitar no revive tras la reactivación.
+
+El bootstrap productivo sigue asignado a revisión de seguridad en 17.2 y al
+procedimiento operacional auditado de 19.1. Recuperación frontend continúa en
+17.2 y el provider de correo en 17.4. La reorganización de módulos, Calendario,
+shell, patrones de detalle, densidad, filtros, desktop/mobile y accesibilidad
+permanece íntegramente en Fase 16.
+
+La deuda UX de Fase 16 conserva expresamente: retirar la agrupación provisional
+Planificación; presentar Tareas, Pendientes y Proyectos como módulos finales;
+retirar Actividades como CRUD independiente y crear/editar sus ocurrencias desde
+Calendario; selección temporal accesible en Día/Semana, Mes agregado con
+navegación a Día y preservación de recurrencia, participantes, reminders y
+`Otra actividad`; mantener Tablas > Actividades como catálogo; compactar filtros
+y datos personales redundantes; aprovechar desktop; reducir densidad; unificar
+detalle/volver/nuevo, navegación y selector Workspace; revisar shell/sidebar,
+logout, mobile-first, tablas móviles, estados visuales, accesibilidad y una
+alternativa operable por teclado al drag-and-drop.

@@ -1,5 +1,7 @@
 import uuid
+import threading
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,5 +46,32 @@ def test_admin_state_transition_persists_event_and_rejects_stale_version(monkeyp
         db.rollback()
         db.expire_all()
         assert db.get(User, target.id).account_status == AccountStatus.DISABLED
+        change_admin_account_state(db, user_id=target.id, expected_lock_version=2, new_status=AccountStatus.ACTIVE, actor=admin, reason="REACTIVATE")
+        db.commit()
+        target_id, admin_id = target.id, admin.id
         db.close()
+
+        barrier = threading.Barrier(2)
+
+        def disable_once() -> str:
+            with Session(engine) as concurrent_db:
+                actor = concurrent_db.get(User, admin_id)
+                assert actor is not None
+                barrier.wait(timeout=10)
+                try:
+                    change_admin_account_state(concurrent_db, user_id=target_id, expected_lock_version=3, new_status=AccountStatus.DISABLED, actor=actor, reason="CONCURRENT")
+                    concurrent_db.commit()
+                    return "disabled"
+                except AccountStateConflictError:
+                    concurrent_db.rollback()
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(disable_once) for _ in range(2)]
+            results = sorted(future.result() for future in futures)
+        assert results == ["conflict", "disabled"]
+        with Session(engine) as verify:
+            persisted = verify.get(User, target_id)
+            assert persisted is not None and persisted.account_status == AccountStatus.DISABLED and persisted.lock_version == 4
+            assert verify.scalar(sa.select(sa.func.count()).select_from(UserAccountStateEvent).where(UserAccountStateEvent.user_id == target_id, UserAccountStateEvent.to_status == AccountStatus.DISABLED)) == 2
         engine.dispose()

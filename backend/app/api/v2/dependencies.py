@@ -64,7 +64,7 @@ def get_current_account(
     if (
         user is None
         or user.account_status != AccountStatus.ACTIVE
-        or not session_matches_password(claims, user.hashed_password)
+        or not session_matches_password(claims, user.hashed_password, user.status_changed_at)
     ):
         raise _authentication_error()
     request.state.session_claims = claims

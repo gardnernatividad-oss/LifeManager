@@ -126,6 +126,7 @@ def _set_session_cookies(response: Response, *, user: User) -> None:
     token = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=csrf_token,
     )
     common = {

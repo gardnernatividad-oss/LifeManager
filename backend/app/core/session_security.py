@@ -21,10 +21,11 @@ class SessionClaims:
     csrf_digest: str
 
 
-def credential_version(hashed_password: str) -> str:
+def credential_version(hashed_password: str, status_changed_at: datetime) -> str:
+    state_version = status_changed_at.astimezone(timezone.utc).isoformat(timespec="microseconds")
     return hmac.new(
         settings.SECRET_KEY.encode(),
-        f"credential:{hashed_password}".encode(),
+        f"credential:{hashed_password}:{state_version}".encode(),
         hashlib.sha256,
     ).hexdigest()
 
@@ -45,11 +46,12 @@ def create_session_token(
     *,
     user_id: uuid.UUID,
     hashed_password: str,
+    status_changed_at: datetime,
     csrf_token: str,
     now: datetime | None = None,
 ) -> str:
     issued_at = now or datetime.now(timezone.utc)
-    version = credential_version(hashed_password)
+    version = credential_version(hashed_password, status_changed_at)
     return jwt.encode(
         {
             "sub": str(user_id),
@@ -88,10 +90,14 @@ def decode_session_token(token: str | None) -> SessionClaims | None:
         return None
 
 
-def session_matches_password(claims: SessionClaims, hashed_password: str) -> bool:
+def session_matches_password(
+    claims: SessionClaims,
+    hashed_password: str,
+    status_changed_at: datetime,
+) -> bool:
     return hmac.compare_digest(
         claims.credential_version,
-        credential_version(hashed_password),
+        credential_version(hashed_password, status_changed_at),
     )
 
 

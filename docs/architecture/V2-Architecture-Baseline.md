@@ -590,3 +590,17 @@ La consola no puede promover roles, modificar al administrador global, borrar
 usuarios ni ejecutar endpoints Workspace sin membership ordinaria. El primer
 `GLOBAL_ADMIN` sigue requiriendo un procedimiento operacional fuera de la API:
 se revisará en 17.2 y se formalizará para despliegue en 19.1.
+
+## 36. Gate administrativo — Stage 15.2
+
+La frontera final combina autorización server-side, DTOs allowlisted, CSRF,
+rate limiting persistente, row locking, concurrencia optimista y eventos de
+estado append-only. El evento contiene únicamente identidad del target y actor,
+transición, timestamp y razón administrativa; nunca credenciales, tokens o
+contenido Workspace. Account `DISABLED` deja de satisfacer la sesión vigente.
+La huella de sesión combina la credencial y `status_changed_at`: cada transición
+de cuenta revoca las sesiones anteriores, incluso tras una reactivación posterior.
+
+Los motores privados continúan resolviendo membership `ACTIVE` sin consultar el
+rol global. Así, la autoridad de plataforma permanece separada de ownership y
+membership incluso en serializadores, Reportes y proyecciones de Calendario.

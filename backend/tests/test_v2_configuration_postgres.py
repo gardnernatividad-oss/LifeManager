@@ -122,6 +122,7 @@ def test_profile_contract_round_trips_on_disposable_postgres(monkeypatch: pytest
                     old_session = decode_session_token(create_session_token(
                         user_id=account.id,
                         hashed_password=account.hashed_password,
+                        status_changed_at=account.status_changed_at,
                         csrf_token="csrf-test-value",
                     ))
                     assert old_session is not None
@@ -137,7 +138,7 @@ def test_profile_contract_round_trips_on_disposable_postgres(monkeypatch: pytest
                     session.refresh(account)
                     assert verify_password("NewPassword!", account.hashed_password)
                     assert not verify_password("CurrentPassword!", account.hashed_password)
-                    assert not session_matches_password(old_session, account.hashed_password)
+                    assert not session_matches_password(old_session, account.hashed_password, account.status_changed_at)
 
                     request = Request({
                         "type": "http",

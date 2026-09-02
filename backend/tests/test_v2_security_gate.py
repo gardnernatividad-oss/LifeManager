@@ -28,6 +28,7 @@ def _user() -> SimpleNamespace:
         account_status=AccountStatus.ACTIVE,
         global_role=None,
         hashed_password="$argon2id$fixture-current-hash",
+        status_changed_at=NOW,
     )
 
 
@@ -96,6 +97,7 @@ def test_oversized_csrf_values_fail_before_authenticated_mutation(client_and_db)
     session = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=csrf,
     )
     client.cookies.set(settings.SESSION_COOKIE_NAME, session)

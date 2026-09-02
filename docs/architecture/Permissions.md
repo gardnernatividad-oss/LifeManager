@@ -283,3 +283,14 @@ CSRF, rate limit, row lock y versión esperada se revalidan server-side. Un
 usuario ordinario recibe 403 y una cuenta administrativa deshabilitada 401. No
 existe endpoint de promoción, eliminación ni mutación del propio rol global.
 Estas capacidades no conceden membership ni lectura de contenido privado.
+
+Stage 15.2 confirma la matriz completa: usuario ordinario recibe 403 en la
+superficie administrativa; Account inactiva recibe 401; UUID inexistente y
+estado/versiones no elegibles producen errores seguros. `GLOBAL_ADMIN` sin
+membership recibe la misma denegación que cualquier no miembro en Tareas,
+Pendientes, Proyectos/Etapas, Actividades, Calendarios, Reportes, Configuración
+privada y APIs Workspace. No existe escalada vertical u horizontal mediante
+payload, rutas ordinarias o navegación frontend.
+Las transiciones de estado cambian `status_changed_at`, incluido en la huella
+de sesión: deshabilitar revoca las sesiones existentes y reactivar exige una
+sesión nueva; ninguna sesión antigua recupera validez.

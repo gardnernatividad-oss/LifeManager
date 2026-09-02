@@ -192,6 +192,7 @@ def test_password_reset_invalidates_old_session_and_new_login_works(db: Session)
     old_session = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=new_csrf_token(),
     )
     old_claims = decode_session_token(old_session)
@@ -205,7 +206,7 @@ def test_password_reset_invalidates_old_session_and_new_login_works(db: Session)
     )
     db.flush()
 
-    assert not session_matches_password(old_claims, user.hashed_password)
+    assert not session_matches_password(old_claims, user.hashed_password, user.status_changed_at)
     with pytest.raises(InvalidCredentialsError):
         authenticate_session(db, email=user.email, password="OldPassword!")
     assert authenticate_session(
@@ -216,11 +217,12 @@ def test_password_reset_invalidates_old_session_and_new_login_works(db: Session)
     new_session = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=new_csrf_token(),
     )
     new_claims = decode_session_token(new_session)
     assert new_claims is not None
-    assert session_matches_password(new_claims, user.hashed_password)
+    assert session_matches_password(new_claims, user.hashed_password, user.status_changed_at)
 
 
 def test_reissue_revokes_old_token_and_new_token_resets(db: Session) -> None:

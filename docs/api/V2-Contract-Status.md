@@ -782,6 +782,23 @@ Stage 14.2.
 - No existe bootstrap público/automático. Su procedimiento operacional auditado
   se documentará en 19.1 después de la revisión de autenticación de 17.2.
 
+### Gate administrativo — Stage 15.2
+
+- La matriz final exige cuenta `ACTIVE` y `GLOBAL_ADMIN` en todas las rutas
+  `/api/v2/admin/*`; ocultar navegación nunca sustituye esta dependencia.
+- Las cuatro mutaciones persistentes quedan auditadas mediante
+  `UserAccountStateEvent`: actor, target, estado anterior/nuevo, razón segura y
+  timestamp. No existe API para alterar eventos ni serialización de secretos.
+- Locks de fila y versión esperada serializan cambios de estado. La aprobación
+  concurrente crea exactamente un Personal Workspace y membership; los cambios
+  de estado concurrentes producen un éxito y un conflicto sin doble evento.
+- Una cuenta `DISABLED` pierde inmediatamente login y uso de sesiones previas;
+  la reactivación recupera elegibilidad sin fabricar otra sesión. La huella de
+  sesión incorpora `status_changed_at`, por lo que una sesión anterior a una
+  transición de estado no revive después de reactivar la cuenta.
+- El rol global no bypassa ninguna ruta Workspace-scoped ni permite promoción,
+  democión, eliminación o lectura de contenido privado.
+
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
 - DTOs y actions exactos de cada vertical;

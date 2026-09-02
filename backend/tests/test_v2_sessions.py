@@ -62,6 +62,7 @@ def _install_session(client: TestClient, user: User) -> str:
     token = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=csrf,
     )
     client.cookies.set(settings.SESSION_COOKIE_NAME, token)
@@ -168,6 +169,27 @@ def test_me_checks_current_hash_and_active_state(
 
     user.hashed_password = "$argon2id$new-credential-hash"
     assert client.get("/api/v2/me").status_code == 401
+
+
+def test_disabled_session_does_not_revive_after_account_reactivation(
+    client: TestClient,
+    db: MagicMock,
+) -> None:
+    user = _user()
+    db.scalar.return_value = user
+    _install_session(client, user)
+    assert client.get("/api/v2/me").status_code == 200
+
+    user.account_status = AccountStatus.DISABLED
+    user.status_changed_at = NOW + timedelta(minutes=1)
+    assert client.get("/api/v2/me").status_code == 401
+
+    user.account_status = AccountStatus.ACTIVE
+    user.status_changed_at = NOW + timedelta(minutes=2)
+    assert client.get("/api/v2/me").status_code == 401
+
+    _install_session(client, user)
+    assert client.get("/api/v2/me").status_code == 200
     user.account_status = AccountStatus.DISABLED
     assert client.get("/api/v2/me").status_code == 401
 
@@ -182,6 +204,7 @@ def test_expired_forged_and_wrong_purpose_sessions_are_rejected(
     expired = create_session_token(
         user_id=user.id,
         hashed_password=user.hashed_password,
+        status_changed_at=user.status_changed_at,
         csrf_token=csrf,
         now=datetime.now(timezone.utc) - timedelta(days=1),
     )

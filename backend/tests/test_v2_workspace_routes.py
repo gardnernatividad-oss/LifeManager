@@ -34,6 +34,7 @@ def _account(
         timezone="America/Lima",
         account_status=status,
         global_role=GlobalRole.GLOBAL_ADMIN if global_admin else None,
+        status_changed_at=NOW,
     )
 
 
@@ -217,6 +218,7 @@ def test_authenticated_mutation_requires_existing_csrf_protection() -> None:
     session_token = create_session_token(
         user_id=account.id,
         hashed_password=account.hashed_password,
+        status_changed_at=account.status_changed_at,
         csrf_token=csrf_token,
     )
     with _client(db, account=account) as client:
@@ -242,6 +244,7 @@ def test_valid_session_and_csrf_can_create_shared_workspace() -> None:
     session_token = create_session_token(
         user_id=account.id,
         hashed_password=account.hashed_password,
+        status_changed_at=account.status_changed_at,
         csrf_token=csrf_token,
     )
     with patch(

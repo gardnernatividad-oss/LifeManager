@@ -54,4 +54,28 @@ describe("AdminPage", () => {
     expect(await screen.findByText("No pudimos cargar las solicitudes.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
   });
+
+  it("sends search, status and pagination through the server query", async () => {
+    const user = userEvent.setup(); mount();
+    await screen.findByText("active@example.com");
+    await user.type(screen.getByLabelText("Buscar"), "Ada");
+    await user.selectOptions(screen.getByLabelText("Estado"), "DISABLED");
+    await waitFor(() => expect(adminApi.listAdminUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, page_size: 25, search: "Ada", account_status: "DISABLED" })));
+
+    vi.mocked(adminApi.listAdminUsers).mockResolvedValue({ items: [active], total: 26, page: 1, page_size: 25, total_pages: 2 });
+    await user.selectOptions(screen.getByLabelText("Estado"), "ACTIVE");
+    await screen.findByText("Página 1 de 2");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await waitFor(() => expect(adminApi.listAdminUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+  });
+
+  it("shows an empty state and a safe recoverable conflict", async () => {
+    vi.mocked(adminApi.listAccountRequests).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(adminApi.disableAdminUser).mockRejectedValue(Object.assign(new Error("conflict"), { isAxiosError: true, response: { status: 409 } }));
+    const user = userEvent.setup(); mount();
+    expect(await screen.findByText("No hay solicitudes pendientes.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Deshabilitar" }));
+    expect(await screen.findByText(/La cuenta cambió/)).toBeInTheDocument();
+    expect(adminApi.listAdminUsers).toHaveBeenCalled();
+  });
 });

@@ -97,7 +97,7 @@ El roadmap conservará exactamente estas columnas:
 | 14. Configuración | 14.3 | Gestión de Workspaces, membresías/propiedad, seguridad visible de cuenta y Acerca de | Completado |
 | 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Completado |
 | 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Completado |
-| 15. Administración global | 15.2 | Aislamiento del administrador global, auditoría, seguridad, pruebas y gate administrativo | Pendiente |
+| 15. Administración global | 15.2 | Aislamiento del administrador global, auditoría, seguridad, pruebas y gate administrativo | Completado |
 | 16. Integración UX y PWA | 16.1 | Integración visual completa, navegación global/contextual y patrones comunes de interacción | Pendiente |
 | 16. Integración UX y PWA | 16.2 | Auditoría desktop/mobile-first, tablas, formularios, estados visuales y accesibilidad | Pendiente |
 | 16. Integración UX y PWA | 16.3 | PWA, instalación, service worker, caché, actualización segura y gate UX/PWA | Pendiente |

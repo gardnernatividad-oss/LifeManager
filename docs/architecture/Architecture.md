@@ -646,6 +646,16 @@ bloquea la cuenta objetivo antes de cambiar estado; el modelo y el evento de
 estado existentes siguen siendo la fuente única. El frontend consume DTOs
 allowlisted y protege navegación/ruta, sin sustituir la autorización backend.
 
+Stage 15.2 cierra este vertical mediante gates de PostgreSQL, autorización,
+auditoría, sesión y frontend. `UserAccountStateEvent` es el registro append-only
+de las transiciones implementadas; la cuenta objetivo se bloquea antes de
+validar versión/estado y cualquier fallo pertenece al rollback del router. Los
+servicios Workspace y sus dominios no reciben dependencias administrativas ni
+bypass por rol global.
+La huella autenticada incluye `status_changed_at`; así, una transición de
+cuenta revoca las sesiones anteriores de forma permanente y la reactivación
+requiere autenticación nueva.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;
