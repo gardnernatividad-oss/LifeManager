@@ -97,6 +97,7 @@ def test_policies_match_the_approved_defaults() -> None:
         RateLimitAction.PASSWORD_CHANGE: (("USER_ACTOR", 5, 900),),
         RateLimitAction.ADMIN_APPROVE: (("ADMIN_ACTOR", 30, 60),),
         RateLimitAction.ADMIN_REJECT: (("ADMIN_ACTOR", 30, 60),),
+        RateLimitAction.ADMIN_ACCOUNT_STATE: (("ADMIN_ACTOR", 30, 60),),
     }
     assert {
         action: tuple(

@@ -12,7 +12,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ closeButtonRef, isMobile, isOpen, onClose }: SidebarProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,7 +54,7 @@ export function Sidebar({ closeButtonRef, isMobile, isOpen, onClose }: SidebarPr
         <button ref={closeButtonRef} className="sidebar__close" type="button" aria-label="Cerrar menú de navegación" onClick={() => onClose()}>×</button>
       </div>
       <nav className="sidebar__nav" aria-label="Secciones de LifeManager">
-        {appNavigation.map((section) => section.children ? (
+        {appNavigation.filter((section) => !section.globalAdminOnly || user?.global_role === "GLOBAL_ADMIN").map((section) => section.children ? (
           <details className="sidebar__group" key={section.label} open={section.children.some((child) => location.pathname === child.path)}>
             <summary className="sidebar__group-label">
               <span className="sidebar__icon" aria-hidden="true">{section.icon}</span>

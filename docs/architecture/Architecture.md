@@ -640,6 +640,12 @@ contenido estático. El logout existente permanece como única salida de sesión
 y el shell garantiza su accesibilidad mediante scroll interno de navegación.
 La UI pública de recuperación se difiere a 17.2 y el email operacional a 17.4.
 
+Stage 15.1 materializa Administración como vertical global independiente. El
+router autoriza y posee transacción; `v2_admin` construye consultas paginadas y
+bloquea la cuenta objetivo antes de cambiar estado; el modelo y el evento de
+estado existentes siguen siendo la fuente única. El frontend consume DTOs
+allowlisted y protege navegación/ruta, sin sustituir la autorización backend.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;

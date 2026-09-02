@@ -6,7 +6,10 @@ are intentionally not imported from the package root.
 
 from app.schemas.v2_identity import (
     AdminAccountSummary,
+    AdminAccountStateChange,
     AdminRegistrationList,
+    AdminUserList,
+    AdminUserSummary,
     EmailVerificationRequest,
     EmailVerificationResendRequest,
     EmailVerificationResponse,
@@ -84,7 +87,10 @@ __all__ = [
     "PendingItemUpdate",
     "PendingItemVersion",
     "AdminAccountSummary",
+    "AdminAccountStateChange",
     "AdminRegistrationList",
+    "AdminUserList",
+    "AdminUserSummary",
     "EmailVerificationRequest",
     "EmailVerificationResendRequest",
     "EmailVerificationResponse",

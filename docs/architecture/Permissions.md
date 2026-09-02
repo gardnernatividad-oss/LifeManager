@@ -275,3 +275,11 @@ de Workspace conserva sus roles y membership `ACTIVE`. El logout solo invalida
 la sesión autenticada y exige CSRF. Ni owner ni `GLOBAL_ADMIN` obtienen acceso a
 configuración privada ajena; UUIDs externos y payloads adicionales siguen sin
 conceder capacidad.
+
+Stage 15.1 concede a `GLOBAL_ADMIN` únicamente la cola de solicitudes, la
+proyección administrativa mínima de usuarios y las transiciones
+`PENDING_APPROVAL → ACTIVE/REJECTED` y `ACTIVE ↔ DISABLED`. Cuenta `ACTIVE`,
+CSRF, rate limit, row lock y versión esperada se revalidan server-side. Un
+usuario ordinario recibe 403 y una cuenta administrativa deshabilitada 401. No
+existe endpoint de promoción, eliminación ni mutación del propio rol global.
+Estas capacidades no conceden membership ni lectura de contenido privado.

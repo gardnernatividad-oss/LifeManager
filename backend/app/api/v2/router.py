@@ -18,6 +18,7 @@ from app.api.v2.home import router as home_router
 from app.api.v2.notifications import router as notification_router
 from app.api.v2.reports import router as report_router
 from app.api.v2.configuration import router as configuration_router
+from app.api.v2.admin import router as admin_router
 
 
 api_router = APIRouter()
@@ -39,3 +40,4 @@ api_router.include_router(home_router)
 api_router.include_router(notification_router)
 api_router.include_router(report_router)
 api_router.include_router(configuration_router)
+api_router.include_router(admin_router)

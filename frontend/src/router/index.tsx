@@ -20,9 +20,10 @@ import { CategoriesTablePage } from "../pages/tables/CategoriesTablePage";
 import { MasterTasksTablePage } from "../pages/tables/MasterTasksTablePage";
 import { ActivityMastersTablePage } from "../pages/tables/ActivityMastersTablePage";
 import { ReportsPage } from "../pages/reports/ReportsPage";
+import { AdminPage } from "../pages/admin/AdminPage";
 import { V2ProjectDetailPage } from "../pages/projects/V2ProjectDetailPage";
 import { V2ProjectStageDetailPage } from "../pages/projects/V2ProjectStageDetailPage";
-import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
+import { GlobalAdminRoute, ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 const placeholder = (title: string) => (
   <PagePlaceholder
@@ -69,6 +70,10 @@ export const appRouter = createBrowserRouter([
           { path: "/tablas/actividades", element: <ActivityMastersTablePage /> },
           { path: "/reportes", element: <ReportsPage /> },
           { path: "/configuracion", element: <ConfigurationPage /> },
+          {
+            element: <GlobalAdminRoute />,
+            children: [{ path: "/administracion", element: <AdminPage /> }]
+          },
           ...v1PlaceholderRoutes.map(([path, title]) => ({
             path,
             element: placeholder(title)

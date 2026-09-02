@@ -3,6 +3,7 @@ export interface NavigationSection {
   icon: string;
   path?: string;
   children?: readonly { label: string; path: string }[];
+  globalAdminOnly?: boolean;
 }
 
 export const appNavigation: readonly NavigationSection[] = [
@@ -29,5 +30,6 @@ export const appNavigation: readonly NavigationSection[] = [
     ]
   },
   { label: "Reportes", path: "/reportes", icon: "▥" },
-  { label: "Configuración", path: "/configuracion", icon: "⚙" }
+  { label: "Configuración", path: "/configuracion", icon: "⚙" },
+  { label: "Administración", path: "/administracion", icon: "◆", globalAdminOnly: true }
 ] as const;

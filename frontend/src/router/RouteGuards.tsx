@@ -39,3 +39,13 @@ export function PublicOnlyRoute() {
 
   return <Outlet />;
 }
+
+export function GlobalAdminRoute() {
+  const { user } = useAuth();
+
+  if (user?.global_role !== "GLOBAL_ADMIN") {
+    return <Navigate to="/inicio" replace />;
+  }
+
+  return <Outlet />;
+}

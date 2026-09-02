@@ -1781,6 +1781,9 @@ div.settings-toggles { border: 0; padding: 0; }
 .configuration-about{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin:0}.configuration-about div{display:grid;gap:.2rem;padding:.75rem;border:1px solid var(--color-border);border-radius:.5rem}.configuration-about dt{color:var(--color-text-muted)}.configuration-about dd{margin:0;font-weight:600}
 @media (max-width:32rem){.registration-name-grid,.configuration-name-grid,.configuration-about{grid-template-columns:1fr}.configuration-form .primary-button{width:100%}}
 
+.admin-page{max-width:64rem}.admin-account-card{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem;border:1px solid var(--color-border);border-radius:.6rem}.admin-account-card>div:first-child{display:grid;gap:.2rem;min-width:0}.admin-account-card span,.admin-account-card small{overflow-wrap:anywhere;color:var(--color-muted)}.admin-filters{display:grid;grid-template-columns:minmax(12rem,2fr) minmax(10rem,1fr);gap:.75rem}.admin-filters label{display:grid;gap:.35rem}.admin-filters input,.admin-filters select{width:100%;padding:.65rem;border:1px solid var(--color-border);border-radius:.45rem;background:var(--color-surface)}
+@media (max-width:40rem){.admin-account-card{align-items:stretch;flex-direction:column}.admin-account-card .action-row,.admin-account-card>button{width:100%}.admin-filters{grid-template-columns:1fr}}
+
 .notification-settings{display:grid;gap:1rem}
 .notification-settings fieldset{display:grid;grid-template-columns:minmax(12rem,1fr) auto auto;align-items:end;gap:.75rem 1rem;padding:1rem;border:1px solid var(--color-border);border-radius:.65rem}
 .notification-settings fieldset label{display:grid;gap:.35rem}

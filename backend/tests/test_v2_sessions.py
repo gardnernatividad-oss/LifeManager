@@ -307,6 +307,22 @@ def test_authenticated_password_change_requires_csrf(
     db.commit.assert_not_called(); db.flush.assert_not_called()
 
 
+def test_admin_account_state_change_requires_csrf(
+    client: TestClient,
+    db: MagicMock,
+) -> None:
+    admin = _user(role=GlobalRole.GLOBAL_ADMIN)
+    db.scalar.return_value = admin
+    _install_session(client, admin)
+    response = client.post(
+        f"/api/v2/admin/users/{uuid.uuid4()}/disable",
+        json={"lock_version": 1},
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_VALIDATION_FAILED"
+    db.commit.assert_not_called(); db.flush.assert_not_called()
+
+
 def test_credentialed_cors_is_explicit(client: TestClient) -> None:
     allowed = client.options(
         "/api/v2/auth/login",

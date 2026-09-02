@@ -1,4 +1,7 @@
 export const queryKeys = {
+  adminAccountRequests: ["v2-admin", "account-requests"] as const,
+  adminUsers: (params: object) => ["v2-admin", "users", params] as const,
+  adminUsersRoot: ["v2-admin", "users"] as const,
   notificationPreferences: ["v2-notification-preferences"] as const,
   profile: ["v2-configuration-profile"] as const,
   v2Home: ["v2-home"] as const,

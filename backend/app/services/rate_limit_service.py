@@ -29,6 +29,7 @@ class RateLimitAction(StrEnum):
     PASSWORD_CHANGE = "PASSWORD_CHANGE"
     ADMIN_APPROVE = "ADMIN_APPROVE"
     ADMIN_REJECT = "ADMIN_REJECT"
+    ADMIN_ACCOUNT_STATE = "ADMIN_ACCOUNT_STATE"
 
 
 class RateLimitDimension(StrEnum):
@@ -77,6 +78,9 @@ POLICIES: dict[RateLimitAction, tuple[RateLimitRule, ...]] = {
         RateLimitRule(RateLimitDimension.ADMIN_ACTOR, 30, 60),
     ),
     RateLimitAction.ADMIN_REJECT: (
+        RateLimitRule(RateLimitDimension.ADMIN_ACTOR, 30, 60),
+    ),
+    RateLimitAction.ADMIN_ACCOUNT_STATE: (
         RateLimitRule(RateLimitDimension.ADMIN_ACTOR, 30, 60),
     ),
 }

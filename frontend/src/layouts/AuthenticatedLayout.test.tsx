@@ -89,11 +89,22 @@ describe("AuthenticatedLayout V1", () => {
     expect(within(navigation).getByRole("link", { name: "Reportes" })).toBeInTheDocument();
     expect(within(navigation).getByText("Tablas")).toBeInTheDocument();
     expect(within(navigation).getByRole("link", { name: "Configuración" })).toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Administración" })).not.toBeInTheDocument();
 
     const groups = navigation.querySelectorAll("details");
     expect(groups).toHaveLength(2);
     expect(within(groups[0]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Pendientes", "Proyectos", "Actividades"]);
     expect(within(groups[1]).getAllByRole("link").map((item) => item.textContent)).toEqual(["Tareas", "Actividades", "Categorías"]);
+  });
+
+  it("shows Administration only to GLOBAL_ADMIN", () => {
+    vi.mocked(useAuth).mockReturnValue(authenticatedState());
+    const ordinary = renderLayout();
+    expect(screen.queryByRole("link", { name: "Administración" })).not.toBeInTheDocument();
+    ordinary.unmount();
+    vi.mocked(useAuth).mockReturnValue({ ...authenticatedState(), user: { ...testUser, global_role: "GLOBAL_ADMIN" } });
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Administración" })).toHaveAttribute("href", "/administracion");
   });
 
   it("highlights the active nested navigation item and excludes legacy labels", () => {

@@ -96,7 +96,7 @@ El roadmap conservará exactamente estas columnas:
 | 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Completado |
 | 14. Configuración | 14.3 | Gestión de Workspaces, membresías/propiedad, seguridad visible de cuenta y Acerca de | Completado |
 | 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Completado |
-| 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Pendiente |
+| 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Completado |
 | 15. Administración global | 15.2 | Aislamiento del administrador global, auditoría, seguridad, pruebas y gate administrativo | Pendiente |
 | 16. Integración UX y PWA | 16.1 | Integración visual completa, navegación global/contextual y patrones comunes de interacción | Pendiente |
 | 16. Integración UX y PWA | 16.2 | Auditoría desktop/mobile-first, tablas, formularios, estados visuales y accesibilidad | Pendiente |
@@ -110,7 +110,7 @@ El roadmap conservará exactamente estas columnas:
 | 18. QA integral V2 | 18.2 | QA E2E de usuario Personal, Workspaces Shared, colaboración, privacidad y casos límite | Pendiente |
 | 18. QA integral V2 | 18.3 | QA desktop, móvil, PWA, responsive, accesibilidad y navegadores objetivo | Pendiente |
 | 18. QA integral V2 | 18.4 | Corrección de defectos, regresión completa y gate funcional LifeManager V2.0.0 | Pendiente |
-| 19. Publicación V2.0.0 | 19.1 | Release candidate, documentación final, estrategia de datos y preparación del despliegue | Pendiente |
+| 19. Publicación V2.0.0 | 19.1 | Release candidate, documentación final, bootstrap auditado del primer GLOBAL_ADMIN, estrategia de datos y preparación del despliegue | Pendiente |
 | 19. Publicación V2.0.0 | 19.2 | Despliegue controlado de infraestructura, backend, esquema PostgreSQL y frontend/PWA | Pendiente |
 | 19. Publicación V2.0.0 | 19.3 | Configuración productiva de secretos, dominios, HTTPS, correo, push y servicios externos | Pendiente |
 | 19. Publicación V2.0.0 | 19.4 | Smoke tests, pruebas de seguridad y QA final sobre producción | Pendiente |

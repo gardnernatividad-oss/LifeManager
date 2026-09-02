@@ -764,6 +764,24 @@ Stage 14.2.
 - Configuración queda cerrada funcionalmente. La revisión visual transversal
   permanece en Fase 16 y la versión técnica definitiva en Fase 19.
 
+### Consola administrativa — Stage 15.1
+
+- La cola existente `GET /api/v2/admin/account-requests`, su detalle y las
+  acciones `approve`/`reject` continúan limitadas a solicitudes
+  `PENDING_APPROVAL` y a un `GLOBAL_ADMIN` con cuenta `ACTIVE`.
+- `GET /api/v2/admin/users` lista cuentas con paginación, búsqueda por identidad
+  y filtro de estado; `GET /api/v2/admin/users/{user_id}` entrega el detalle
+  administrativo mínimo. No expone hashes, tokens, preferencias ni contenido
+  de Workspaces.
+- `POST /api/v2/admin/users/{user_id}/disable` admite exclusivamente
+  `ACTIVE → DISABLED`; `reactivate` admite `DISABLED → ACTIVE`. Ambos exigen
+  `lock_version`, CSRF, rate limit y row lock, registran
+  `UserAccountStateEvent` y responden conflicto ante estado o versión stale.
+- El único `GLOBAL_ADMIN` queda protegido de estas transiciones y ninguna ruta
+  permite asignar `global_role`, eliminar cuentas o atravesar membership.
+- No existe bootstrap público/automático. Su procedimiento operacional auditado
+  se documentará en 19.1 después de la revisión de autenticación de 17.2.
+
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
 - DTOs y actions exactos de cada vertical;

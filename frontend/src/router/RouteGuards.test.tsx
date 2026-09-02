@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useAuth } from "../hooks/useAuth";
 import type { AuthState } from "../store/auth-context";
 import { testUser } from "../test/testUser";
-import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
+import { GlobalAdminRoute, ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 
@@ -80,5 +80,16 @@ describe("authentication route guards", () => {
 
     expect(screen.getByText("Comprobando sesión…")).toBeInTheDocument();
     expect(screen.queryByText("Tasks")).not.toBeInTheDocument();
+  });
+
+  it("allows only GLOBAL_ADMIN to render the direct administration route", () => {
+    vi.mocked(useAuth).mockReturnValue(authState({ user: testUser, isAuthenticated: true }));
+    const rendered = render(<MemoryRouter initialEntries={["/administracion"]}><Routes><Route element={<GlobalAdminRoute />}><Route path="/administracion" element={<span>Administración privada</span>} /></Route><Route path="/inicio" element={<span>Inicio</span>} /></Routes></MemoryRouter>);
+    expect(screen.getByText("Inicio")).toBeInTheDocument();
+    rendered.unmount();
+
+    vi.mocked(useAuth).mockReturnValue(authState({ user: { ...testUser, global_role: "GLOBAL_ADMIN" }, isAuthenticated: true }));
+    render(<MemoryRouter initialEntries={["/administracion"]}><Routes><Route element={<GlobalAdminRoute />}><Route path="/administracion" element={<span>Administración privada</span>} /></Route></Routes></MemoryRouter>);
+    expect(screen.getByText("Administración privada")).toBeInTheDocument();
   });
 });

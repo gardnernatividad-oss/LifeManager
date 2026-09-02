@@ -376,3 +376,13 @@ anti-enumeration, rate limiting e invalidación de sesiones; su experiencia
 frontend desde Login se asigna explícitamente a 17.2 y la entrega operacional
 de correo a 17.4. La pasada estética global continúa en Fase 16 y la metadata
 definitiva de release en Fase 19.
+
+Stage 15.1 incorpora la consola privada de Administración exclusivamente para
+una cuenta `ACTIVE` con `GLOBAL_ADMIN`. Reutiliza la cola verificada
+`PENDING_APPROVAL` y sus operaciones atómicas de aprobación/rechazo; añade un
+listado paginado y filtrable de cuentas y las transiciones auditadas ordinarias
+`ACTIVE ↔ DISABLED`. Las mutaciones usan rate limit por actor, row lock,
+`lock_version`, CSRF y payload cerrado. No existe promoción de rol, eliminación
+de usuarios ni acceso a contenido Workspace. El bootstrap inicial continúa sin
+endpoint o seed automático: 17.2 revisará su seguridad y 19.1 definirá el
+procedimiento operacional explícito y auditado antes del despliegue.

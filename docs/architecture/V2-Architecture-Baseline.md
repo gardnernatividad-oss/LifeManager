@@ -575,3 +575,18 @@ expiración, single-use, anti-enumeration, rate limiting, Turnstile e
 invalidación de sesiones en backend. Su interfaz desde Login queda asignada a
 17.2; el provider de email real y su configuración operacional pertenecen a
 17.4. La metadata técnica se normalizará al preparar la publicación en Fase 19.
+
+## 35. Consola administrativa — Stage 15.1
+
+Administración es un scope global separado del grafo Workspace. La dependencia
+`GlobalAdmin` exige sesión válida, Account `ACTIVE` y rol persistido exacto. Las
+consultas proyectan solo identidad y estado de cuenta; las mutaciones mantienen
+`Router → Service → Session → PostgreSQL`, rate limit por actor, CSRF, row lock,
+concurrencia optimista y evento auditado. Deshabilitar una cuenta invalida su
+uso inmediato por la frontera de sesión, pero no modifica ni revela sus
+Workspaces.
+
+La consola no puede promover roles, modificar al administrador global, borrar
+usuarios ni ejecutar endpoints Workspace sin membership ordinaria. El primer
+`GLOBAL_ADMIN` sigue requiriendo un procedimiento operacional fuera de la API:
+se revisará en 17.2 y se formalizará para despliegue en 19.1.

@@ -157,6 +157,48 @@ class AdminRegistrationList(BaseModel):
     total: int = Field(ge=0)
 
 
+class AdminUserSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: EmailStr
+    first_name: str
+    last_name: str
+    timezone: str
+    account_status: AccountStatus
+    global_role: GlobalRole | None
+    email_verified_at: datetime | None
+    status_changed_at: datetime
+    lock_version: int = Field(ge=1)
+    created_at: datetime
+
+
+class AdminUserList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[AdminUserSummary]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)
+    total_pages: int = Field(ge=0)
+
+
+class AdminAccountStateChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lock_version: int = Field(ge=1)
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_state_change_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        _reject_control_characters(value)
+        cleaned = " ".join(value.split())
+        return cleaned or None
+
+
 class RejectAccountRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
