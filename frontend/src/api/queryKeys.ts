@@ -1,5 +1,6 @@
 export const queryKeys = {
   notificationPreferences: ["v2-notification-preferences"] as const,
+  profile: ["v2-configuration-profile"] as const,
   v2Home: ["v2-home"] as const,
   myCalendar: (userId: string, rangeStart: string, rangeEnd: string, projection = "DETAIL", workspaceId = "ALL") => ["calendar-me", userId, rangeStart, rangeEnd, projection, workspaceId] as const,
   myCalendarRoot: (userId: string) => ["calendar-me", userId] as const,

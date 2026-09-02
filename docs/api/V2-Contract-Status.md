@@ -703,7 +703,19 @@ formato, columnas o permisos. Tampoco se incorporan gráficos: la especificació
 no define ninguno y las tablas numéricas accesibles siguen siendo la
 representación canónica.
 
-## 23. Decisiones aún operativas
+## 23. Perfil y estructura de Configuración — Stage 14.1
+
+- `GET /api/v2/configuration/profile` devuelve exclusivamente identificador,
+  correo, nombre, apellido, zona horaria y `lock_version` de la cuenta ACTIVE.
+- `PATCH /api/v2/configuration/profile` modifica nombre, apellido y zona IANA;
+  rechaza campos adicionales y escritura obsoleta.
+- `GET /api/v2/configuration/timezones` entrega el catálogo IANA autenticado,
+  ordenado y de solo lectura.
+
+Correo, estado de cuenta, rol global y contraseña no son editables aquí. El
+contrato no contiene `language` ni `locale` y no consume rutas V1.
+
+## 24. Decisiones aún operativas
 
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 

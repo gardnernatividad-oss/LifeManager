@@ -337,3 +337,11 @@ del periodo y distribuciones agregadas por fecha; no se presenta como historial
 de eventos. La especificación no define gráficos concretos ni contrato de
 exportación, por lo que no se inventan. Los DTOs read-only y filtros server-side
 quedan preparados para una futura exportabilidad especificada.
+
+Stage 14.1 lleva Perfil al runtime V2. Nombre, apellido y zona horaria IANA son
+editables con concurrencia optimista; el correo es visible y de solo lectura.
+Estado de cuenta, rol global y credenciales quedan fuera del payload. La
+interfaz permanece exclusivamente en español, usa fechas `dd/mm/yyyy` y
+considera el lunes como inicio de semana; no existe selector de idioma ni
+submódulo regional. Notificaciones y Workspaces se preservan sin adelantar
+14.2–14.4.

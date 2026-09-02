@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAuthenticatedUser, login, logout, registerUser } from "./authApi";
+import { getAuthenticatedUser, getProfile, listTimezones, login, logout, registerUser, updateAuthenticatedUser } from "./authApi";
 import { apiClient } from "./client";
 import { testUser } from "../test/testUser";
 
@@ -36,5 +36,24 @@ describe("V2 cookie auth API", () => {
       "http://localhost:3000/api/v2/auth/registration-requests",
       payload
     );
+  });
+
+  it("reads and updates Profile and timezone options only through V2", async () => {
+    const profile = { id: testUser.id, email: testUser.email, first_name: "Ada", last_name: "Lovelace", timezone: "America/Lima", lock_version: 3 };
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: profile }).mockResolvedValueOnce({ data: { items: ["America/Lima", "UTC"] } });
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { ...profile, first_name: "Augusta", lock_version: 4 } });
+
+    await expect(getProfile()).resolves.toEqual(profile);
+    await expect(listTimezones()).resolves.toEqual(["America/Lima", "UTC"]);
+    const payload = { first_name: "Augusta", last_name: "Lovelace", timezone: "America/Lima", lock_version: 3 };
+    await updateAuthenticatedUser(payload);
+
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "http://localhost:3000/api/v2/configuration/profile");
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "http://localhost:3000/api/v2/configuration/timezones");
+    expect(apiClient.patch).toHaveBeenCalledWith("http://localhost:3000/api/v2/configuration/profile", payload);
+    expect(JSON.stringify([
+      vi.mocked(apiClient.get).mock.calls,
+      vi.mocked(apiClient.patch).mock.calls,
+    ])).not.toContain("/api/v1");
   });
 });

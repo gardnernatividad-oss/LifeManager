@@ -11,7 +11,7 @@ import type { AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import { ConfigurationPage } from "./ConfigurationPage";
 
-vi.mock("../../api/authApi", () => ({ listTimezones: vi.fn(), updateAuthenticatedUser: vi.fn() }));
+vi.mock("../../api/authApi", () => ({ getProfile: vi.fn(), listTimezones: vi.fn(), updateAuthenticatedUser: vi.fn() }));
 vi.mock("../../api/workspaceApi", () => ({
   listManagedWorkspaces: vi.fn(), listMyWorkspaceInvitations: vi.fn(),
   listWorkspaceMembers: vi.fn(), listWorkspaceInvitations: vi.fn(),
@@ -26,6 +26,7 @@ vi.mock("../../api/v2NotificationApi", () => ({ getNotificationPreferences: vi.f
 const notificationPreferences = { daily_summary: { enabled: true, local_time: "07:00:00", weekday: null, lock_version: 1 }, daily_review: { enabled: true, local_time: "21:00:00", weekday: null, lock_version: 1 }, pending_weekly: { enabled: true, local_time: "22:00:00", weekday: 6, lock_version: 1 }, project_weekly: { enabled: true, local_time: "22:30:00", weekday: 6, lock_version: 1 }, activity_reminders: { enabled: true, lock_version: 1 } };
 
 const setAuthenticatedUser = vi.fn();
+const profile = { id: testUser.id, email: testUser.email, first_name: testUser.first_name, last_name: testUser.last_name, timezone: testUser.timezone, lock_version: 3 };
 function auth(): AuthState {
   return { user: testUser, workspace: null, isAuthenticated: true, isInitializing: false, login: vi.fn(), logout: vi.fn(), setWorkspace: vi.fn(), clearSession: vi.fn(), setAuthenticatedUser };
 }
@@ -40,6 +41,7 @@ describe("ConfigurationPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue(auth());
+    vi.mocked(authApi.getProfile).mockResolvedValue(profile);
     vi.mocked(authApi.listTimezones).mockResolvedValue(["America/Lima", "Europe/London"]);
     vi.mocked(workspaceApi.listManagedWorkspaces).mockResolvedValue([]);
     vi.mocked(workspaceApi.listMyWorkspaceInvitations).mockResolvedValue([]);
@@ -49,11 +51,13 @@ describe("ConfigurationPage", () => {
 
   it("shows only editable names/timezone and read-only email", async () => {
     mount();
-    expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("readonly");
+    expect(await screen.findByLabelText("Correo electrónico")).toHaveAttribute("readonly");
     expect(screen.getByLabelText("Nombre")).toHaveValue(testUser.first_name);
     expect(screen.getByLabelText("Apellido")).toHaveValue(testUser.last_name);
     expect(await screen.findByLabelText("Zona horaria")).toHaveValue(testUser.timezone);
-    expect(screen.getAllByRole("button", { name: "Guardar" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "Notificaciones" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/idioma/i)).not.toBeInTheDocument();
   });
 
   it("loads timezone options and retries safely", async () => {
@@ -65,7 +69,7 @@ describe("ConfigurationPage", () => {
   });
 
   it("saves exact profile fields, refreshes auth and invalidates Home/Review", async () => {
-    const saved = { ...testUser, first_name: "Augusta", last_name: "King", timezone: "Europe/London" };
+    const saved = { ...profile, first_name: "Augusta", last_name: "King", timezone: "Europe/London", lock_version: 4 };
     vi.mocked(authApi.updateAuthenticatedUser).mockResolvedValue(saved);
     const user = userEvent.setup(); const invalidate = mount();
     await screen.findByRole("option", { name: "Europe/London" });
@@ -73,9 +77,9 @@ describe("ConfigurationPage", () => {
     await user.clear(screen.getByLabelText("Apellido")); await user.type(screen.getByLabelText("Apellido"), "King");
     await user.selectOptions(screen.getByLabelText("Zona horaria"), "Europe/London");
     expect(authApi.updateAuthenticatedUser).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-    await waitFor(() => expect(authApi.updateAuthenticatedUser).toHaveBeenCalledWith({ first_name: "Augusta", last_name: "King", timezone: "Europe/London" }));
-    expect(setAuthenticatedUser).toHaveBeenCalledWith(saved);
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(authApi.updateAuthenticatedUser).toHaveBeenCalledWith({ first_name: "Augusta", last_name: "King", timezone: "Europe/London", lock_version: 3 }));
+    expect(setAuthenticatedUser).toHaveBeenCalledWith({ ...testUser, ...saved });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.home });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.review });
     for (const key of [
@@ -89,5 +93,14 @@ describe("ConfigurationPage", () => {
       queryKeys.projectReportsRoot,
     ]) expect(invalidate).toHaveBeenCalledWith({ queryKey: key });
     expect(await screen.findByRole("status")).toHaveTextContent("Configuración guardada.");
+  });
+
+  it("retries a failed profile load without exposing an editable language", async () => {
+    vi.mocked(authApi.getProfile).mockRejectedValueOnce(new Error()).mockResolvedValueOnce(profile);
+    const user = userEvent.setup(); mount();
+    expect(await screen.findByText("No pudimos cargar tu perfil.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByLabelText("Correo electrónico")).toHaveValue(profile.email);
+    expect(screen.queryByLabelText(/idioma/i)).not.toBeInTheDocument();
   });
 });

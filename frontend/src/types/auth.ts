@@ -42,7 +42,17 @@ export interface RegistrationPayload {
 }
 
 export interface ProfileUpdatePayload {
-  first_name?: string;
-  last_name?: string;
-  timezone?: string;
+  first_name: string;
+  last_name: string;
+  timezone: string;
+  lock_version: number;
+}
+
+export interface ProfileRead {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  timezone: string;
+  lock_version: number;
 }

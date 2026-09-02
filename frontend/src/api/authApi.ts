@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AuthenticatedUser, LoginCredentials, ProfileUpdatePayload, RegistrationPayload } from "../types/auth";
+import type { AuthenticatedUser, LoginCredentials, ProfileRead, ProfileUpdatePayload, RegistrationPayload } from "../types/auth";
 import { env } from "../utils/env";
 
 const v2AuthUrl = (resource: "login" | "logout" | "registration-requests") =>
@@ -25,13 +25,18 @@ export async function registerUser(payload: RegistrationPayload): Promise<void> 
   await apiClient.post(v2AuthUrl("registration-requests"), payload);
 }
 
-export async function updateAuthenticatedUser(payload: ProfileUpdatePayload): Promise<AuthenticatedUser> {
-  const response = await apiClient.patch<AuthenticatedUser>(new URL("/api/v1/auth/me", env.apiBaseUrl).toString(), payload);
+export async function getProfile(): Promise<ProfileRead> {
+  const response = await apiClient.get<ProfileRead>(new URL("/api/v2/configuration/profile", env.apiBaseUrl).toString());
+  return response.data;
+}
+
+export async function updateAuthenticatedUser(payload: ProfileUpdatePayload): Promise<ProfileRead> {
+  const response = await apiClient.patch<ProfileRead>(new URL("/api/v2/configuration/profile", env.apiBaseUrl).toString(), payload);
   return response.data;
 }
 
 export async function listTimezones(): Promise<string[]> {
-  const url = new URL("/api/v1/timezones", env.apiBaseUrl).toString();
+  const url = new URL("/api/v2/configuration/timezones", env.apiBaseUrl).toString();
   const response = await apiClient.get<{ items: string[] }>(url);
   return response.data.items;
 }

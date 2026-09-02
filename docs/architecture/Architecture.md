@@ -609,6 +609,13 @@ La documentación dentro de `docs/` será la fuente oficial de las decisiones de
 
 En caso de contradicción:
 
+Stage 14.1 incorpora Perfil mediante
+`Router → Service → SQLAlchemy Session → PostgreSQL`. El servicio bloquea la
+cuenta autenticada, valida estado ACTIVE y `lock_version`, modifica únicamente
+nombre, apellido y zona horaria y ejecuta `flush`; el router conserva
+`commit/rollback`. Las lecturas no escriben. No requiere cambio de esquema,
+dependencias ni entorno.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;

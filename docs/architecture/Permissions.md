@@ -246,3 +246,9 @@ Account, Workspace y membership `ACTIVE`. Selectores Personal/Shared no otorgan
 acceso; únicamente producen filtros que el backend vuelve a intersectar con el
 Workspace. Una futura exportación deberá reutilizar esta misma frontera y no se
 autoriza implícitamente por la preparación actual.
+
+Stage 14.1 permite a una cuenta ACTIVE leer y modificar únicamente su propio
+Perfil. El objetivo deriva de la sesión, nunca del payload; otro usuario y un
+`GLOBAL_ADMIN` no pueden seleccionar un Perfil ajeno. La mutación exige CSRF,
+zona horaria IANA válida y concurrencia optimista. Campos administrativos y
+credenciales no forman parte del contrato editable.
