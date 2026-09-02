@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AuthenticatedUser, LoginCredentials, ProfileRead, ProfileUpdatePayload, RegistrationPayload } from "../types/auth";
+import type { AuthenticatedUser, LoginCredentials, PasswordChangePayload, ProfileRead, ProfileUpdatePayload, RegistrationPayload } from "../types/auth";
 import { env } from "../utils/env";
 
 const v2AuthUrl = (resource: "login" | "logout" | "registration-requests") =>
@@ -39,4 +39,8 @@ export async function listTimezones(): Promise<string[]> {
   const url = new URL("/api/v2/configuration/timezones", env.apiBaseUrl).toString();
   const response = await apiClient.get<{ items: string[] }>(url);
   return response.data.items;
+}
+
+export async function changePassword(payload: PasswordChangePayload): Promise<void> {
+  await apiClient.post(new URL("/api/v2/configuration/password", env.apiBaseUrl).toString(), payload);
 }

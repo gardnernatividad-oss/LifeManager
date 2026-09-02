@@ -135,4 +135,10 @@ describe("LoginPage", () => {
     renderLogin({ pathname: "/login", state: { registrationSuccess: true } });
     expect(screen.getByRole("status")).toHaveTextContent("Cuenta creada. Ya puedes iniciar sesión.");
   });
+
+  it("confirms a successful authenticated password change", () => {
+    vi.mocked(useAuth).mockReturnValue(authState(vi.fn()));
+    renderLogin({ pathname: "/login", state: { passwordChanged: true } });
+    expect(screen.getByRole("status")).toHaveTextContent("Contraseña actualizada. Inicia sesión nuevamente.");
+  });
 });

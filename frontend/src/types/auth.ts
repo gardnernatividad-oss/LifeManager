@@ -56,3 +56,8 @@ export interface ProfileRead {
   timezone: string;
   lock_version: number;
 }
+
+export interface PasswordChangePayload {
+  current_password: string;
+  new_password: string;
+}

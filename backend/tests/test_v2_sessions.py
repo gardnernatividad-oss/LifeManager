@@ -288,6 +288,25 @@ def test_logout_is_csrf_protected_and_deletes_both_cookies(
     assert all("Max-Age=0" in value and "Path=/" in value for value in cookies)
 
 
+def test_authenticated_password_change_requires_csrf(
+    client: TestClient,
+    db: MagicMock,
+) -> None:
+    user = _user()
+    db.scalar.return_value = user
+    _install_session(client, user)
+    response = client.post(
+        "/api/v2/configuration/password",
+        json={
+            "current_password": "CurrentPassword!",
+            "new_password": "NewPassword!",
+        },
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_VALIDATION_FAILED"
+    db.commit.assert_not_called(); db.flush.assert_not_called()
+
+
 def test_credentialed_cors_is_explicit(client: TestClient) -> None:
     allowed = client.options(
         "/api/v2/auth/login",

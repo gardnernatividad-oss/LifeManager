@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAuthenticatedUser, getProfile, listTimezones, login, logout, registerUser, updateAuthenticatedUser } from "./authApi";
+import { changePassword, getAuthenticatedUser, getProfile, listTimezones, login, logout, registerUser, updateAuthenticatedUser } from "./authApi";
 import { apiClient } from "./client";
 import { testUser } from "../test/testUser";
 
@@ -55,5 +55,15 @@ describe("V2 cookie auth API", () => {
       vi.mocked(apiClient.get).mock.calls,
       vi.mocked(apiClient.patch).mock.calls,
     ])).not.toContain("/api/v1");
+  });
+
+  it("changes only the authenticated password through the dedicated V2 contract", async () => {
+    const payload = { current_password: "CurrentPassword!", new_password: "NewPassword!" };
+    await changePassword(payload);
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v2/configuration/password",
+      payload,
+    );
+    expect(JSON.stringify(vi.mocked(apiClient.post).mock.calls)).not.toContain("/api/v1");
   });
 });

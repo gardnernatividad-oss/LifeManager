@@ -17,6 +17,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 interface LoginLocationState {
   from?: { pathname?: string; search?: string; hash?: string };
   registrationSuccess?: boolean;
+  passwordChanged?: boolean;
 }
 
 export function LoginPage() {
@@ -60,6 +61,7 @@ export function LoginPage() {
       <h1 id="login-title">Iniciar sesión</h1>
       <p className="login-card__intro">Organiza tu planificación y seguimiento diario.</p>
       {(location.state as LoginLocationState | null)?.registrationSuccess ? <p className="review-notice review-notice--success" role="status">Cuenta creada. Ya puedes iniciar sesión.</p> : null}
+      {(location.state as LoginLocationState | null)?.passwordChanged ? <p className="review-notice review-notice--success" role="status">Contraseña actualizada. Inicia sesión nuevamente.</p> : null}
 
       {submitError ? <div className="form-alert" role="alert">{submitError}</div> : null}
 

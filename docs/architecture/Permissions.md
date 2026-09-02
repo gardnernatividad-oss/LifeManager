@@ -260,3 +260,11 @@ Personal no expone comparación. `GLOBAL_ADMIN` sin membership no obtiene
 bypass y conocer un `workspace_id` ajeno no permite leer ni alterar la
 preferencia. `AVAILABILITY_ONLY` y `HIDE` continúan aplicándose server-side
 antes de serializar datos de Calendario.
+
+Stage 14.3 permite cambiar únicamente la contraseña de la cuenta autenticada y
+`ACTIVE`. El identificador deriva de la sesión; no existe `user_id` en el body,
+ni owner, membership o `GLOBAL_ADMIN` conceden acceso a otra cuenta. La ruta
+exige CSRF, limita intentos por actor y verifica la contraseña actual antes de
+persistir el nuevo hash. Cambiar la huella de credencial invalida todas las
+sesiones anteriores. Recuperación de contraseña y administración global siguen
+siendo superficies separadas.

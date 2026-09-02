@@ -2,6 +2,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.password_policy import validate_password_policy
 from app.schemas.v2_identity import _clean_name, _timezone
 
 
@@ -32,3 +33,14 @@ class TimezoneList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[str]
+
+
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str
+
+    _validate_new_password = field_validator("new_password")(
+        validate_password_policy
+    )

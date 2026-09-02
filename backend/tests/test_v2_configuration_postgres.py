@@ -2,6 +2,7 @@ import uuid
 
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import sqlalchemy as sa
 import pytest
@@ -9,8 +10,11 @@ from alembic import command
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
+from starlette.requests import Request
 
 from app.api.v2.dependencies import get_current_account, get_db
+from app.core.security import hash_password, verify_password
+from app.core.session_security import create_session_token, decode_session_token, session_matches_password
 from app.db import session as db_session
 from app.main import app
 from app.models import User, Workspace, WorkspaceMember
@@ -19,6 +23,11 @@ from app.models.enums import (
     CalendarVisibility,
     GlobalRole,
     WorkspaceKind,
+)
+from app.services.rate_limit_service import (
+    RateLimitAction,
+    RateLimitExceeded,
+    enforce_rate_limit,
 )
 from tests.postgres_safety import (
     alembic_config_for_test_database,
@@ -34,7 +43,7 @@ def _user(*, email: str, global_role: GlobalRole | None = None) -> User:
     return User(
         id=uuid.uuid4(),
         email=email,
-        hashed_password="fixture-hash",
+        hashed_password=hash_password("CurrentPassword!"),
         first_name="Ada",
         last_name="Lovelace",
         timezone="America/Lima",
@@ -110,12 +119,58 @@ def test_profile_contract_round_trips_on_disposable_postgres(monkeypatch: pytest
                     hostile = client.patch("/api/v2/configuration/profile", json={**payload, "lock_version": 2, "email": "changed@example.com", "account_status": "DISABLED", "global_role": "GLOBAL_ADMIN"})
                     assert hostile.status_code == 422
 
+                    old_session = decode_session_token(create_session_token(
+                        user_id=account.id,
+                        hashed_password=account.hashed_password,
+                        csrf_token="csrf-test-value",
+                    ))
+                    assert old_session is not None
+                    with patch("app.api.v2.configuration.enforce_rate_limit"):
+                        password_changed = client.post(
+                            "/api/v2/configuration/password",
+                            json={
+                                "current_password": "CurrentPassword!",
+                                "new_password": "NewPassword!",
+                            },
+                        )
+                    assert password_changed.status_code == 204
+                    session.refresh(account)
+                    assert verify_password("NewPassword!", account.hashed_password)
+                    assert not verify_password("CurrentPassword!", account.hashed_password)
+                    assert not session_matches_password(old_session, account.hashed_password)
+
+                    request = Request({
+                        "type": "http",
+                        "method": "POST",
+                        "path": "/api/v2/configuration/password",
+                        "headers": [],
+                        "client": ("127.0.0.1", 12345),
+                        "server": ("testserver", 80),
+                        "scheme": "http",
+                        "query_string": b"",
+                    })
+                    for _ in range(5):
+                        enforce_rate_limit(
+                            action=RateLimitAction.PASSWORD_CHANGE,
+                            request=request,
+                            actor_id=account.id,
+                            session_factory=lambda: Session(engine),
+                        )
+                    with pytest.raises(RateLimitExceeded):
+                        enforce_rate_limit(
+                            action=RateLimitAction.PASSWORD_CHANGE,
+                            request=request,
+                            actor_id=account.id,
+                            session_factory=lambda: Session(engine),
+                        )
+
             with Session(engine) as verify:
                 persisted = verify.get(User, first_id)
                 other = verify.get(User, second_id)
                 assert persisted is not None and other is not None
                 assert (persisted.first_name, persisted.last_name, persisted.timezone, persisted.lock_version) == ("Augusta", "King", "Europe/London", 2)
                 assert persisted.email == "profile-a@example.com"
+                assert verify_password("NewPassword!", persisted.hashed_password)
                 assert persisted.account_status == AccountStatus.ACTIVE
                 assert persisted.global_role is None
                 assert (other.first_name, other.timezone, other.lock_version) == ("Ada", "America/Lima", 1)

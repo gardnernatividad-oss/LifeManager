@@ -26,6 +26,7 @@ class RateLimitAction(StrEnum):
     VERIFICATION_SUBMIT = "VERIFICATION_SUBMIT"
     PASSWORD_RECOVERY = "PASSWORD_RECOVERY"
     PASSWORD_RESET = "PASSWORD_RESET"
+    PASSWORD_CHANGE = "PASSWORD_CHANGE"
     ADMIN_APPROVE = "ADMIN_APPROVE"
     ADMIN_REJECT = "ADMIN_REJECT"
 
@@ -35,6 +36,7 @@ class RateLimitDimension(StrEnum):
     EMAIL = "EMAIL"
     IP_EMAIL = "IP_EMAIL"
     ADMIN_ACTOR = "ADMIN_ACTOR"
+    USER_ACTOR = "USER_ACTOR"
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,9 @@ POLICIES: dict[RateLimitAction, tuple[RateLimitRule, ...]] = {
     ),
     RateLimitAction.PASSWORD_RESET: (
         RateLimitRule(RateLimitDimension.IP, 20, 15 * 60),
+    ),
+    RateLimitAction.PASSWORD_CHANGE: (
+        RateLimitRule(RateLimitDimension.USER_ACTOR, 5, 15 * 60),
     ),
     RateLimitAction.ADMIN_APPROVE: (
         RateLimitRule(RateLimitDimension.ADMIN_ACTOR, 30, 60),

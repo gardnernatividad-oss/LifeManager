@@ -10,11 +10,18 @@ from fastapi.testclient import TestClient
 from app.api.v2.dependencies import get_current_account, get_db
 from app.main import app
 from app.models.enums import AccountStatus
-from app.schemas.v2_configuration import ProfileUpdate
-from app.services.v2_configuration import ProfileConflictError, update_profile
+from app.core.security import hash_password, verify_password
+from app.schemas.v2_configuration import PasswordChange, ProfileUpdate
+from app.services.v2_configuration import (
+    CurrentPasswordIncorrectError,
+    ProfileConflictError,
+    change_password,
+    update_profile,
+)
 
 
 NOW = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
+PASSWORD_HASH = hash_password("CurrentPassword!")
 
 
 def _account(**changes: object) -> SimpleNamespace:
@@ -22,7 +29,8 @@ def _account(**changes: object) -> SimpleNamespace:
         "id": uuid.uuid4(), "email": "ada@example.com", "first_name": "Ada",
         "last_name": "Lovelace", "timezone": "America/Lima",
         "account_status": AccountStatus.ACTIVE, "global_role": None,
-        "lock_version": 3, "created_at": NOW, "updated_at": NOW,
+        "lock_version": 3, "hashed_password": PASSWORD_HASH,
+        "created_at": NOW, "updated_at": NOW,
     }
     values.update(changes)
     return SimpleNamespace(**values)
@@ -123,6 +131,83 @@ def test_configuration_requires_authentication_and_openapi_has_no_language_setti
     with _client(db) as client:
         assert client.get("/api/v2/configuration/profile").status_code == 401
         assert client.get("/api/v2/configuration/timezones").status_code == 401
+        assert client.post("/api/v2/configuration/password", json={"current_password": "CurrentPassword!", "new_password": "NewPassword!"}).status_code == 401
     schemas = app.openapi()["components"]["schemas"]
     assert set(schemas["ProfileUpdate"]["properties"]) == {"first_name", "last_name", "timezone", "lock_version"}
     assert "language" not in str(schemas).lower() and "locale" not in str(schemas).lower()
+
+
+def test_password_change_commits_once_and_uses_only_authenticated_account() -> None:
+    db, account = MagicMock(), _account()
+    payload = {"current_password": "CurrentPassword!", "new_password": "NewPassword!"}
+    with (
+        patch("app.api.v2.configuration.enforce_rate_limit") as rate_limit,
+        patch("app.api.v2.configuration.change_password", return_value=account) as service,
+        _client(db, account) as client,
+    ):
+        response = client.post("/api/v2/configuration/password", json=payload)
+    assert response.status_code == 204 and response.content == b""
+    assert service.call_args.kwargs["account_id"] == account.id
+    assert service.call_args.kwargs["password_in"].model_dump() == payload
+    assert rate_limit.call_args.kwargs["actor_id"] == account.id
+    db.commit.assert_called_once_with(); db.rollback.assert_not_called()
+
+
+def test_password_change_rejects_wrong_current_password_and_mass_assignment() -> None:
+    db, account = MagicMock(), _account()
+    payload = {"current_password": "WrongPassword!", "new_password": "NewPassword!"}
+    with (
+        patch("app.api.v2.configuration.enforce_rate_limit"),
+        patch("app.api.v2.configuration.change_password", side_effect=CurrentPasswordIncorrectError("private")) as service,
+        _client(db, account) as client,
+    ):
+        response = client.post("/api/v2/configuration/password", json=payload)
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "CURRENT_PASSWORD_INCORRECT"
+    assert "private" not in response.text
+    db.rollback.assert_called_once_with(); db.commit.assert_not_called()
+
+    with patch("app.api.v2.configuration.change_password") as service, _client(db, account) as client:
+        invalid = client.post("/api/v2/configuration/password", json={**payload, "user_id": str(uuid.uuid4()), "global_role": "GLOBAL_ADMIN"})
+    assert invalid.status_code == 422
+    service.assert_not_called()
+
+
+def test_password_service_locks_active_account_hashes_and_invalidates_old_secret() -> None:
+    db, account = MagicMock(), _account()
+    db.scalar.return_value = account
+    result = change_password(
+        db,
+        account_id=account.id,
+        password_in=PasswordChange(
+            current_password="CurrentPassword!",
+            new_password="NewPassword!",
+        ),
+    )
+    assert result is account
+    assert account.hashed_password not in {"CurrentPassword!", "NewPassword!", PASSWORD_HASH}
+    assert verify_password("NewPassword!", account.hashed_password)
+    assert not verify_password("CurrentPassword!", account.hashed_password)
+    assert db.scalar.call_args.args[0]._for_update_arg is not None
+    db.flush.assert_called_once_with(); db.commit.assert_not_called(); db.rollback.assert_not_called()
+
+
+def test_password_service_rejects_wrong_current_or_inactive_before_flush() -> None:
+    for account, current in (
+        (_account(), "WrongPassword!"),
+        (_account(account_status=AccountStatus.DISABLED), "CurrentPassword!"),
+    ):
+        db = MagicMock(); db.scalar.return_value = account
+        error = CurrentPasswordIncorrectError if account.account_status == AccountStatus.ACTIVE else ProfileConflictError
+        with pytest.raises(error):
+            change_password(db, account_id=account.id, password_in=PasswordChange(current_password=current, new_password="NewPassword!"))
+        db.flush.assert_not_called()
+
+
+def test_password_schema_reuses_policy_and_openapi_exposes_no_secret_response() -> None:
+    with pytest.raises(ValueError):
+        PasswordChange(current_password="CurrentPassword!", new_password="too-short")
+    schema = app.openapi()["components"]["schemas"]["PasswordChange"]
+    assert set(schema["properties"]) == {"current_password", "new_password"}
+    operation = app.openapi()["paths"]["/api/v2/configuration/password"]["post"]
+    assert "204" in operation["responses"]

@@ -146,6 +146,7 @@ def test_v2_openapi_exposes_only_the_approved_attack_surface() -> None:
         "/api/v2/notification-preferences",
         "/api/v2/configuration/profile",
         "/api/v2/configuration/timezones",
+        "/api/v2/configuration/password",
         "/api/v2/push-subscriptions",
         "/api/v2/push-subscriptions/{subscription_id}",
         "/api/v2/auth/login",

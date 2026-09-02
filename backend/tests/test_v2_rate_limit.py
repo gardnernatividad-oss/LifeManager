@@ -94,6 +94,7 @@ def test_policies_match_the_approved_defaults() -> None:
         RateLimitAction.VERIFICATION_SUBMIT: (("IP", 20, 900),),
         RateLimitAction.PASSWORD_RECOVERY: (("IP", 10, 3600), ("EMAIL", 3, 3600)),
         RateLimitAction.PASSWORD_RESET: (("IP", 20, 900),),
+        RateLimitAction.PASSWORD_CHANGE: (("USER_ACTOR", 5, 900),),
         RateLimitAction.ADMIN_APPROVE: (("ADMIN_ACTOR", 30, 60),),
         RateLimitAction.ADMIN_REJECT: (("ADMIN_ACTOR", 30, 60),),
     }

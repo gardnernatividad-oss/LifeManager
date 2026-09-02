@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "../../api/authApi";
 import * as workspaceApi from "../../api/workspaceApi";
@@ -11,7 +12,7 @@ import type { AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
 import { ConfigurationPage } from "./ConfigurationPage";
 
-vi.mock("../../api/authApi", () => ({ getProfile: vi.fn(), listTimezones: vi.fn(), updateAuthenticatedUser: vi.fn() }));
+vi.mock("../../api/authApi", () => ({ getProfile: vi.fn(), listTimezones: vi.fn(), updateAuthenticatedUser: vi.fn(), changePassword: vi.fn() }));
 vi.mock("../../api/workspaceApi", () => ({
   listManagedWorkspaces: vi.fn(), listMyWorkspaceInvitations: vi.fn(),
   listWorkspaceMembers: vi.fn(), listWorkspaceInvitations: vi.fn(),
@@ -33,7 +34,7 @@ function auth(): AuthState {
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const invalidate = vi.spyOn(client, "invalidateQueries");
-  render(<QueryClientProvider client={client}><ConfigurationPage /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><MemoryRouter><ConfigurationPage /></MemoryRouter></QueryClientProvider>);
   return invalidate;
 }
 
@@ -57,6 +58,9 @@ describe("ConfigurationPage", () => {
     expect(await screen.findByLabelText("Zona horaria")).toHaveValue(testUser.timezone);
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeDisabled();
     expect(await screen.findByRole("heading", { name: "Notificaciones" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Seguridad" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Acerca de" })).toBeInTheDocument();
+    expect(screen.getByText("2.0.0 (en desarrollo)")).toBeInTheDocument();
     expect(screen.queryByLabelText(/idioma/i)).not.toBeInTheDocument();
   });
 

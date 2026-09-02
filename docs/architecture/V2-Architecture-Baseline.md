@@ -392,6 +392,10 @@ La fuente autoritativa futura será un archivo raíz `VERSION` con SemVer sin pr
 
 Durante desarrollo se usa `2.0.0-dev.N` o metadata de commit generada por CI sin editar múltiples archivos. Esta convención se implementará en un stage posterior; el drift V1 `0.1.0` permanece hasta entonces.
 
+Stage 14.3 presenta en Acerca de el objetivo `2.0.0` explícitamente como versión
+en desarrollo. Esto no adelanta la fuente raíz `VERSION`, no modifica metadata
+de build/OpenAPI y no elimina el gate de convergencia definido para publicación.
+
 ## 28. Security-by-design
 
 | Riesgo | Control arquitectónico |

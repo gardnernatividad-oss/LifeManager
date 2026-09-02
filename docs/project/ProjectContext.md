@@ -355,3 +355,14 @@ de Actividades conservan el contrato canónico de Fase 12. La privacidad usa
 `WorkspaceMember`, aplica concurrencia optimista y se hace cumplir antes de
 serializar comparaciones. Personal no necesita esta preferencia y
 `GLOBAL_ADMIN` no sustituye una membresía.
+
+Stage 14.3 integra en la misma Configuración la gestión visible de Workspaces,
+membresías y propiedad ya cerrada en Fase 3, sin duplicar sus contratos. La
+sección Seguridad añade cambio autenticado de contraseña con contraseña actual,
+política central, Argon2, rate limit por cuenta y payload cerrado. Cambiar el
+hash invalida inmediatamente todas las sesiones existentes, incluida la actual,
+y el frontend limpia su estado privado antes de volver a Login. Recuperación,
+verificación de email y administración global permanecen en sus flujos
+separados. Acerca de identifica LifeManager V2.0.0 como versión en desarrollo;
+la normalización futura de metadata técnica continúa regida por la línea base
+de versionado.

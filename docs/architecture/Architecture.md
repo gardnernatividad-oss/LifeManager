@@ -624,6 +624,15 @@ resuelve en servidor por `workspace_id + user_id`, Workspace/membership
 `ACTIVE` y `lock_version`. No existe estado global de privacidad, duplicación
 de servicios ni autorización derivada del frontend.
 
+Stage 14.3 conserva los servicios de Workspace como única autoridad y añade un
+vertical específico de contraseña: `Router → Service → Session → PostgreSQL`.
+El rate limiter registra el intento por actor en una transacción independiente;
+después el servicio bloquea exclusivamente la cuenta autenticada, verifica el
+hash actual, aplica la política central, reemplaza por Argon2 y hace `flush`.
+El router posee `commit/rollback`. La versión de credencial derivada del hash
+revoca server-side toda sesión previa; el frontend no almacena contraseñas ni
+simula dispositivos/sesiones inexistentes.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;

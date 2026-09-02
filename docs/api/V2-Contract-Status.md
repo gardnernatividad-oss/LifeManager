@@ -733,6 +733,24 @@ contrato no contiene `language` ni `locale` y no consume rutas V1.
 No se añadió endpoint, esquema, selector de idioma ni preferencia regional en
 Stage 14.2.
 
+### Workspaces, seguridad visible y Acerca de — Stage 14.3
+
+- Configuración reutiliza sin duplicación las rutas V2 de listado/gestión,
+  membresías, invitaciones, lifecycle, propiedad y apariencia de Workspaces.
+- `POST /api/v2/configuration/password` acepta exclusivamente
+  `current_password` y `new_password`. Exige cuenta `ACTIVE`, sesión, CSRF,
+  contraseña actual correcta, política central y rate limit por actor; responde
+  `204` y no serializa secretos.
+- El servicio bloquea la propia cuenta, verifica Argon2, persiste un hash nuevo
+  y ejecuta `flush`; el router conserva `commit/rollback`. La huella del hash
+  invalida todas las sesiones anteriores.
+- Recuperación pública, verificación de email y Login conservan sus contratos
+  independientes. Email, estado, rol global y datos administrativos no son
+  editables desde Configuración.
+- Acerca de muestra el producto V2.0.0 en desarrollo. El literal técnico
+  histórico `0.1.0` no se convierte en fuente de versión; su consolidación
+  mediante `VERSION` continúa diferida conforme a la arquitectura.
+
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
 - DTOs y actions exactos de cada vertical;

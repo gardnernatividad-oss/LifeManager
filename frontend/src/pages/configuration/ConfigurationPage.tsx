@@ -8,6 +8,8 @@ import type { AuthenticatedUser, ProfileRead, ProfileUpdatePayload } from "../..
 import { WorkspaceManagement } from "./WorkspaceManagement";
 import { NotificationSettings } from "./NotificationSettings";
 import { CalendarPrivacySettings } from "./CalendarPrivacySettings";
+import { SecuritySettings } from "./SecuritySettings";
+import { AboutSettings } from "./AboutSettings";
 
 function ProfileForm({ profile, timezones, user, setAuthenticatedUser }: {
   profile: ProfileRead;
@@ -94,5 +96,7 @@ export function ConfigurationPage() {
     <NotificationSettings />
     <CalendarPrivacySettings />
     <WorkspaceManagement />
+    <SecuritySettings />
+    <AboutSettings />
   </section>;
 }
