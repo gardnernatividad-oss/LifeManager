@@ -13,8 +13,13 @@ from sqlalchemy.orm import Session
 from app.api.v2.dependencies import get_current_account, get_db
 from app.db import session as db_session
 from app.main import app
-from app.models import User
-from app.models.enums import AccountStatus, GlobalRole
+from app.models import User, Workspace, WorkspaceMember
+from app.models.enums import (
+    AccountStatus,
+    CalendarVisibility,
+    GlobalRole,
+    WorkspaceKind,
+)
 from tests.postgres_safety import (
     alembic_config_for_test_database,
     disposable_postgres_database,
@@ -134,6 +139,103 @@ def test_profile_contract_round_trips_on_disposable_postgres(monkeypatch: pytest
                 persisted = verify.get(User, first_id)
                 assert persisted is not None
                 assert (persisted.first_name, persisted.timezone, persisted.lock_version) == ("Augusta", "Europe/London", 2)
+        finally:
+            app.dependency_overrides.clear()
+            engine.dispose()
+
+
+def test_calendar_privacy_round_trips_per_active_shared_membership_on_disposable_postgres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = make_url(db_session.DATABASE_URL).set(database="postgres")
+    with disposable_postgres_database(
+        source,
+        database_name="lifemanager_test",
+        explicit_test_intent=True,
+    ) as target_url:
+        monkeypatch.setenv("LIFEMANAGER_ALLOW_DESTRUCTIVE_V2_RESET", "1")
+        monkeypatch.setenv("LIFEMANAGER_ENV", "testing")
+        command.upgrade(
+            alembic_config_for_test_database(
+                target_url,
+                backend_root=BACKEND_ROOT,
+                explicit_test_intent=True,
+            ),
+            "head",
+        )
+        engine = sa.create_engine(target_url)
+        try:
+            with Session(engine) as setup:
+                owner = _user(email="privacy-owner@example.com")
+                member = _user(email="privacy-member@example.com")
+                administrator = _user(
+                    email="privacy-admin@example.com",
+                    global_role=GlobalRole.GLOBAL_ADMIN,
+                )
+                setup.add_all([owner, member, administrator]); setup.flush()
+                shared = Workspace(
+                    name="Familia",
+                    kind=WorkspaceKind.SHARED,
+                    owner_user_id=owner.id,
+                )
+                personal = Workspace(
+                    name="Personal",
+                    kind=WorkspaceKind.PERSONAL,
+                    owner_user_id=member.id,
+                )
+                setup.add_all([shared, personal]); setup.flush()
+                setup.add_all([
+                    WorkspaceMember(workspace_id=shared.id, user_id=owner.id),
+                    WorkspaceMember(workspace_id=shared.id, user_id=member.id),
+                    WorkspaceMember(workspace_id=personal.id, user_id=member.id),
+                ])
+                setup.commit()
+                shared_id, personal_id = shared.id, personal.id
+                member_id, administrator_id = member.id, administrator.id
+
+            with Session(engine) as session:
+                member = session.get(User, member_id)
+                assert member is not None
+                with _client(session, member) as client:
+                    initial = client.get(f"/api/v2/workspaces/{shared_id}/calendar-visibility")
+                    assert initial.status_code == 200
+                    assert initial.json() == {"visibility": "HIDE", "lock_version": 1}
+
+                    updated = client.patch(
+                        f"/api/v2/workspaces/{shared_id}/calendar-visibility",
+                        json={"visibility": "AVAILABILITY_ONLY", "lock_version": 1},
+                    )
+                    assert updated.status_code == 200
+                    assert updated.json() == {
+                        "visibility": "AVAILABILITY_ONLY",
+                        "lock_version": 2,
+                    }
+                    stale = client.patch(
+                        f"/api/v2/workspaces/{shared_id}/calendar-visibility",
+                        json={"visibility": "SHOW_DETAILS", "lock_version": 1},
+                    )
+                    assert stale.status_code == 409
+                    assert client.get(
+                        f"/api/v2/workspaces/{personal_id}/calendar-visibility"
+                    ).status_code == 404
+
+            with Session(engine) as verify:
+                persisted = verify.scalar(
+                    sa.select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == shared_id,
+                        WorkspaceMember.user_id == member_id,
+                    )
+                )
+                assert persisted is not None
+                assert persisted.calendar_visibility == CalendarVisibility.AVAILABILITY_ONLY
+                assert persisted.lock_version == 2
+
+                administrator = verify.get(User, administrator_id)
+                assert administrator is not None
+                with _client(verify, administrator) as client:
+                    assert client.get(
+                        f"/api/v2/workspaces/{shared_id}/calendar-visibility"
+                    ).status_code == 404
         finally:
             app.dependency_overrides.clear()
             engine.dispose()

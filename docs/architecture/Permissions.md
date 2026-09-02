@@ -252,3 +252,11 @@ Perfil. El objetivo deriva de la sesión, nunca del payload; otro usuario y un
 `GLOBAL_ADMIN` no pueden seleccionar un Perfil ajeno. La mutación exige CSRF,
 zona horaria IANA válida y concurrencia optimista. Campos administrativos y
 credenciales no forman parte del contrato editable.
+
+Stage 14.2 mantiene Notificaciones en scope exclusivo del usuario autenticado
+y configura privacidad solo sobre la propia membresía `ACTIVE` de un Shared
+Workspace `ACTIVE`. Owner y Member tienen la misma preferencia direccional;
+Personal no expone comparación. `GLOBAL_ADMIN` sin membership no obtiene
+bypass y conocer un `workspace_id` ajeno no permite leer ni alterar la
+preferencia. `AVAILABILITY_ONLY` y `HIDE` continúan aplicándose server-side
+antes de serializar datos de Calendario.

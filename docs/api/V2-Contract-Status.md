@@ -717,6 +717,22 @@ contrato no contiene `language` ni `locale` y no consume rutas V1.
 
 ## 24. Decisiones aún operativas
 
+### Configuración de recordatorios y privacidad — Stage 14.2
+
+- `GET/PUT /api/v2/notification-preferences` siguen siendo el contrato único
+  para Resumen diario, Revisión diaria, seguimientos semanales de Pendientes y
+  Proyectos y habilitación global de recordatorios de Actividades.
+- `GET/PATCH /api/v2/workspaces/{workspace_id}/calendar-visibility` leen y
+  modifican exclusivamente la preferencia de la membresía autenticada en un
+  Shared Workspace `ACTIVE`; `PATCH` exige `lock_version`.
+- Los únicos valores son `SHOW_DETAILS`, `AVAILABILITY_ONLY` y `HIDE`. La
+  comparación aplica la proyección en servidor; Personal, Workspace inactivo,
+  membresía no activa, UUID ajeno y `GLOBAL_ADMIN` sin membresía reciben la
+  frontera segura existente.
+
+No se añadió endpoint, esquema, selector de idioma ni preferencia regional en
+Stage 14.2.
+
 No están pendientes las convenciones anteriores. Se definirán durante implementación/operación:
 
 - DTOs y actions exactos de cada vertical;

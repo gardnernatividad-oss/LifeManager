@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import type { AuthenticatedUser, ProfileRead, ProfileUpdatePayload } from "../../types/auth";
 import { WorkspaceManagement } from "./WorkspaceManagement";
 import { NotificationSettings } from "./NotificationSettings";
+import { CalendarPrivacySettings } from "./CalendarPrivacySettings";
 
 function ProfileForm({ profile, timezones, user, setAuthenticatedUser }: {
   profile: ProfileRead;
@@ -91,6 +92,7 @@ export function ConfigurationPage() {
       {profile.isPending ? <p role="status">Cargando perfil…</p> : profile.isError ? <div role="alert"><p>No pudimos cargar tu perfil.</p><button type="button" onClick={() => void profile.refetch()}>Reintentar</button></div> : timezones.isPending ? <p role="status">Cargando zonas horarias…</p> : timezones.isError ? <div role="alert"><p>No pudimos cargar las zonas horarias.</p><button type="button" onClick={() => void timezones.refetch()}>Reintentar</button></div> : <ProfileForm key={profile.data.id} profile={profile.data} timezones={timezones.data} user={user} setAuthenticatedUser={setAuthenticatedUser} />}
     </section>
     <NotificationSettings />
+    <CalendarPrivacySettings />
     <WorkspaceManagement />
   </section>;
 }

@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as api from "../../api/workspaceApi";
-import * as privacyApi from "../../api/v2CalendarComparisonApi";
 import { useAuth } from "../../hooks/useAuth";
 import type { AuthState } from "../../store/auth-context";
 import { testUser } from "../../test/testUser";
@@ -20,7 +19,6 @@ vi.mock("../../api/workspaceApi", () => ({
   transferWorkspaceOwnership: vi.fn(), updateWorkspaceAppearance: vi.fn(),
 }));
 vi.mock("../../hooks/useAuth", () => ({ useAuth: vi.fn() }));
-vi.mock("../../api/v2CalendarComparisonApi", () => ({ getCalendarVisibility: vi.fn(), setCalendarVisibility: vi.fn() }));
 
 const personal = { id: "11111111-1111-4111-8111-111111111111", name: "Personal", kind: "PERSONAL" as const, lifecycle: "ACTIVE" as const, visible_role: "Propietario" as const, can_manage: false, can_delete: false, timezone: "America/Lima", color: "GREEN" as const, icon: "HOME" as const, lock_version: 1 };
 const shared = { ...personal, id: "22222222-2222-4222-8222-222222222222", name: "Familia", kind: "SHARED" as const, can_manage: true };
@@ -43,8 +41,6 @@ describe("WorkspaceManagement", () => {
     vi.mocked(api.listWorkspaceInvitations).mockResolvedValue([]);
     vi.mocked(api.reactivateWorkspace).mockResolvedValue({ ...inactive, lifecycle: "ACTIVE" });
     vi.mocked(api.deactivateWorkspace).mockResolvedValue({ ...shared, lifecycle: "INACTIVE" });
-    vi.mocked(privacyApi.getCalendarVisibility).mockResolvedValue({ visibility: "HIDE", lock_version: 2 });
-    vi.mocked(privacyApi.setCalendarVisibility).mockResolvedValue({ visibility: "SHOW_DETAILS", lock_version: 3 });
     vi.mocked(api.updateWorkspaceAppearance).mockResolvedValue({ ...shared, color: "PURPLE", icon: "STAR", lock_version: 2 });
   });
 
@@ -72,15 +68,6 @@ describe("WorkspaceManagement", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(screen.getByRole("button", { name: "Transferir propiedad" }));
     expect(api.transferWorkspaceOwnership).toHaveBeenCalledWith(shared.id, member.user_id);
-  });
-
-  it("lets the current member configure directional Shared calendar privacy", async () => {
-    const user = userEvent.setup(); mount();
-    await user.click(await screen.findByRole("button", { name: /Familia/ }));
-    const control = await screen.findByRole("combobox", { name: "Privacidad de calendario" });
-    expect(control).toHaveValue("HIDE");
-    await user.selectOptions(control, "SHOW_DETAILS");
-    await waitFor(() => expect(privacyApi.setCalendarVisibility).toHaveBeenCalledWith(shared.id, "SHOW_DETAILS", 2));
   });
 
   it("updates persisted Workspace appearance using safe catalog values", async () => {

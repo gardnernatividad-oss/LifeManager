@@ -93,7 +93,7 @@ El roadmap conservará exactamente estas columnas:
 | 13. Reportes | 13.3 | Reportes de Actividades, Otras actividades/tareas y reclasificación histórica dinámica por maestros | Completado |
 | 13. Reportes | 13.4 | Tablas históricas, gráficos, filtros, responsive, exportabilidad prevista, autorización y gate de Reportes | Completado |
 | 14. Configuración | 14.1 | Perfil de usuario, cuenta, zona horaria y estructura general de Configuración | Completado |
-| 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Pendiente |
+| 14. Configuración | 14.2 | Configuración de Recordatorio diario, Revisión diaria, seguimientos y privacidad de Calendario | Completado |
 | 14. Configuración | 14.3 | Gestión de Workspaces, membresías/propiedad, seguridad visible de cuenta y Acerca de | Pendiente |
 | 14. Configuración | 14.4 | Responsive, permisos, validaciones, PostgreSQL y gate de Configuración | Pendiente |
 | 15. Administración global | 15.1 | Consola privada GLOBAL_ADMIN: solicitudes de registro, usuarios, estados y operaciones administrativas | Pendiente |

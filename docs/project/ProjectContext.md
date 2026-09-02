@@ -345,3 +345,13 @@ interfaz permanece exclusivamente en español, usa fechas `dd/mm/yyyy` y
 considera el lunes como inicio de semana; no existe selector de idioma ni
 submódulo regional. Notificaciones y Workspaces se preservan sin adelantar
 14.2–14.4.
+
+Stage 14.2 consolida en Configuración las preferencias personales ya
+implementadas por Notificaciones y la privacidad direccional del Calendario
+por cada membresía `ACTIVE` en un Shared Workspace `ACTIVE`. Resumen diario,
+Revisión diaria, seguimientos semanales de Pendientes/Proyectos y recordatorios
+de Actividades conservan el contrato canónico de Fase 12. La privacidad usa
+`SHOW_DETAILS`, `AVAILABILITY_ONLY` o `HIDE`, persiste en
+`WorkspaceMember`, aplica concurrencia optimista y se hace cumplir antes de
+serializar comparaciones. Personal no necesita esta preferencia y
+`GLOBAL_ADMIN` no sustituye una membresía.

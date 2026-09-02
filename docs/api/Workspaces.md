@@ -132,7 +132,11 @@ desactivan; organizer e historia no se reescriben.
 
 ## Diferido
 
-La privacidad colaborativa del Calendario, email y notificaciones permanecen
-diferidos a sus stages. Listado, selector, administración y reactivación ya
-están implementados; las verticales funcionales posteriores deben reutilizar
-esta API sin inferir autoridad desde el cliente.
+La privacidad colaborativa del Calendario se configura por la propia
+membresía mediante `GET/PATCH
+/api/v2/workspaces/{workspace_id}/calendar-visibility`. Solo aplica a Shared
+`ACTIVE`, exige membership `ACTIVE`, usa `lock_version` y admite
+`SHOW_DETAILS`, `AVAILABILITY_ONLY` o `HIDE`; la proyección se aplica en
+servidor y `GLOBAL_ADMIN` no tiene bypass. Email permanece diferido. Listado,
+selector, administración y reactivación reutilizan esta API sin inferir
+autoridad desde el cliente.

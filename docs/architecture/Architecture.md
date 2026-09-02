@@ -616,6 +616,14 @@ nombre, apellido y zona horaria y ejecuta `flush`; el router conserva
 `commit/rollback`. Las lecturas no escriben. No requiere cambio de esquema,
 dependencias ni entorno.
 
+Stage 14.2 reutiliza dos fronteras persistentes existentes. Las preferencias
+de recordatorios permanecen user-scoped en el motor de Notificaciones de Fase
+12. La privacidad de Calendario permanece membership-scoped: Configuración
+consulta los Shared Workspaces activos del usuario y cada lectura/mutación se
+resuelve en servidor por `workspace_id + user_id`, Workspace/membership
+`ACTIVE` y `lock_version`. No existe estado global de privacidad, duplicación
+de servicios ni autorización derivada del frontend.
+
 1. prevalece una decisión aprobada mediante ADR;
 2. después prevalece la documentación técnica vigente;
 3. después prevalece `ProjectContext.md`;
